@@ -75,6 +75,38 @@ impl RecoveryStore {
         Ok(())
     }
 
+    pub fn list(&self) -> Result<Vec<RecoveryRecord>, AppError> {
+        let mut records = Vec::new();
+        for entry in std::fs::read_dir(&self.root)? {
+            let path = entry?.path();
+            if path.extension().and_then(|value| value.to_str()) != Some("json") {
+                continue;
+            }
+            match serde_json::from_slice::<RecoveryRecord>(&std::fs::read(&path)?) {
+                Ok(record) => records.push(record),
+                Err(_) => self.quarantine(&path)?,
+            }
+        }
+        records.sort_by(|left, right| left.created_at.cmp(&right.created_at));
+        Ok(records)
+    }
+
+    fn quarantine(&self, path: &Path) -> Result<(), AppError> {
+        let directory = self.root.join("quarantine");
+        std::fs::create_dir_all(&directory)?;
+        let original = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("unknown.json");
+        let target = directory.join(format!(
+            "{}.{}.invalid",
+            original,
+            chrono::Utc::now().timestamp_millis()
+        ));
+        std::fs::rename(path, target)?;
+        Ok(())
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
