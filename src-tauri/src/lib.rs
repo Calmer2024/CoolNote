@@ -16,6 +16,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::library::initialize_library,
+            commands::library::update_library_settings,
             commands::notes::list_notes,
             commands::notes::get_note,
             commands::notes::create_note,

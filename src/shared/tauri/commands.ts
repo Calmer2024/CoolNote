@@ -9,9 +9,13 @@ import type {
   RecoveryRecordDto,
   SaveNoteRequest,
   SaveNoteResult,
+  UpdateLibrarySettingsRequest,
 } from './contracts'
 
 export const initializeLibrary = () => invoke<LibraryDto>('initialize_library')
+
+export const updateLibrarySettings = (request: UpdateLibrarySettingsRequest) =>
+  invoke<LibraryDto>('update_library_settings', { request })
 
 export const listNotes = (offset = 0, limit = 50) =>
   invoke<Page<NoteSummaryDto>>('list_notes', { offset, limit })

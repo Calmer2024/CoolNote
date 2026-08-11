@@ -28,6 +28,14 @@ pub enum AppError {
         expected: i64,
         current: i64,
     },
+    #[error("settings revision conflict for {library_id}: expected {expected}, current {current}")]
+    SettingsRevisionConflict {
+        library_id: String,
+        expected: i64,
+        current: i64,
+    },
+    #[error("invalid library settings: {0}")]
+    InvalidLibrarySettings(String),
     #[error("injected save failure")]
     InjectedFailure,
     #[error("failed to persist recovery data: {0}")]

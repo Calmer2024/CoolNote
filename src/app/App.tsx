@@ -8,6 +8,7 @@ import { deriveOutline, Outline } from '../features/outline/Outline'
 import { RecoveryDialog } from '../features/recovery/RecoveryDialog'
 import { SaveStatus } from '../features/save/SaveStatus'
 import { useSaveCoordinator } from '../features/save/useSaveCoordinator'
+import { ThemeButton } from '../features/theme/ThemeButton'
 import { Icon } from '../shared/components/Icon'
 import {
   getNote,
@@ -168,15 +169,11 @@ export function App() {
           <kbd>Ctrl K</kbd>
         </button>
         <div className="header-actions">
-          <button
-            className="icon-button theme-button"
-            type="button"
-            aria-label="切换主题"
-            title="后续里程碑提供"
-            disabled
-          >
-            <Icon name="sun" />
-          </button>
+          <ThemeButton
+            library={notes.library}
+            onLibraryChange={notes.updateLibrary}
+            onError={(message) => setSaveError(message || null)}
+          />
           <button
             className="new-note-button"
             type="button"

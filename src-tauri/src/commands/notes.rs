@@ -44,7 +44,9 @@ impl CommandError {
 impl From<AppError> for CommandError {
     fn from(error: AppError) -> Self {
         let (code, retryable) = match &error {
-            AppError::RevisionConflict { .. } => ("revision_conflict", false),
+            AppError::RevisionConflict { .. } | AppError::SettingsRevisionConflict { .. } => {
+                ("revision_conflict", false)
+            }
             AppError::NotFound(_) => ("not_found", false),
             AppError::UnsupportedNode(_) | AppError::UnsupportedSchema(_) => {
                 ("unsupported_document", false)

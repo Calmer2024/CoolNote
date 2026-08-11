@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use crate::application::library_service::LibraryService;
+use crate::application::library_service::{LibraryService, LibrarySettingsService};
 use crate::application::note_service::NoteService;
 use crate::application::save_service::SaveService;
 use crate::domain::error::AppError;
@@ -11,6 +11,7 @@ use crate::infrastructure::recovery_store::RecoveryStore;
 #[derive(Debug, Clone)]
 pub struct AppServices {
     pub library: Library,
+    pub settings: LibrarySettingsService,
     pub notes: NoteService,
     pub saves: SaveService,
     pub recovery: RecoveryStore,
@@ -51,6 +52,7 @@ impl AppState {
         let recovery = RecoveryStore::new(self.inner.library_root.join("recovery"))?;
         let services = AppServices {
             library: context.library.clone(),
+            settings: context.settings,
             notes: NoteService::new(context.database.clone()),
             saves: SaveService::new(context.library.id, context.database, recovery.clone()),
             recovery,

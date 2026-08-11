@@ -25,6 +25,7 @@ fn services(temp: &tempfile::TempDir) -> AppServices {
     let recovery = RecoveryStore::new(temp.path().join("recovery")).unwrap();
     AppServices {
         library: context.library.clone(),
+        settings: context.settings,
         notes: NoteService::new(context.database.clone()),
         saves: SaveService::new(context.library.id, context.database, recovery.clone()),
         recovery,

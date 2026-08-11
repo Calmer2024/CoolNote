@@ -21,6 +21,12 @@ export type LibraryDto = {
   lastOpenedAt: string
   lastCleanShutdownAt: string | null
   settingsJson: string
+  settingsRevision: number
+}
+
+export type UpdateLibrarySettingsRequest = {
+  baseSettingsRevision: number
+  settingsJson: string
 }
 
 export type NoteDto = {

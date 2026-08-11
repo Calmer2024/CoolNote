@@ -6,6 +6,8 @@ use rusqlite::{Connection, OpenFlags, Transaction};
 use crate::domain::error::AppError;
 
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/0001_initial.sql");
+const LIBRARY_SETTINGS_REVISION_MIGRATION: &str =
+    include_str!("../../migrations/0002_library_settings_revision.sql");
 
 #[derive(Debug)]
 pub struct Database {
@@ -37,6 +39,10 @@ impl Database {
     fn apply_migrations(&self) -> Result<(), AppError> {
         if self.user_version()? < 1 {
             self.lock()?.execute_batch(INITIAL_MIGRATION)?;
+        }
+        if self.user_version()? < 2 {
+            self.lock()?
+                .execute_batch(LIBRARY_SETTINGS_REVISION_MIGRATION)?;
         }
         Ok(())
     }

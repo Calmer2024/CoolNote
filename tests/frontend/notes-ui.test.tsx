@@ -31,6 +31,7 @@ const library: LibraryDto = {
   lastOpenedAt: '2026-08-11T10:00:00Z',
   lastCleanShutdownAt: null,
   settingsJson: '{}',
+  settingsRevision: 1,
 }
 
 const createdNote: NoteDto = {

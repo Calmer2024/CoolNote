@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import type { NoteSummaryDto } from '../../shared/tauri/contracts'
 import { Icon } from '../../shared/components/Icon'
 
@@ -43,6 +45,37 @@ export function NotesPanel({
   onSelect,
   onLoadMore,
 }: NotesPanelProps) {
+  const selectedIndex = notes.findIndex((note) => note.id === selectedNoteId)
+  const [activeIndex, setActiveIndex] = useState(
+    selectedIndex >= 0 ? selectedIndex : notes.length ? 0 : -1,
+  )
+
+  useEffect(() => {
+    setActiveIndex((current) => {
+      if (!notes.length) return -1
+      if (selectedIndex >= 0) return selectedIndex
+      return Math.min(Math.max(current, 0), notes.length - 1)
+    })
+  }, [notes, selectedIndex])
+
+  const handleListKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!notes.length) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveIndex((current) => Math.min(Math.max(current, 0) + 1, notes.length - 1))
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveIndex((current) => Math.max(current <= 0 ? 0 : current - 1, 0))
+      return
+    }
+    if (event.key === 'Enter' && activeIndex >= 0) {
+      event.preventDefault()
+      onSelect(notes[activeIndex].id)
+    }
+  }
+
   return (
     <section
       className="notes-panel"
@@ -61,18 +94,33 @@ export function NotesPanel({
           <span>正在打开笔记库…</span>
         </div>
       ) : notes.length ? (
-        <div className="notes-list" role="listbox" aria-label="笔记列表">
-          {notes.map((note) => {
+        <div
+          className="notes-list"
+          role="listbox"
+          aria-label="笔记列表"
+          aria-activedescendant={
+            activeIndex >= 0 ? `note-option-${notes[activeIndex].id}` : undefined
+          }
+          tabIndex={0}
+          onKeyDown={handleListKeyDown}
+        >
+          {notes.map((note, index) => {
             const selected = note.id === selectedNoteId
             return (
               <button
+                id={`note-option-${note.id}`}
                 className={`note-card${selected ? ' selected' : ''}`}
                 type="button"
                 role="option"
                 aria-label={noteTitle(note.title)}
                 aria-selected={selected}
+                data-active={index === activeIndex}
+                tabIndex={-1}
                 key={note.id}
-                onClick={() => onSelect(note.id)}
+                onClick={() => {
+                  setActiveIndex(index)
+                  onSelect(note.id)
+                }}
               >
                 <h2>{noteTitle(note.title)}</h2>
                 <p>{noteExcerpt(note.excerpt)}</p>

@@ -25,6 +25,7 @@ describe('CoolNote application shell', () => {
       lastOpenedAt: '2026-08-11T10:00:00Z',
       lastCleanShutdownAt: null,
       settingsJson: '{}',
+      settingsRevision: 1,
     })
     vi.mocked(listNotes).mockResolvedValue({ items: [], total: 0 })
   })

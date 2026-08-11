@@ -7,6 +7,7 @@ import {
   listNotes,
 } from '../../shared/tauri/commands'
 import type {
+  LibraryDto,
   NoteDto,
   NoteSummaryDto,
   RecoveryRecordDto,
@@ -28,6 +29,7 @@ function toSummary(note: NoteDto): NoteSummaryDto {
 
 export function useNotes() {
   const [status, setStatus] = useState<NotesStatus>('booting')
+  const [library, setLibrary] = useState<LibraryDto | null>(null)
   const [notes, setNotes] = useState<NoteSummaryDto[]>([])
   const [total, setTotal] = useState(0)
   const [selectedNote, setSelectedNote] = useState<NoteDto | null>(null)
@@ -40,10 +42,12 @@ export function useNotes() {
 
   const loadLibrary = useCallback(async () => {
     setStatus('booting')
+    setLibrary(null)
     setError(null)
     try {
-      await initializeLibrary()
+      const initializedLibrary = await initializeLibrary()
       const page = await listNotes(0, 50)
+      setLibrary(initializedLibrary)
       setNotes(page.items)
       setTotal(page.total)
       setStatus('ready')
@@ -158,8 +162,13 @@ export function useNotes() {
     [],
   )
 
+  const updateLibrary = useCallback((updated: LibraryDto) => {
+    setLibrary(updated)
+  }, [])
+
   return {
     status,
+    library,
     notes,
     total,
     selectedNote,
@@ -173,6 +182,7 @@ export function useNotes() {
     loadMore,
     updateDraft,
     applyRecoveredDraft,
+    updateLibrary,
     retry: loadLibrary,
   }
 }
