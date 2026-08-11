@@ -1,7 +1,15 @@
+export type DocumentNode = {
+  type: string
+  attrs?: Record<string, unknown>
+  content?: DocumentNode[]
+  text?: string
+  marks?: Array<{ type: string; attrs?: Record<string, unknown> }>
+}
+
 export type VersionedDocument = {
   schemaVersion: number
   type: 'doc'
-  content: unknown[]
+  content: DocumentNode[]
 }
 
 export type LibraryDto = {
