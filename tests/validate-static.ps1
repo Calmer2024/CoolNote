@@ -30,7 +30,8 @@ if ($fontFiles.Count -ne 101) {
 
 $index = Get-Content -Raw -LiteralPath (Join-Path $root 'index.html')
 $package = Get-Content -Raw -LiteralPath (Join-Path $root 'package.json')
-$app = Get-Content -Raw -LiteralPath (Join-Path $root 'src\app\App.tsx')
+$frontendFiles = @(Get-ChildItem -LiteralPath (Join-Path $root 'src') -Recurse -File -Include '*.ts', '*.tsx')
+$frontend = ($frontendFiles | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
 $css = Get-Content -Raw -LiteralPath (Join-Path $root 'src\app\app.css')
 $cargo = Get-Content -Raw -LiteralPath (Join-Path $root 'src-tauri\Cargo.toml')
 $tauri = Get-Content -Raw -LiteralPath (Join-Path $root 'src-tauri\tauri.conf.json')
@@ -43,7 +44,7 @@ foreach ($marker in @('id="root"', '/src/main.tsx', '/assets/fonts/noto-sans-sc.
 }
 
 foreach ($marker in @('app-header', 'workspace', 'sidebar', 'notes-panel', 'document-panel', 'data-notes-collapsed', 'CoolNote', '还没有笔记')) {
-    if ($app -notmatch [regex]::Escape($marker)) {
+    if ($frontend -notmatch [regex]::Escape($marker)) {
         throw "Missing application shell marker: $marker"
     }
 }
@@ -60,11 +61,11 @@ foreach ($marker in @('"dev": "vite --host 127.0.0.1 --port 4173"', '"test": "vi
     }
 }
 
-if ($app -match 'MiraAgent|RocketMQ|仿美团神券系统|>画板<') {
+if ($frontend -match 'MiraAgent|RocketMQ|仿美团神券系统|>画板<') {
     throw 'Demo content or the removed Canvas entry remains in the React shell.'
 }
 
-if ($app -match 'localStorage|sessionStorage|fetch\s*\(') {
+if ($frontend -match 'localStorage|sessionStorage|fetch\s*\(') {
     throw 'The initial shell contains forbidden browser persistence or networking.'
 }
 
