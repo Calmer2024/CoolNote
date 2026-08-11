@@ -16,7 +16,7 @@ export function SaveStatus({
   const label = state === 'failed'
     ? recoverySafeFailure
       ? '保存失败，草稿已保留'
-      : '保存失败'
+      : ''
     : labels[state] ?? ''
 
   return (
