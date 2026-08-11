@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Frontend build output
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Rust / Tauri build output
+target/
+src-tauri/target/
+*.pdb
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Environment and local secrets
+.env
+.env.local
+.env.*.local
+
+# OS and temporary files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Python caches used by auxiliary tooling
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Local application data
+*.db
+*.db-shm
+*.db-wal
+recovery/
+attachments/
+
