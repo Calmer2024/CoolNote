@@ -48,4 +48,4 @@ recovery/
 attachments/
 
 # Isolated feature worktrees
-.worktrees/
+.worktrees
