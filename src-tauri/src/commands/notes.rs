@@ -8,10 +8,12 @@ use crate::domain::note::{Note, NoteSummary, Page};
 use crate::infrastructure::recovery_store::RecoveryRecord;
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CommandError {
     pub code: String,
     pub message: String,
     pub retryable: bool,
+    pub recovery_safe: bool,
 }
 
 impl CommandError {
@@ -20,7 +22,22 @@ impl CommandError {
             code: "task_join_failed".to_owned(),
             message,
             retryable: true,
+            recovery_safe: false,
         }
+    }
+
+    pub fn from_save(error: AppError) -> Self {
+        let recovery_safe = matches!(
+            &error,
+            AppError::Database(_)
+                | AppError::Io(_)
+                | AppError::PoisonedLock
+                | AppError::RevisionConflict { .. }
+                | AppError::InjectedFailure
+        );
+        let mut command_error = Self::from(error);
+        command_error.recovery_safe = recovery_safe;
+        command_error
     }
 }
 
@@ -33,12 +50,14 @@ impl From<AppError> for CommandError {
                 ("unsupported_document", false)
             }
             AppError::InjectedFailure => ("injected_failure", true),
+            AppError::RecoveryWriteFailed(_) => ("recovery_write_failed", true),
             _ => ("local_operation_failed", true),
         };
         Self {
             code: code.to_owned(),
             message: error.to_string(),
             retryable,
+            recovery_safe: false,
         }
     }
 }
@@ -132,10 +151,15 @@ pub async fn save_note(
     request: SaveNoteRequest,
 ) -> Result<SaveNoteResult, CommandError> {
     let state = state.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || state.services()?.saves.save_note(request))
-        .await
-        .map_err(|error| CommandError::join(error.to_string()))?
-        .map_err(CommandError::from)
+    tauri::async_runtime::spawn_blocking(move || {
+        let services = state.services().map_err(CommandError::from)?;
+        services
+            .saves
+            .save_note(request)
+            .map_err(CommandError::from_save)
+    })
+    .await
+    .map_err(|error| CommandError::join(error.to_string()))?
 }
 
 #[tauri::command]

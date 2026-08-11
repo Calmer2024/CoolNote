@@ -83,4 +83,5 @@ export type CommandError = {
   code: string
   message: string
   retryable: boolean
+  recoverySafe: boolean
 }

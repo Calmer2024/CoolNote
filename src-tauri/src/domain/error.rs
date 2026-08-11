@@ -30,4 +30,6 @@ pub enum AppError {
     },
     #[error("injected save failure")]
     InjectedFailure,
+    #[error("failed to persist recovery data: {0}")]
+    RecoveryWriteFailed(Box<AppError>),
 }

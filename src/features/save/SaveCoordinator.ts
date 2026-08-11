@@ -28,12 +28,12 @@ function createTransactionId() {
   })
 }
 
-function isUnsafeSaveError(cause: unknown) {
+function isRecoverySafeSaveError(cause: unknown) {
   return (
     typeof cause === 'object' &&
     cause !== null &&
-    'code' in cause &&
-    cause.code === 'unsupported_document'
+    'recoverySafe' in cause &&
+    cause.recoverySafe === true
   )
 }
 
@@ -46,6 +46,7 @@ export class SaveCoordinator {
   private lastFlushResult: FlushResult = 'committed'
   private readonly revisions = new Map<string, number>()
   private retryCount = 0
+  private recoverySafeFailure = false
   private disposed = false
 
   constructor(
@@ -57,6 +58,7 @@ export class SaveCoordinator {
     if (this.disposed) return
     this.pending = change
     this.lastFlushResult = 'committed'
+    this.recoverySafeFailure = false
     this.schedule()
   }
 
@@ -75,6 +77,10 @@ export class SaveCoordinator {
 
   get retryMetadata(): SaveRetryMetadata {
     return { attempts: this.retryCount }
+  }
+
+  get isRecoverySafeFailure() {
+    return this.recoverySafeFailure
   }
 
   async flush(): Promise<FlushResult> {
@@ -121,6 +127,7 @@ export class SaveCoordinator {
     })
       .then((saved) => {
         this.retryCount = 0
+        this.recoverySafeFailure = false
         this.revisions.set(saved.noteId, saved.revision)
         if (this.pending?.noteId === saved.noteId) {
           this.pending = { ...this.pending, baseRevision: saved.revision }
@@ -131,11 +138,12 @@ export class SaveCoordinator {
         const hasNewerPending = this.pending !== null
         if (!this.pending) this.pending = batch
         this.retryCount += 1
+        this.recoverySafeFailure = isRecoverySafeSaveError(cause)
         this.lastFlushResult = hasNewerPending
           ? 'committed'
-          : isUnsafeSaveError(cause)
-            ? 'blocked'
-            : 'recoverySafeFailure'
+          : this.recoverySafeFailure
+            ? 'recoverySafeFailure'
+            : 'blocked'
         this.setState('failed')
       })
       .finally(() => {

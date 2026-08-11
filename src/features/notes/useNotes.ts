@@ -141,10 +141,12 @@ export function useNotes() {
 
   const applyRecoveredDraft = useCallback(
     (databaseNote: NoteDto, draft: RecoveryRecordDto) => {
+      selectionToken.current += 1
       const document = normalizeDocument(draft.documentJson as VersionedDocument)
       const restored = { ...databaseNote, title: draft.title, document }
       setSelectedNoteId(restored.id)
       setSelectedNote(restored)
+      setIsLoadingNote(false)
       setNotes((current) =>
         current.map((note) =>
           note.id === restored.id

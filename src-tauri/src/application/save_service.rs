@@ -70,16 +70,18 @@ impl SaveService {
         let content_hash = hash_document(&document);
         let updated_at = Utc::now().to_rfc3339();
 
-        self.recovery.put(&RecoveryRecord {
-            library_id: self.library_id.clone(),
-            note_id: request.note_id.clone(),
-            base_revision: request.base_revision,
-            client_transaction_id: request.client_transaction_id.clone(),
-            title: request.title.clone(),
-            document_json,
-            content_hash: content_hash.clone(),
-            created_at: updated_at.clone(),
-        })?;
+        self.recovery
+            .put(&RecoveryRecord {
+                library_id: self.library_id.clone(),
+                note_id: request.note_id.clone(),
+                base_revision: request.base_revision,
+                client_transaction_id: request.client_transaction_id.clone(),
+                title: request.title.clone(),
+                document_json,
+                content_hash: content_hash.clone(),
+                created_at: updated_at.clone(),
+            })
+            .map_err(|error| AppError::RecoveryWriteFailed(Box::new(error)))?;
 
         if fault == SaveFault::BeforeCommit {
             return Err(AppError::InjectedFailure);

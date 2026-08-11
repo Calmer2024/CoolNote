@@ -11,8 +11,15 @@ export function useSaveCoordinator() {
 
   const coordinator = coordinatorRef.current
   const [state, setState] = useState<SaveState>('idle')
+  const [recoverySafeFailure, setRecoverySafeFailure] = useState(false)
 
-  useEffect(() => coordinator.subscribe(setState), [coordinator])
+  useEffect(
+    () => coordinator.subscribe((nextState) => {
+      setState(nextState)
+      setRecoverySafeFailure(coordinator.isRecoverySafeFailure)
+    }),
+    [coordinator],
+  )
 
   useEffect(
     () => () => {
@@ -21,5 +28,5 @@ export function useSaveCoordinator() {
     [coordinator],
   )
 
-  return { coordinator, state }
+  return { coordinator, state, recoverySafeFailure }
 }

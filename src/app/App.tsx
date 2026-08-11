@@ -24,7 +24,7 @@ const deferredItems = [
 
 export function App() {
   const notes = useNotes()
-  const { coordinator, state: saveState } = useSaveCoordinator()
+  const { coordinator, state: saveState, recoverySafeFailure } = useSaveCoordinator()
   const [notesCollapsed, setNotesCollapsed] = useState(false)
   const [outlineCollapsed, setOutlineCollapsed] = useState(false)
   const [focusTitleNoteId, setFocusTitleNoteId] = useState<string | null>(null)
@@ -65,6 +65,7 @@ export function App() {
     setRecoveryBusy(true)
     setSaveError(null)
     try {
+      if (!(await flushBeforeLeaving())) return
       const draft = await resolveRecovery(recoveryCandidate.draft.noteId, 'restoreDraft')
       if (!draft) {
         setSaveError('恢复草稿已不可用，请保留当前数据库版本。')
@@ -140,7 +141,11 @@ export function App() {
         if (disposed) release()
         else unlisten = release
       })
-      .catch(() => undefined)
+      .catch((cause) => {
+        if (!disposed) {
+          setSaveError(cause instanceof Error ? cause.message : '无法注册关闭监听。')
+        }
+      })
 
     return () => {
       disposed = true
@@ -240,7 +245,7 @@ export function App() {
               <Icon name={notesCollapsed ? 'panel-left-open' : 'panel-left-close'} />
             </button>
             <div className="document-actions">
-              <SaveStatus state={saveState} />
+              <SaveStatus state={saveState} recoverySafeFailure={recoverySafeFailure} />
             </div>
           </div>
 
