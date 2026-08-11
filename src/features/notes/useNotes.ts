@@ -9,6 +9,7 @@ import {
 import type {
   NoteDto,
   NoteSummaryDto,
+  RecoveryRecordDto,
   VersionedDocument,
 } from '../../shared/tauri/contracts'
 import { normalizeDocument } from '../editor/document'
@@ -138,6 +139,23 @@ export function useNotes() {
     [],
   )
 
+  const applyRecoveredDraft = useCallback(
+    (databaseNote: NoteDto, draft: RecoveryRecordDto) => {
+      const document = normalizeDocument(draft.documentJson as VersionedDocument)
+      const restored = { ...databaseNote, title: draft.title, document }
+      setSelectedNoteId(restored.id)
+      setSelectedNote(restored)
+      setNotes((current) =>
+        current.map((note) =>
+          note.id === restored.id
+            ? { ...note, title: restored.title, revision: restored.revision }
+            : note,
+        ),
+      )
+    },
+    [],
+  )
+
   return {
     status,
     notes,
@@ -152,6 +170,7 @@ export function useNotes() {
     select,
     loadMore,
     updateDraft,
+    applyRecoveredDraft,
     retry: loadLibrary,
   }
 }

@@ -58,6 +58,40 @@ pub enum ResolveRecoveryAction {
     KeepDatabaseVersion,
 }
 
+pub fn list_recovery_candidates_for_services(
+    services: &crate::app_state::AppServices,
+) -> Result<Vec<RecoveryCandidate>, AppError> {
+    let mut candidates = Vec::new();
+    for record in services.recovery.list()? {
+        let note = services.notes.get_note(&record.note_id)?;
+        let decision = classify_recovery(note.revision, &note.content_hash, &record);
+        if decision == RecoveryDecision::DiscardDuplicate {
+            services.recovery.remove(&record.note_id)?;
+            continue;
+        }
+        candidates.push(RecoveryCandidate {
+            decision,
+            database_revision: note.revision,
+            draft: record,
+        });
+    }
+    Ok(candidates)
+}
+
+pub fn resolve_recovery_for_services(
+    services: &crate::app_state::AppServices,
+    note_id: &str,
+    action: ResolveRecoveryAction,
+) -> Result<Option<RecoveryRecord>, AppError> {
+    match action {
+        ResolveRecoveryAction::RestoreDraft => services.recovery.get(note_id),
+        ResolveRecoveryAction::KeepDatabaseVersion => {
+            services.recovery.remove(note_id)?;
+            Ok(None)
+        }
+    }
+}
+
 #[tauri::command]
 pub async fn list_notes(
     state: tauri::State<'_, AppState>,
@@ -111,21 +145,7 @@ pub async fn list_recovery_candidates(
     let state = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let services = state.services()?;
-        let mut candidates = Vec::new();
-        for record in services.recovery.list()? {
-            let note = services.notes.get_note(&record.note_id)?;
-            let decision = classify_recovery(note.revision, &note.content_hash, &record);
-            if decision == RecoveryDecision::DiscardDuplicate {
-                services.recovery.remove(&record.note_id)?;
-                continue;
-            }
-            candidates.push(RecoveryCandidate {
-                decision,
-                database_revision: note.revision,
-                draft: record,
-            });
-        }
-        Ok::<Vec<RecoveryCandidate>, AppError>(candidates)
+        list_recovery_candidates_for_services(&services)
     })
     .await
     .map_err(|error| CommandError::join(error.to_string()))?
@@ -141,13 +161,7 @@ pub async fn resolve_recovery(
     let state = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         let services = state.services()?;
-        match action {
-            ResolveRecoveryAction::RestoreDraft => services.recovery.get(&note_id),
-            ResolveRecoveryAction::KeepDatabaseVersion => {
-                services.recovery.remove(&note_id)?;
-                Ok(None)
-            }
-        }
+        resolve_recovery_for_services(&services, &note_id, action)
     })
     .await
     .map_err(|error| CommandError::join(error.to_string()))?

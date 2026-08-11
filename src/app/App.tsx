@@ -1,10 +1,20 @@
-import { useMemo, useState } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { useEffect, useMemo, useState } from 'react'
 
 import { NoteEditor } from '../features/editor/NoteEditor'
 import { useNotes } from '../features/notes/useNotes'
 import { NotesPanel } from '../features/notes/NotesPanel'
 import { deriveOutline, Outline } from '../features/outline/Outline'
+import { RecoveryDialog } from '../features/recovery/RecoveryDialog'
+import { SaveStatus } from '../features/save/SaveStatus'
+import { useSaveCoordinator } from '../features/save/useSaveCoordinator'
 import { Icon } from '../shared/components/Icon'
+import {
+  getNote,
+  listRecoveryCandidates,
+  resolveRecovery,
+} from '../shared/tauri/commands'
+import type { RecoveryCandidateDto } from '../shared/tauri/contracts'
 
 const deferredItems = [
   { label: '日程', icon: 'calendar-days' },
@@ -14,19 +24,129 @@ const deferredItems = [
 
 export function App() {
   const notes = useNotes()
+  const { coordinator, state: saveState } = useSaveCoordinator()
   const [notesCollapsed, setNotesCollapsed] = useState(false)
   const [outlineCollapsed, setOutlineCollapsed] = useState(false)
   const [focusTitleNoteId, setFocusTitleNoteId] = useState<string | null>(null)
+  const [recoveryCandidates, setRecoveryCandidates] = useState<RecoveryCandidateDto[]>([])
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [editorVersion, setEditorVersion] = useState(0)
+  const recoveryCandidate = recoveryCandidates[0] ?? null
 
   const outlineItems = useMemo(
     () => (notes.selectedNote ? deriveOutline(notes.selectedNote.document) : []),
     [notes.selectedNote],
   )
 
+  const flushBeforeLeaving = async () => {
+    const result = await coordinator.flush()
+    if (result === 'blocked') {
+      setSaveError('当前内容无法安全保存，请先修正后再切换笔记。')
+      return false
+    }
+    return true
+  }
+
   const handleCreate = async () => {
+    if (!(await flushBeforeLeaving())) return
     const created = await notes.create()
     if (created) setFocusTitleNoteId(created.id)
   }
+
+  const handleSelect = async (noteId: string) => {
+    if (!(await flushBeforeLeaving())) return
+    setFocusTitleNoteId(null)
+    await notes.select(noteId)
+  }
+
+  const handleRestoreDraft = async () => {
+    if (!recoveryCandidate) return
+    setRecoveryBusy(true)
+    setSaveError(null)
+    try {
+      const draft = await resolveRecovery(recoveryCandidate.draft.noteId, 'restoreDraft')
+      if (!draft) {
+        setSaveError('恢复草稿已不可用，请保留当前数据库版本。')
+        return
+      }
+      const databaseNote = await getNote(draft.noteId)
+      notes.applyRecoveredDraft(databaseNote, draft)
+      coordinator.enqueue({
+        noteId: databaseNote.id,
+        baseRevision: databaseNote.revision,
+        title: draft.title,
+        documentJson: draft.documentJson,
+      })
+      coordinator.markRecovered()
+      setEditorVersion((value) => value + 1)
+      setRecoveryCandidates((candidates) => candidates.slice(1))
+    } catch (cause) {
+      setSaveError(cause instanceof Error ? cause.message : '恢复草稿失败，请重试。')
+    } finally {
+      setRecoveryBusy(false)
+    }
+  }
+
+  const handleKeepDatabaseVersion = async () => {
+    if (!recoveryCandidate) return
+    setRecoveryBusy(true)
+    setSaveError(null)
+    try {
+      await resolveRecovery(recoveryCandidate.draft.noteId, 'keepDatabaseVersion')
+      setRecoveryCandidates((candidates) => candidates.slice(1))
+    } catch (cause) {
+      setSaveError(cause instanceof Error ? cause.message : '无法处理恢复草稿，请重试。')
+    } finally {
+      setRecoveryBusy(false)
+    }
+  }
+
+  useEffect(() => {
+    if (notes.status !== 'ready') return
+    let active = true
+    void listRecoveryCandidates()
+      .then((candidates) => {
+        if (active) setRecoveryCandidates(candidates)
+      })
+      .catch((cause) => {
+        if (active) {
+          setSaveError(cause instanceof Error ? cause.message : '无法检查恢复草稿。')
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [notes.status])
+
+  useEffect(() => {
+    if (!('__TAURI_INTERNALS__' in window)) return
+    let unlisten: (() => void) | undefined
+    let disposed = false
+    let allowClose = false
+
+    void getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        if (allowClose) return
+        event.preventDefault()
+        if ((await coordinator.flush()) === 'blocked') {
+          setSaveError('当前内容无法安全保存，已取消关闭。')
+          return
+        }
+        allowClose = true
+        await getCurrentWindow().close()
+      })
+      .then((release) => {
+        if (disposed) release()
+        else unlisten = release
+      })
+      .catch(() => undefined)
+
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [coordinator])
 
   return (
     <>
@@ -105,10 +225,7 @@ export function App() {
           canLoadMore={notes.notes.length < notes.total}
           loadingMore={notes.isLoadingMore}
           onLoadMore={() => void notes.loadMore()}
-          onSelect={(noteId) => {
-            setFocusTitleNoteId(null)
-            void notes.select(noteId)
-          }}
+          onSelect={(noteId) => void handleSelect(noteId)}
         />
 
         <section className="document-panel" aria-label="笔记工作区">
@@ -123,14 +240,14 @@ export function App() {
               <Icon name={notesCollapsed ? 'panel-left-open' : 'panel-left-close'} />
             </button>
             <div className="document-actions">
-              <span className="save-status" aria-live="polite" />
+              <SaveStatus state={saveState} />
             </div>
           </div>
 
-          {notes.error && notes.status !== 'failed' && (
+          {(notes.error || saveError) && notes.status !== 'failed' && (
             <div className="command-error" role="alert">
               <Icon name="circle-alert" />
-              <span>{notes.error}</span>
+              <span>{notes.error ?? saveError}</span>
             </div>
           )}
 
@@ -150,12 +267,18 @@ export function App() {
             >
               {notes.selectedNote ? (
                 <NoteEditor
-                  key={notes.selectedNote.id}
+                  key={`${notes.selectedNote.id}-${editorVersion}`}
                   note={notes.selectedNote}
                   focusTitle={focusTitleNoteId === notes.selectedNote.id}
-                  onChange={({ title, documentJson }) =>
+                  onChange={({ title, documentJson }) => {
                     notes.updateDraft(notes.selectedNote!.id, title, documentJson)
-                  }
+                    coordinator.enqueue({
+                      noteId: notes.selectedNote!.id,
+                      baseRevision: notes.selectedNote!.revision,
+                      title,
+                      documentJson,
+                    })
+                  }}
                 />
               ) : (
                 <div className="document-empty">
@@ -179,6 +302,14 @@ export function App() {
           )}
         </section>
       </main>
+      {recoveryCandidate && (
+        <RecoveryDialog
+          candidate={recoveryCandidate}
+          busy={recoveryBusy}
+          onRestore={() => void handleRestoreDraft()}
+          onKeepDatabaseVersion={() => void handleKeepDatabaseVersion()}
+        />
+      )}
     </>
   )
 }
