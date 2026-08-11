@@ -47,3 +47,5 @@ __pycache__/
 recovery/
 attachments/
 
+# Isolated feature worktrees
+.worktrees/
