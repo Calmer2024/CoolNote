@@ -1,6 +1,7 @@
 use coolnote_lib::application::library_service::LibraryService;
 use coolnote_lib::application::note_service::NoteService;
 use coolnote_lib::application::save_service::{SaveFault, SaveNoteRequest, SaveService};
+use coolnote_lib::commands::notes::CommandError;
 use coolnote_lib::domain::error::AppError;
 use coolnote_lib::infrastructure::recovery_store::RecoveryStore;
 
@@ -61,4 +62,25 @@ fn keeps_recovery_data_when_the_database_commit_is_injected_to_fail() {
     assert!(matches!(error, AppError::InjectedFailure));
     assert_eq!(notes.get_note(&note.id).unwrap().revision, 1);
     assert!(saves.recovery_store().get(&note.id).unwrap().is_some());
+}
+
+#[test]
+fn marks_recovery_write_failures_as_unsafe_to_leave() {
+    let temp = tempfile::tempdir().unwrap();
+    let context = LibraryService::open_or_create(temp.path()).unwrap();
+    let notes = NoteService::new(context.database.clone());
+    let recovery = RecoveryStore::new(temp.path().join("recovery")).unwrap();
+    let saves = SaveService::new(context.library.id, context.database, recovery);
+    let note = notes.create_note().unwrap();
+    let recovery_root = saves.recovery_store().root().to_path_buf();
+    std::fs::remove_dir_all(&recovery_root).unwrap();
+    std::fs::File::create(&recovery_root).unwrap();
+
+    let error = saves
+        .save_note(request(&note.id, note.revision, "cannot recover"))
+        .unwrap_err();
+    let command_error = CommandError::from_save(error);
+
+    assert_eq!(command_error.code, "recovery_write_failed");
+    assert!(!command_error.recovery_safe);
 }

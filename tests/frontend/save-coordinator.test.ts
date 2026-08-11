@@ -5,10 +5,12 @@ import type { SaveNoteResult } from '../../src/shared/tauri/contracts'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolvePromise) => {
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise
+    reject = rejectPromise
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 function result(revision: number): SaveNoteResult {
@@ -46,5 +48,39 @@ describe('SaveCoordinator', () => {
     await coordinator.flush()
     expect(save).toHaveBeenCalledTimes(2)
     expect(save.mock.calls[1][0].baseRevision).toBe(2)
+  })
+
+  it('retains a failed snapshot until an explicitly safe retry commits it', async () => {
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce({ code: 'recovery_write_failed', recoverySafe: false })
+      .mockResolvedValueOnce(result(2))
+    const coordinator = new SaveCoordinator(save, { debounceMs: 300 })
+
+    coordinator.enqueue(change('will retry', 1))
+
+    expect(await coordinator.flush()).toBe('blocked')
+    expect(coordinator.retryMetadata).toEqual({ attempts: 1 })
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'will retry',
+        clientTransactionId: expect.stringMatching(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+        ),
+      }),
+    )
+
+    expect(await coordinator.flush()).toBe('committed')
+    expect(save).toHaveBeenCalledTimes(2)
+    expect(coordinator.retryMetadata).toEqual({ attempts: 0 })
+  })
+
+  it('allows leaving only after a backend-confirmed recovery-safe failure', async () => {
+    const save = vi.fn().mockRejectedValue({ code: 'injected_failure', recoverySafe: true })
+    const coordinator = new SaveCoordinator(save, { debounceMs: 300 })
+
+    coordinator.enqueue(change('recoverable', 1))
+
+    expect(await coordinator.flush()).toBe('recoverySafeFailure')
   })
 })
