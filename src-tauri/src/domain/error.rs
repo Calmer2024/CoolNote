@@ -20,4 +20,14 @@ pub enum AppError {
     InvalidLibrary(String),
     #[error("database writer lock is poisoned")]
     PoisonedLock,
+    #[error("entity not found: {0}")]
+    NotFound(String),
+    #[error("revision conflict for {note_id}: expected {expected}, current {current}")]
+    RevisionConflict {
+        note_id: String,
+        expected: i64,
+        current: i64,
+    },
+    #[error("injected save failure")]
+    InjectedFailure,
 }

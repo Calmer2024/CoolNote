@@ -8,10 +8,9 @@ use uuid::Uuid;
 
 use crate::domain::error::AppError;
 use crate::domain::note::Library;
+use crate::domain::note::UNCATEGORIZED_ID;
 use crate::infrastructure::database::Database;
 use crate::infrastructure::paths::{checked_child, prepare_library_root};
-
-const UNCATEGORIZED_ID: &str = "00000000-0000-4000-8000-000000000001";
 
 #[derive(Debug)]
 pub struct LibraryContext {

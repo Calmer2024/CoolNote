@@ -52,6 +52,14 @@ impl Database {
         Ok(value)
     }
 
+    pub fn with_read<T>(
+        &self,
+        operation: impl FnOnce(&Connection) -> Result<T, AppError>,
+    ) -> Result<T, AppError> {
+        let connection = self.lock()?;
+        operation(&connection)
+    }
+
     pub fn user_version(&self) -> Result<i64, AppError> {
         self.query_i64("PRAGMA user_version")
     }
