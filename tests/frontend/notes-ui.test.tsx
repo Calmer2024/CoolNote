@@ -9,6 +9,7 @@ import {
   getNote,
   initializeLibrary,
   listNotes,
+  listRecoveryCandidates,
 } from '../../src/shared/tauri/commands'
 
 vi.mock('../../src/shared/tauri/commands', () => ({
@@ -88,6 +89,7 @@ describe('real note startup and creation', () => {
     vi.mocked(listNotes).mockResolvedValue({ items: [], total: 0 })
     vi.mocked(createNote).mockResolvedValue(createdNote)
     vi.mocked(getNote).mockResolvedValue(createdNote)
+    vi.mocked(listRecoveryCandidates).mockResolvedValue([])
   })
 
   it('shows an empty library from real command data without demo notes', async () => {
