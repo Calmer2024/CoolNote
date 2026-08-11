@@ -4,7 +4,9 @@ use chrono::Utc;
 use rusqlite::params;
 use uuid::Uuid;
 
-use crate::domain::document::{derive_plain_text, empty_document, hash_document};
+use crate::domain::document::{
+    derive_plain_text, empty_document, hash_document, validate_document,
+};
 use crate::domain::error::AppError;
 use crate::domain::note::{Note, NoteSummary, Page, UNCATEGORIZED_ID};
 use crate::infrastructure::database::Database;
@@ -104,7 +106,8 @@ impl NoteService {
                     rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(note_id.to_owned()),
                     other => AppError::Database(other),
                 })?;
-            let document = serde_json::from_str(&raw.3)?;
+            let document_json = serde_json::from_str(&raw.3)?;
+            let document = validate_document(&document_json)?;
             Ok(Note {
                 id: raw.0,
                 category_id: raw.1,
