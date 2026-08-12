@@ -10,6 +10,10 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "security": {
+      "capabilities": ["main"],
+      "csp": null
+    },
     "windows": [
       {
         "title": "CoolNote",
@@ -18,10 +22,7 @@
         "minWidth": 980,
         "minHeight": 640
       }
-    ],
-    "security": {
-      "csp": null
-    }
+    ]
   },
   "bundle": {
     "active": true,
