@@ -12,10 +12,11 @@ pub enum RecoveryDecision {
 
 pub fn classify_recovery(
     database_revision: i64,
+    database_title: &str,
     database_hash: &str,
     record: &RecoveryRecord,
 ) -> RecoveryDecision {
-    if database_hash == record.content_hash {
+    if database_title == record.title && database_hash == record.content_hash {
         RecoveryDecision::DiscardDuplicate
     } else if database_revision > record.base_revision {
         RecoveryDecision::Conflict

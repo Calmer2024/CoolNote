@@ -30,6 +30,7 @@ pub struct Library {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Note {
     pub id: String,
     pub category_id: String,
@@ -43,6 +44,7 @@ pub struct Note {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NoteSummary {
     pub id: String,
     pub title: String,

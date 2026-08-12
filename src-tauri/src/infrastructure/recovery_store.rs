@@ -7,14 +7,22 @@ use uuid::Uuid;
 use crate::domain::error::AppError;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RecoveryRecord {
+    #[serde(alias = "library_id")]
     pub library_id: String,
+    #[serde(alias = "note_id")]
     pub note_id: String,
+    #[serde(alias = "base_revision")]
     pub base_revision: i64,
+    #[serde(alias = "client_transaction_id")]
     pub client_transaction_id: String,
     pub title: String,
+    #[serde(alias = "document_json")]
     pub document_json: serde_json::Value,
+    #[serde(alias = "content_hash")]
     pub content_hash: String,
+    #[serde(alias = "created_at")]
     pub created_at: String,
 }
 

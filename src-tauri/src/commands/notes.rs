@@ -85,7 +85,7 @@ pub fn list_recovery_candidates_for_services(
     let mut candidates = Vec::new();
     for record in services.recovery.list()? {
         let note = services.notes.get_note(&record.note_id)?;
-        let decision = classify_recovery(note.revision, &note.content_hash, &record);
+        let decision = classify_recovery(note.revision, &note.title, &note.content_hash, &record);
         if decision == RecoveryDecision::DiscardDuplicate {
             services.recovery.remove(&record.note_id)?;
             continue;
