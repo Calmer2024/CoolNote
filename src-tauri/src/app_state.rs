@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use crate::application::library_service::{LibraryService, LibrarySettingsService};
 use crate::application::note_service::NoteService;
 use crate::application::save_service::SaveService;
+use crate::application::workspace_service::WorkspaceService;
 use crate::domain::error::AppError;
 use crate::domain::note::Library;
 use crate::infrastructure::recovery_store::RecoveryStore;
@@ -15,6 +16,7 @@ pub struct AppServices {
     pub notes: NoteService,
     pub saves: SaveService,
     pub recovery: RecoveryStore,
+    pub workspace: WorkspaceService,
 }
 
 #[derive(Debug, Clone)]
@@ -50,12 +52,17 @@ impl AppState {
 
         let context = LibraryService::open_or_create(&self.inner.library_root)?;
         let recovery = RecoveryStore::new(self.inner.library_root.join("recovery"))?;
+        let workspace = WorkspaceService::new(
+            context.database.clone(),
+            self.inner.library_root.join("attachments"),
+        );
         let services = AppServices {
             library: context.library.clone(),
             settings: context.settings,
             notes: NoteService::new(context.database.clone()),
             saves: SaveService::new(context.library.id, context.database, recovery.clone()),
             recovery,
+            workspace,
         };
         *slot = Some(services.clone());
         Ok(services)

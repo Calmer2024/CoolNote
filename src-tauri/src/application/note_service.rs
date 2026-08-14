@@ -72,6 +72,12 @@ impl NoteService {
                         title: row.get(1)?,
                         excerpt: row.get(2)?,
                         revision: row.get(3)?,
+                        category_id: UNCATEGORIZED_ID.to_owned(),
+                        is_favorite: false,
+                        is_pinned: false,
+                        is_archived: false,
+                        deleted_at: None,
+                        tags: Vec::new(),
                         updated_at: row.get(4)?,
                     })
                 })?
@@ -116,6 +122,11 @@ impl NoteService {
                 plain_text: raw.4,
                 content_hash: raw.5,
                 revision: raw.6,
+                is_favorite: false,
+                is_pinned: false,
+                is_archived: false,
+                deleted_at: None,
+                tags: Vec::new(),
                 created_at: raw.7,
                 updated_at: raw.8,
             })
