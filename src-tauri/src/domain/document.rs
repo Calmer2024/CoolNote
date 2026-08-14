@@ -16,6 +16,10 @@ const ALLOWED_TOP_LEVEL_NODES: &[&str] = &[
     "taskList",
     "blockquote",
     "codeBlock",
+    "image",
+    "table",
+    "blockMath",
+    "mermaid",
 ];
 
 const ALLOWED_NESTED_NODES: &[&str] = &[
@@ -30,9 +34,17 @@ const ALLOWED_NESTED_NODES: &[&str] = &[
     "taskItem",
     "text",
     "hardBreak",
+    "image",
+    "table",
+    "tableRow",
+    "tableHeader",
+    "tableCell",
+    "blockMath",
+    "inlineMath",
+    "mermaid",
 ];
 
-const ALLOWED_MARKS: &[&str] = &["bold", "italic", "strike", "code"];
+const ALLOWED_MARKS: &[&str] = &["bold", "italic", "strike", "code", "underline", "link"];
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -70,7 +82,6 @@ pub struct DocumentMark {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct NodeAttrs {
     #[serde(rename = "blockId", default, skip_serializing_if = "Option::is_none")]
     pub block_id: Option<String>,
@@ -82,6 +93,22 @@ pub struct NodeAttrs {
     pub checked: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub language: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colspan: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rowspan: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub colwidth: Option<Vec<u64>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latex: Option<String>,
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 pub fn validate_document(value: &serde_json::Value) -> Result<Document, AppError> {
@@ -126,11 +153,19 @@ fn validate_nested_content(node: &DocumentNode) -> Result<(), AppError> {
                 mark.mark_type
             )));
         }
-        if !mark.attrs.is_empty() {
+        if mark.mark_type != "link" && !mark.attrs.is_empty() {
             return Err(AppError::InvalidDocument(format!(
                 "mark {} does not accept attributes",
                 mark.mark_type
             )));
+        }
+        if mark.mark_type == "link" {
+            let href = mark.attrs.get("href").and_then(|value| value.as_str());
+            if href.is_none() {
+                return Err(AppError::InvalidDocument(
+                    "link mark requires href".to_owned(),
+                ));
+            }
         }
     }
     for child in &node.content {
@@ -150,10 +185,24 @@ fn validate_nested_content(node: &DocumentNode) -> Result<(), AppError> {
 
 fn is_allowed_child(parent: &str, child: &str) -> bool {
     match parent {
-        "paragraph" | "heading" => matches!(child, "text" | "hardBreak"),
+        "paragraph" | "heading" => matches!(child, "text" | "hardBreak" | "inlineMath" | "image"),
         "codeBlock" => child == "text",
         "bulletList" | "orderedList" => child == "listItem",
         "taskList" => child == "taskItem",
+        "table" => child == "tableRow",
+        "tableRow" => matches!(child, "tableHeader" | "tableCell"),
+        "tableHeader" | "tableCell" => matches!(
+            child,
+            "paragraph"
+                | "heading"
+                | "bulletList"
+                | "orderedList"
+                | "taskList"
+                | "blockquote"
+                | "codeBlock"
+                | "image"
+                | "blockMath"
+        ),
         "listItem" | "taskItem" | "blockquote" => matches!(
             child,
             "paragraph"
@@ -164,7 +213,7 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "blockquote"
                 | "codeBlock"
         ),
-        "text" | "hardBreak" => false,
+        "text" | "hardBreak" | "image" | "blockMath" | "inlineMath" | "mermaid" => false,
         _ => false,
     }
 }
@@ -194,6 +243,31 @@ fn validate_node_attributes(node: &DocumentNode) -> Result<(), AppError> {
             node.node_type
         )));
     }
+    if node.node_type != "image"
+        && (node.attrs.src.is_some() || node.attrs.alt.is_some() || node.attrs.title.is_some())
+    {
+        return Err(AppError::InvalidDocument(format!(
+            "node {} does not accept image attributes",
+            node.node_type
+        )));
+    }
+    if !matches!(node.node_type.as_str(), "tableCell" | "tableHeader")
+        && (node.attrs.colspan.is_some()
+            || node.attrs.rowspan.is_some()
+            || node.attrs.colwidth.is_some())
+    {
+        return Err(AppError::InvalidDocument(format!(
+            "node {} does not accept table cell attributes",
+            node.node_type
+        )));
+    }
+    if !matches!(node.node_type.as_str(), "blockMath" | "inlineMath") && node.attrs.latex.is_some()
+    {
+        return Err(AppError::InvalidDocument(format!(
+            "node {} does not accept latex",
+            node.node_type
+        )));
+    }
     Ok(())
 }
 
@@ -209,6 +283,15 @@ pub fn derive_plain_text(document: &Document) -> String {
 
 fn node_plain_text(node: &DocumentNode) -> String {
     let mut output = node.text.clone().unwrap_or_default();
+    if node.node_type == "mermaid" {
+        output.push_str(
+            node.attrs
+                .extra
+                .get("source")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default(),
+        );
+    }
     for child in &node.content {
         output.push_str(&node_plain_text(child));
     }
@@ -233,14 +316,28 @@ pub fn empty_document() -> Document {
             node_type: "paragraph".to_owned(),
             attrs: NodeAttrs {
                 block_id: Some(Uuid::new_v4().to_string()),
-                level: None,
-                start: None,
-                checked: None,
-                language: None,
+                ..Default::default()
             },
             content: Vec::new(),
             text: None,
             marks: Vec::new(),
         }],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mermaid_nodes_validate_and_contribute_search_text() {
+        let block_id = Uuid::new_v4().to_string();
+        let value = serde_json::json!({
+            "schemaVersion": 1,
+            "type": "doc",
+            "content": [{"type":"mermaid","attrs":{"blockId":block_id,"source":"graph TD\nA-->B"}}]
+        });
+        let document = validate_document(&value).expect("mermaid document should validate");
+        assert_eq!(derive_plain_text(&document), "graph TD\nA-->B");
     }
 }

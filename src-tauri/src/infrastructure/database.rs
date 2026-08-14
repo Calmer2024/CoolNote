@@ -8,6 +8,13 @@ use crate::domain::error::AppError;
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/0001_initial.sql");
 const LIBRARY_SETTINGS_REVISION_MIGRATION: &str =
     include_str!("../../migrations/0002_library_settings_revision.sql");
+const ORGANIZATION_AND_ATTACHMENTS_MIGRATION: &str =
+    include_str!("../../migrations/0003_organization_and_attachments.sql");
+const NOTE_SEARCH_FTS_MIGRATION: &str = include_str!("../../migrations/0004_note_search_fts.sql");
+const JOTTINGS_MIGRATION: &str = include_str!("../../migrations/0005_jottings.sql");
+const JOTTING_FAVORITES_MIGRATION: &str =
+    include_str!("../../migrations/0006_jotting_favorites.sql");
+const CATEGORY_PINNING_MIGRATION: &str = include_str!("../../migrations/0007_category_pinning.sql");
 
 #[derive(Debug)]
 pub struct Database {
@@ -44,6 +51,22 @@ impl Database {
             self.lock()?
                 .execute_batch(LIBRARY_SETTINGS_REVISION_MIGRATION)?;
         }
+        if self.user_version()? < 3 {
+            self.lock()?
+                .execute_batch(ORGANIZATION_AND_ATTACHMENTS_MIGRATION)?;
+        }
+        if self.user_version()? < 4 {
+            self.lock()?.execute_batch(NOTE_SEARCH_FTS_MIGRATION)?;
+        }
+        if self.user_version()? < 5 {
+            self.lock()?.execute_batch(JOTTINGS_MIGRATION)?;
+        }
+        if self.user_version()? < 6 {
+            self.lock()?.execute_batch(JOTTING_FAVORITES_MIGRATION)?;
+        }
+        if self.user_version()? < 7 {
+            self.lock()?.execute_batch(CATEGORY_PINNING_MIGRATION)?;
+        }
         Ok(())
     }
 
@@ -76,5 +99,110 @@ impl Database {
 
     pub fn query_text(&self, sql: &str) -> Result<String, AppError> {
         Ok(self.lock()?.query_row(sql, [], |row| row.get(0))?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn column_exists(database: &Database, table: &str, column: &str) -> bool {
+        database
+            .with_read(|connection| {
+                let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+                let names = statement
+                    .query_map([], |row| row.get::<_, String>(1))?
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(names.iter().any(|name| name == column))
+            })
+            .expect("table metadata should be readable")
+    }
+
+    #[test]
+    fn fresh_database_applies_the_complete_schema() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let database = Database::open(&directory.path().join("coolnote.db"))
+            .expect("fresh database should open");
+
+        assert_eq!(database.user_version().expect("user version"), 7);
+        assert!(column_exists(&database, "jottings", "is_favorite"));
+        assert!(column_exists(&database, "categories", "is_pinned"));
+    }
+
+    #[test]
+    fn version_five_database_upgrades_in_place_without_losing_jottings() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let path = directory.path().join("coolnote.db");
+        let connection = Connection::open(&path).expect("legacy database");
+        connection
+            .execute_batch(INITIAL_MIGRATION)
+            .expect("initial migration");
+        connection
+            .execute_batch(LIBRARY_SETTINGS_REVISION_MIGRATION)
+            .expect("settings migration");
+        connection
+            .execute_batch(ORGANIZATION_AND_ATTACHMENTS_MIGRATION)
+            .expect("organization migration");
+        connection
+            .execute_batch(NOTE_SEARCH_FTS_MIGRATION)
+            .expect("search migration");
+        connection
+            .execute_batch(JOTTINGS_MIGRATION)
+            .expect("jottings migration");
+        connection
+            .execute(
+                "INSERT INTO jottings (id, name, content, sort_order, revision, created_at, updated_at) \
+                 VALUES ('upgrade-proof', '保留的小记.md', '<p>仍然存在</p>', 0, 3, '2026-08-13', '2026-08-13')",
+                [],
+            )
+            .expect("legacy jotting");
+        drop(connection);
+
+        let database = Database::open(&path).expect("version five database should upgrade");
+        assert_eq!(database.user_version().expect("user version"), 7);
+        assert!(column_exists(&database, "jottings", "is_favorite"));
+        assert_eq!(
+            database
+                .query_i64("SELECT COUNT(*) FROM jottings WHERE id = 'upgrade-proof'")
+                .expect("preserved jotting count"),
+            1
+        );
+        assert_eq!(
+            database
+                .query_i64("SELECT is_favorite FROM jottings WHERE id = 'upgrade-proof'")
+                .expect("favorite default"),
+            0
+        );
+    }
+
+    #[test]
+    fn moving_a_jotting_persists_its_destination_folder() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let database = Database::open(&directory.path().join("coolnote.db"))
+            .expect("fresh database should open");
+        database
+            .with_write(|transaction| {
+                transaction.execute(
+                    "INSERT INTO jotting_folders (id, name, sort_order, created_at, updated_at) VALUES ('folder-a', '目标', 1, 'now', 'now')",
+                    [],
+                )?;
+                transaction.execute(
+                    "INSERT INTO jottings (id, name, sort_order, created_at, updated_at) VALUES ('jot-a', '移动.md', 1, 'now', 'now')",
+                    [],
+                )?;
+                transaction.execute(
+                    "UPDATE jottings SET folder_id='folder-a' WHERE id='jot-a'",
+                    [],
+                )?;
+                Ok(())
+            })
+            .expect("move transaction");
+
+        assert_eq!(
+            database
+                .query_text("SELECT folder_id FROM jottings WHERE id='jot-a'")
+                .expect("folder destination"),
+            "folder-a"
+        );
     }
 }

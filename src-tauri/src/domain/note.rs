@@ -39,6 +39,11 @@ pub struct Note {
     pub plain_text: String,
     pub content_hash: String,
     pub revision: i64,
+    pub is_favorite: bool,
+    pub is_pinned: bool,
+    pub is_archived: bool,
+    pub deleted_at: Option<String>,
+    pub tags: Vec<Tag>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -50,6 +55,69 @@ pub struct NoteSummary {
     pub title: String,
     pub excerpt: String,
     pub revision: i64,
+    pub category_id: String,
+    pub is_favorite: bool,
+    pub is_pinned: bool,
+    pub is_archived: bool,
+    pub deleted_at: Option<String>,
+    pub tags: Vec<Tag>,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Category {
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub name: String,
+    pub icon_name: String,
+    pub color: String,
+    pub sort_order: i64,
+    pub is_pinned: bool,
+    pub note_count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Attachment {
+    pub id: String,
+    pub note_id: String,
+    pub file_name: String,
+    pub media_type: String,
+    pub size_bytes: i64,
+    pub data_url: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JottingFolder {
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub name: String,
+    pub sort_order: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Jotting {
+    pub id: String,
+    pub folder_id: Option<String>,
+    pub name: String,
+    pub content: String,
+    pub cover: Option<String>,
+    pub is_favorite: bool,
+    pub sort_order: i64,
+    pub revision: i64,
+    pub created_at: String,
     pub updated_at: String,
 }
 

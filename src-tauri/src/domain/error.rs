@@ -40,4 +40,6 @@ pub enum AppError {
     InjectedFailure,
     #[error("failed to persist recovery data: {0}")]
     RecoveryWriteFailed(Box<AppError>),
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
 }
