@@ -1,0 +1,3168 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CoolNote 产品原型</title>
+    <link rel="stylesheet" href="../../assets/fonts/noto-sans-sc.css" />
+    <link rel="stylesheet" href="../../src/app/app.css" />
+    <style>
+      @font-face {
+        font-family: "Noto Serif SC Local";
+        src: local("Noto Serif SC"), local("NotoSerifSC-VF");
+        font-weight: 100 900;
+        font-style: normal;
+        font-display: swap;
+      }
+      /* 原型层只补充目标交互；工作区视觉直接复用 CoolNote app.css。 */
+      .prototype-note-row {
+        position: relative;
+      }
+      .prototype-note-row > input {
+        opacity: 0;
+        transition: opacity 120ms ease;
+      }
+      .prototype-note-row:hover > input,
+      .notes-panel[data-selecting="true"] .prototype-note-row > input,
+      .prototype-note-row:focus-within > input {
+        opacity: 1;
+      }
+      .note-hover-actions {
+        position: absolute;
+        z-index: 2;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 2px;
+        opacity: 0;
+        transform: translateX(3px);
+        transition:
+          opacity 120ms ease,
+          transform 120ms ease;
+      }
+      .prototype-note-row:hover .note-hover-actions,
+      .prototype-note-row:focus-within .note-hover-actions {
+        opacity: 1;
+        transform: none;
+      }
+      .note-hover-actions .icon-button {
+        width: 30px;
+        height: 30px;
+        background: var(--surface);
+      }
+      .note-hover-actions .is-active {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .notes-panel[data-selecting="true"] .notes-heading,
+      .notes-panel[data-selecting="true"] .notes-header-actions {
+        display: none;
+      }
+      .selection-bar {
+        display: none;
+        width: 100%;
+        align-items: center;
+        gap: 3px;
+      }
+      .notes-panel[data-selecting="true"] .selection-bar {
+        display: flex;
+        animation: prototype-enter 180ms ease-out;
+      }
+      .selection-bar strong {
+        margin-right: auto;
+        font-size: 14px;
+      }
+      .selection-bar button {
+        height: 30px;
+        padding: 0 7px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-secondary);
+        background: transparent;
+      }
+      .selection-bar button:hover {
+        background: var(--surface-hover);
+      }
+      .selection-bar .danger {
+        color: #b84545;
+      }
+      .prototype-layer {
+        position: fixed;
+        z-index: 30;
+        display: none;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-raised);
+        box-shadow: 0 12px 34px rgba(26, 38, 50, 0.16);
+        animation: prototype-enter 180ms ease-out;
+      }
+      .prototype-layer.open {
+        display: flex;
+      }
+      .prototype-menu {
+        width: 224px;
+        flex-direction: column;
+        padding: 6px;
+      }
+      .prototype-menu button {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        height: 35px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-secondary);
+        background: transparent;
+        text-align: left;
+      }
+      .prototype-menu button:hover,
+      .prototype-menu button.active {
+        color: var(--text-primary);
+        background: var(--surface-hover);
+      }
+      .prototype-menu button.danger {
+        color: #b84545;
+      }
+      .prototype-menu .separator {
+        height: 1px;
+        margin: 5px;
+        background: var(--border);
+      }
+      .prototype-menu .shortcut {
+        margin-left: auto;
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .selection-toolbar {
+        align-items: center;
+        gap: 2px;
+        padding: 5px;
+      }
+      .selection-toolbar button {
+        min-width: 31px;
+        height: 30px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-secondary);
+        background: transparent;
+      }
+      .selection-toolbar button:hover,
+      .selection-toolbar button.active {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .selection-toolbar .divider {
+        width: 1px;
+        height: 20px;
+        margin: 0 3px;
+        background: var(--border);
+      }
+      .slash-menu {
+        width: 316px;
+        max-height: 430px;
+        flex-direction: column;
+        padding: 7px;
+      }
+      .slash-search {
+        height: 36px;
+        margin-bottom: 5px;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        color: var(--text-primary);
+        background: var(--surface-soft);
+        outline: 0;
+      }
+      .slash-label {
+        padding: 8px 8px 5px;
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .slash-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 45px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 7px;
+        color: var(--text-primary);
+        background: transparent;
+        text-align: left;
+      }
+      .slash-item:hover,
+      .slash-item.active {
+        background: var(--surface-hover);
+      }
+      .slash-item .slash-copy {
+        display: grid;
+      }
+      .slash-item small {
+        color: var(--text-muted);
+      }
+      .prototype-block {
+        position: relative;
+      }
+      .block-actions {
+        position: absolute;
+        top: 0;
+        left: -62px;
+        display: flex;
+        opacity: 0;
+        transition: opacity 120ms ease;
+      }
+      .prototype-block:hover .block-actions,
+      .prototype-block:focus-within .block-actions {
+        opacity: 1;
+      }
+      .block-actions button {
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-muted);
+        background: transparent;
+      }
+      .block-actions button:hover {
+        color: var(--text-primary);
+        background: var(--surface-hover);
+      }
+      .prototype-dialog-backdrop {
+        position: fixed;
+        z-index: 50;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(20, 29, 40, 0.26);
+      }
+      .prototype-dialog-backdrop.open {
+        display: flex;
+        animation: prototype-fade 180ms ease-out;
+      }
+      .prototype-dialog {
+        width: 420px;
+        padding: 22px;
+        border-radius: 14px;
+        background: var(--surface-raised);
+        box-shadow: 0 24px 70px rgba(20, 29, 40, 0.25);
+        animation: prototype-dialog 200ms ease-out;
+      }
+      .prototype-dialog h2 {
+        margin: 0 0 7px;
+        font-size: 18px;
+      }
+      .prototype-dialog p {
+        margin: 0 0 17px;
+        color: var(--text-secondary);
+      }
+      .prototype-dialog label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+      .prototype-dialog input {
+        width: 100%;
+        height: 39px;
+        padding: 0 11px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        background: var(--surface);
+        outline: 0;
+      }
+      .prototype-dialog input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(22, 135, 232, 0.13);
+      }
+      .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+      }
+      .dialog-actions button {
+        height: 35px;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text-primary);
+        background: var(--surface);
+      }
+      .dialog-actions .primary {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+      }
+      .prototype-toast {
+        position: fixed;
+        z-index: 40;
+        right: 28px;
+        bottom: 28px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        color: #fff;
+        background: #202936;
+        box-shadow: 0 12px 34px rgba(26, 38, 50, 0.18);
+        opacity: 0;
+        transform: translateY(16px);
+        pointer-events: none;
+        transition:
+          opacity 220ms ease,
+          transform 220ms ease;
+      }
+      .prototype-toast.open {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+      .prototype-toast button {
+        border: 0;
+        color: #72baff;
+        background: transparent;
+        font-weight: 650;
+      }
+      .prototype-hint {
+        position: fixed;
+        z-index: 4;
+        bottom: 12px;
+        left: calc(var(--sidebar-width) + 14px);
+        padding: 5px 8px;
+        border-radius: 6px;
+        color: var(--text-muted);
+        background: color-mix(in srgb, var(--surface) 90%, transparent);
+        font-size: 11px;
+      }
+      .outline-link.active {
+        position: relative;
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+      .document-heading {
+        margin-bottom: 54px;
+      }
+      .note-editor-content {
+        padding-bottom: 120px;
+      }
+      .note-editor-content [contenteditable="true"] {
+        outline: 0;
+      }
+      .empty-block {
+        color: var(--text-muted);
+      }
+      .icon-button,
+      .tool-action,
+      .new-note-button,
+      .nav-item,
+      .note-card,
+      .outline-link,
+      button {
+        cursor: pointer;
+      }
+      .search-box kbd {
+        margin-left: 8px;
+        padding: 2px 6px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        font-size: 11px;
+      }
+      .row-label .mini-action {
+        opacity: 0;
+      }
+      .row-label:hover .mini-action,
+      .tree-row:hover .mini-action {
+        opacity: 1;
+      }
+      .row-label {
+        display: flex;
+        align-items: center;
+      }
+      .row-label .mini-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        margin-left: auto;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-muted);
+        background: transparent;
+        transition:
+          opacity 120ms ease,
+          color 120ms ease,
+          background 120ms ease;
+      }
+      .row-label .mini-action:hover,
+      .row-label .mini-action:focus-visible {
+        color: var(--accent);
+        background: var(--accent-soft);
+        opacity: 1;
+      }
+      .row-label .mini-action .icon {
+        width: 15px;
+        height: 15px;
+      }
+      .prototype-status-icon {
+        display: inline-flex;
+        color: #e4a400;
+      }
+      .prototype-status-icon .icon {
+        width: 14px;
+        height: 14px;
+      }
+      .document-menu-trigger {
+        margin-left: 2px;
+      }
+      @keyframes prototype-enter {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @keyframes prototype-fade {
+        from {
+          opacity: 0;
+        }
+      }
+      @keyframes prototype-dialog {
+        from {
+          opacity: 0;
+          transform: translateY(5px) scale(0.975);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      /* 2026-08-12 原型打磨：列表、分类树、选区与斜杠菜单。 */
+      .prototype-note-row {
+        margin: 3px 4px 3px 0;
+        border-radius: 9px;
+      }
+      .prototype-note-row.selected {
+        background: var(--surface-hover);
+      }
+      .prototype-note-row.selected::before {
+        position: absolute;
+        z-index: 3;
+        top: 14px;
+        bottom: 14px;
+        left: 0;
+        width: 3px;
+        border-radius: 99px;
+        background: var(--accent);
+        content: "";
+      }
+      .prototype-note-row.selected .note-card {
+        background: transparent;
+      }
+      .note-hover-actions {
+        top: 8px;
+        right: 8px;
+        z-index: 4;
+      }
+      .note-status-icons {
+        position: absolute;
+        right: 13px;
+        bottom: 12px;
+        display: flex;
+        gap: 5px;
+        color: #d69a00;
+      }
+      .note-status-icons .icon {
+        width: 14px;
+        height: 14px;
+      }
+      .prototype-note-row:hover .note-status-icons {
+        opacity: 0;
+      }
+      .selection-bar button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        padding: 0;
+      }
+      .selection-bar button:hover {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .selection-bar .icon {
+        width: 17px;
+        height: 17px;
+      }
+      .selection-toolbar {
+        gap: 1px;
+        padding: 5px 6px;
+      }
+      .selection-toolbar button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-width: 34px;
+        height: 32px;
+        padding: 0 8px;
+        border-radius: 5px;
+        font-size: 16px;
+      }
+      .selection-toolbar .icon {
+        width: 19px;
+        height: 19px;
+      }
+      .selection-toolbar .chevron {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .selection-toolbar .divider {
+        height: 25px;
+        margin: 0 4px;
+      }
+      .slash-menu {
+        width: 346px;
+        max-height: min(610px, calc(100vh - 90px));
+        padding: 8px 6px;
+        overflow-y: auto;
+      }
+      .slash-search {
+        display: none;
+      }
+      .slash-label {
+        padding: 10px 13px 5px;
+        font-size: 13px;
+      }
+      .slash-item {
+        gap: 13px;
+        min-height: 47px;
+        height: auto;
+        padding: 0 13px;
+        font-size: 15px;
+      }
+      .slash-item small {
+        display: none;
+      }
+      .slash-item .icon {
+        width: 23px;
+        height: 23px;
+        color: #4d73ff;
+      }
+      .slash-item[data-tone="green"] .icon {
+        color: #28b86f;
+      }
+      .slash-item[data-tone="orange"] .icon {
+        color: #ff7a1a;
+      }
+      .slash-item[data-tone="cyan"] .icon {
+        color: #19b8d4;
+      }
+      .slash-item[data-tone="yellow"] .icon {
+        color: #f4b400;
+      }
+      .slash-empty {
+        padding: 18px;
+        color: var(--text-muted);
+        text-align: center;
+      }
+      .header-actions {
+        margin-left: auto;
+      }
+      .category-nav .tree-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 58px;
+        gap: 4px;
+        padding-left: 0 !important;
+      }
+      .category-item {
+        padding-left: calc(10px + var(--tree-depth, 0) * 18px);
+      }
+      .category-item .category-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tree-actions {
+        display: flex;
+        justify-content: flex-end;
+        opacity: 0;
+        transition: opacity 120ms ease;
+      }
+      .tree-row:hover .tree-actions,
+      .tree-row:focus-within .tree-actions {
+        opacity: 1;
+      }
+      .tree-actions button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 32px;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-muted);
+        background: transparent;
+      }
+      .tree-actions button:hover {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .tree-actions .delete-tree:hover {
+        color: #b84545;
+        background: #fff0f0;
+      }
+      .tree-actions .icon {
+        width: 16px;
+        height: 16px;
+      }
+      .category-icon-trigger {
+        display: inline-flex;
+        flex: none;
+      }
+      .category-name[contenteditable="true"] {
+        padding: 2px 5px;
+        border-radius: 5px;
+        background: var(--surface);
+        box-shadow: 0 0 0 2px var(--focus-ring);
+        outline: 0;
+      }
+      .icon-picker {
+        display: grid;
+        grid-template-columns: repeat(5, 38px);
+        gap: 5px;
+        width: auto;
+        padding: 10px;
+      }
+      .icon-picker button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+      }
+      .choice-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .choice-list button {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        color: var(--text-primary);
+        background: var(--surface);
+        text-align: left;
+      }
+      .choice-list button:hover {
+        border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+        background: var(--accent-soft);
+      }
+      .choice-list .icon {
+        width: 21px;
+        height: 21px;
+        color: var(--accent);
+      }
+      .choice-list strong,
+      .choice-list small {
+        display: block;
+      }
+      .choice-list small {
+        margin-top: 2px;
+        color: var(--text-muted);
+      }
+      .document-actions .tool-action .icon {
+        margin-right: 3px;
+      }
+      /* 第二轮打磨 */
+      .notes-list {
+        padding: 0 8px 24px;
+      }
+      .prototype-note-row {
+        display: block;
+        min-height: 78px;
+        margin: 2px 8px;
+        border-radius: 8px;
+        transition: background 120ms ease;
+      }
+      .prototype-note-row:hover,
+      .prototype-note-row.selected {
+        background: var(--surface-hover);
+      }
+      .prototype-note-row.selected::before {
+        top: 27px;
+        bottom: 27px;
+        left: 0;
+        width: 3px;
+        box-shadow: 0 0 8px 2px
+          color-mix(in srgb, var(--accent) 34%, transparent);
+      }
+      .prototype-note-row > input {
+        position: absolute;
+        z-index: 7;
+        right: 10px;
+        bottom: 9px;
+        width: 15px;
+        height: 15px;
+        margin: 0;
+        pointer-events: auto;
+      }
+      .prototype-note-row .note-card {
+        min-height: 78px;
+        padding: 11px 34px 10px 20px;
+        border-radius: 8px;
+      }
+      .prototype-note-row .note-card:hover {
+        background: transparent;
+      }
+      .prototype-note-row .note-card h2 {
+        margin-bottom: 4px;
+        font-size: 15px;
+      }
+      .prototype-note-row .note-card p {
+        line-height: 1.45;
+        -webkit-line-clamp: 1;
+      }
+      .prototype-note-row .note-meta {
+        min-height: 18px;
+        margin-top: 6px;
+      }
+      .notes-panel[data-selecting="true"] .prototype-note-row .note-card,
+      .prototype-note-row:hover .note-card {
+        padding-left: 20px;
+      }
+      .note-hover-actions {
+        top: 7px;
+        right: 7px;
+      }
+      .note-status-icons {
+        right: 11px;
+        bottom: 9px;
+      }
+      .category-nav {
+        gap: 4px;
+      }
+      .category-nav .tree-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 56px 28px;
+        height: 43px;
+        padding: 0 6px 0 0 !important;
+        border-radius: 9px;
+        transition: background 120ms ease;
+      }
+      .category-nav .tree-row:hover,
+      .category-nav .tree-row:has(.category-item.active) {
+        background: var(--surface-hover);
+      }
+      .category-nav .category-item,
+      .category-nav .category-item:hover,
+      .category-nav .category-item.active {
+        grid-column: 1;
+        grid-row: 1;
+        height: 43px;
+        padding-left: calc(10px + var(--tree-depth, 0) * 18px);
+        background: transparent;
+      }
+      .category-count {
+        grid-column: 3;
+        grid-row: 1;
+        align-self: center;
+        color: var(--text-muted);
+        font-size: 13px;
+        text-align: right;
+      }
+      .tree-actions {
+        grid-column: 2;
+        grid-row: 1;
+        align-items: center;
+        opacity: 0;
+      }
+      .tree-row:hover .tree-actions,
+      .tree-row:focus-within .tree-actions {
+        opacity: 1;
+      }
+      .tree-actions button {
+        width: 27px;
+        height: 31px;
+      }
+      .prototype-menu {
+        width: 204px;
+        padding: 4px;
+      }
+      .prototype-menu button {
+        height: 32px;
+        padding: 0 8px;
+        gap: 8px;
+      }
+      .prototype-menu .separator {
+        margin: 3px 4px;
+      }
+      .slash-menu {
+        width: 296px;
+        max-height: min(480px, calc(100vh - 90px));
+        padding: 5px 4px;
+      }
+      .slash-label {
+        padding: 7px 10px 3px;
+        font-size: 12px;
+      }
+      .slash-item {
+        min-height: 38px;
+        padding: 0 10px;
+        gap: 10px;
+        font-size: 14px;
+      }
+      .slash-item .icon {
+        width: 19px;
+        height: 19px;
+      }
+      .selection-toolbar {
+        padding: 4px;
+      }
+      .selection-toolbar button {
+        min-width: 31px;
+        height: 29px;
+        padding: 0 6px;
+      }
+      .prototype-dialog {
+        width: 392px;
+        padding: 19px;
+      }
+      .icon-picker {
+        display: none;
+        width: 300px;
+        padding: 12px;
+        border-radius: 14px;
+      }
+      .icon-picker.open {
+        display: block;
+      }
+      .icon-picker-colors {
+        display: flex;
+        gap: 10px;
+        padding: 0 2px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .icon-color {
+        width: 29px !important;
+        height: 29px !important;
+        border: 3px solid transparent !important;
+        border-radius: 50% !important;
+        background: var(--icon-color) !important;
+      }
+      .icon-color.active {
+        outline: 2px solid var(--text-primary);
+        outline-offset: 2px;
+      }
+      .icon-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 38px);
+        gap: 7px;
+        padding-top: 12px;
+      }
+      .icon-picker-grid button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border: 0;
+        border-radius: 8px;
+        color: var(--picker-color, var(--accent));
+        background: var(--surface-soft);
+      }
+      .icon-picker-grid button:hover,
+      .icon-picker-grid button.active {
+        background: var(--accent-soft);
+        box-shadow: inset 0 0 0 2px currentColor;
+      }
+      .inline-tag-editor {
+        display: inline-flex;
+        align-items: center;
+        height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--accent);
+        border-radius: 7px;
+        background: var(--surface);
+      }
+      .inline-tag-editor input {
+        width: 90px;
+        border: 0;
+        outline: 0;
+        color: var(--text-primary);
+        background: transparent;
+      }
+      .system-view.active {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .system-view[data-view="favorites"].active .icon {
+        color: #d69a00;
+      }
+      .system-view[data-view="pinned"].active .icon {
+        color: var(--accent);
+      }
+      .system-view[data-view="archived"].active .icon {
+        color: #7b8794;
+      }
+      .system-view[data-view="trash"].active {
+        color: #b84545;
+        background: #fff2f2;
+      }
+      .system-view[data-view="trash"].active .icon {
+        color: #b84545;
+      }
+      /* 最终尺寸校正 */
+      .prototype-note-row {
+        min-height: 74px;
+        margin-right: 0;
+      }
+      .prototype-note-row.selected::before {
+        top: 25px;
+        bottom: 25px;
+      }
+      .prototype-note-row .note-card {
+        min-height: 74px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+      .prototype-note-row .note-card h2 {
+        margin-bottom: 3px;
+      }
+      .prototype-note-row .note-card p {
+        line-height: 1.4;
+      }
+      .prototype-note-row .note-meta {
+        min-height: 17px;
+        margin-top: 5px;
+      }
+      .note-hover-actions {
+        top: 5px;
+      }
+      .note-status-icons {
+        right: 34px;
+        bottom: 8px;
+      }
+      .category-nav .tree-row {
+        position: relative;
+        grid-template-columns: minmax(0, 1fr) 28px;
+      }
+      .category-nav .category-item,
+      .category-nav .category-item:hover,
+      .category-nav .category-item.active {
+        padding-right: 4px;
+      }
+      .category-count {
+        grid-column: 2;
+      }
+      .tree-actions {
+        position: absolute;
+        z-index: 3;
+        top: 6px;
+        right: 30px;
+        display: flex;
+        padding-left: 5px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--surface-hover) 14%
+        );
+      }
+      /* 第三轮打磨：统一图标尺度、严格对齐并收紧浮层。 */
+      .prototype-note-row.selected::before {
+        box-shadow: none;
+      }
+      .category-nav .category-item,
+      .category-nav .category-item:hover,
+      .category-nav .category-item.active {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        column-gap: 10px;
+        padding-left: 10px;
+      }
+      .category-icon-trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        color: var(--category-icon-color, var(--text-muted));
+      }
+      .category-icon-trigger .icon {
+        width: 21px;
+        height: 21px;
+        color: inherit;
+      }
+      .category-name {
+        min-width: 0;
+        padding-left: 0;
+      }
+      .system-view.active,
+      .system-view.active .icon,
+      .system-view[data-view="archived"].active,
+      .system-view[data-view="archived"].active .icon {
+        color: var(--accent);
+      }
+      .system-view[data-view="favorites"].active,
+      .system-view[data-view="favorites"].active .icon {
+        color: #d69a00 !important;
+        background: #fff8df;
+      }
+      .system-view[data-view="favorites"].active > span:not(.nav-count) {
+        color: #d69a00;
+      }
+      .prototype-menu .icon {
+        flex: 0 0 16px;
+        width: 16px;
+        height: 16px;
+      }
+      .document-tags .tag,
+      .document-tags .add-tag,
+      .inline-tag-editor {
+        box-sizing: border-box;
+        min-height: 24px;
+        height: 24px;
+        padding: 0 7px;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+      .document-tags .tag .icon,
+      .document-tags .add-tag .icon {
+        width: 11px;
+        height: 11px;
+      }
+      .inline-tag-editor {
+        padding: 0 7px;
+      }
+      .inline-tag-editor input {
+        width: 84px;
+        font-size: 12px;
+      }
+      .slash-menu {
+        width: 270px;
+        max-height: min(430px, calc(100vh - 32px));
+        padding: 3px;
+      }
+      #slashItems {
+        width: 100%;
+      }
+      .slash-label {
+        padding: 5px 8px 2px;
+        font-size: 11px;
+      }
+      .slash-item {
+        width: 100%;
+        min-height: 33px;
+        padding: 0 8px;
+        gap: 8px;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .slash-item .icon {
+        flex: 0 0 15px;
+        width: 15px;
+        height: 15px;
+      }
+      .block-actions {
+        align-items: center;
+        gap: 2px;
+      }
+      .block-actions button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+      }
+      .block-actions .icon {
+        display: block;
+        width: 18px;
+        height: 18px;
+      }
+      .category-row-draft {
+        background: transparent;
+        box-shadow: none;
+      }
+      .category-row-draft .category-item {
+        grid-template-columns: 24px minmax(0, 1fr);
+        padding-right: 10px;
+        cursor: text;
+      }
+      .category-row-draft .category-name {
+        width: 100%;
+        padding: 3px 5px;
+        border-radius: 5px;
+        color: var(--text-primary);
+        background: var(--surface);
+        box-shadow: 0 0 0 2px var(--focus-ring);
+        outline: 0;
+      }
+      .category-row-draft .tree-actions,
+      .category-row-draft .category-count {
+        display: none;
+      }
+      .category-row-draft:hover {
+        background: transparent !important;
+      }
+      .brand span {
+        display: inline-block;
+        min-width: 0;
+        text-align: left;
+      }
+
+      /* 小记：资源树与衬线 Markdown 工作区。 */
+      .workspace[data-mode="jottings"] {
+        --notes-current-width: clamp(248px, 17vw, 310px);
+        --accent: #8466c6;
+        --accent-hover: #7355b8;
+        --accent-soft: #f4f0ff;
+        --accent-line: #9678d6;
+        --focus-ring: #8466c6;
+        --tag-bg: #f0eafe;
+        --tag-text: #7659b8;
+      }
+      :root[data-theme="dark"] .workspace[data-mode="jottings"] {
+        --accent: #b59aec;
+        --accent-hover: #c4acf2;
+        --accent-soft: #302644;
+        --accent-line: #c0a7ef;
+        --focus-ring: #c0a7ef;
+        --tag-bg: #36294d;
+        --tag-text: #cfbaf5;
+      }
+      .workspace[data-mode="jottings"] #notesPanel {
+        display: none;
+      }
+      .workspace:not([data-mode="jottings"]) #jottingTreePanel,
+      .workspace:not([data-mode="jottings"]) #jottingWorkspace {
+        display: none;
+      }
+      .workspace[data-mode="jottings"] #jottingTreePanel {
+        display: flex;
+      }
+      .workspace[data-mode="jottings"] #normalDocumentWorkspace {
+        display: none;
+      }
+      .workspace[data-mode="jottings"] #jottingWorkspace {
+        display: grid;
+      }
+      .system-view[data-view="jottings"].active,
+      .system-view[data-view="jottings"].active .icon {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .jotting-tree-panel {
+        min-width: 0;
+        flex-direction: column;
+        overflow: hidden;
+        border-right: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .jotting-tree-header {
+        display: flex;
+        align-items: center;
+        height: 64px;
+        padding: 0 18px 0 28px;
+        border-bottom: 1px solid var(--border);
+      }
+      .jotting-tree-heading {
+        display: flex;
+        align-items: baseline;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .jotting-tree-header strong {
+        color: #191b1f;
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+      .jotting-tree-header .tree-count {
+        margin-left: 9px;
+        color: #a0a5aa;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.35;
+      }
+      .jotting-tree-header .tree-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin-left: auto;
+      }
+      .jotting-create-menu {
+        width: 176px;
+      }
+      .jotting-tree-header .icon-button,
+      .jotting-tree-row .tree-inline-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-muted);
+        background: transparent;
+      }
+      .jotting-tree-header .icon-button:hover,
+      .jotting-tree-row .tree-inline-action:hover {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .jotting-tree-header .icon,
+      .jotting-tree-row .icon {
+        width: 18px;
+        height: 18px;
+      }
+      .jotting-tree-header .icon {
+        width: 21px;
+        height: 21px;
+      }
+      .jotting-tree-header .icon-button {
+        width: 34px;
+        height: 34px;
+      }
+      .jotting-tree {
+        flex: 1;
+        padding: 10px 8px 24px;
+        overflow: auto;
+      }
+      .jotting-tree-row {
+        --depth: 0;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        height: 36px;
+        gap: 9px;
+        padding: 0 6px 0 calc(6px + var(--depth) * 18px);
+        border: 0;
+        border-radius: 7px;
+        color: var(--text-secondary);
+        background: transparent;
+        font: inherit;
+        font-size: 13px;
+        text-align: left;
+      }
+      .jotting-tree-row:hover,
+      .jotting-tree-row.active {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--accent-soft) 72%, var(--surface));
+      }
+      .jotting-tree-row.active {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .jotting-tree-row .tree-chevron {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        flex: 0 0 18px;
+        transition: transform 130ms ease;
+      }
+      .jotting-tree-row[data-expanded="true"] .tree-chevron {
+        transform: rotate(90deg);
+      }
+      .jotting-tree-row[data-kind="file"] .tree-chevron {
+        visibility: hidden;
+      }
+      .jotting-tree-row .tree-name {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .jotting-tree-row .tree-inline-action {
+        opacity: 0;
+      }
+      .jotting-tree-row:hover .tree-inline-action,
+      .jotting-tree-row:focus-within .tree-inline-action {
+        opacity: 1;
+      }
+      .jotting-tree-row .tree-inline-action[data-tree-action="delete"] {
+        color: var(--text-muted);
+      }
+      .jotting-tree-row .tree-inline-action[data-tree-action="delete"]:hover {
+        color: #b84545;
+        background: #fff0f0;
+      }
+      .jotting-tree-children[hidden] {
+        display: none;
+      }
+      .jotting-tree-draft {
+        height: 34px;
+        margin: 2px 6px;
+        padding-left: 8px;
+        border-radius: 7px;
+      }
+      .jotting-tree-draft input {
+        width: 100%;
+        min-width: 0;
+        height: 28px;
+        padding: 0 7px;
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        color: var(--text-primary);
+        background: var(--surface);
+        font: inherit;
+        font-size: 13px;
+        outline: 0;
+      }
+      .jotting-document-panel {
+        position: relative;
+        grid-template-rows: 64px minmax(0, 1fr);
+        min-width: 0;
+        overflow: hidden;
+        background: var(--surface);
+      }
+      .jotting-document-toolbar {
+        display: flex;
+        align-items: center;
+        min-height: 64px;
+        padding: 0 20px 0 21px;
+        border-bottom: 1px solid var(--border);
+      }
+      .jotting-document-toolbar > .panel-toggle {
+        width: 34px;
+        height: 34px;
+        margin-right: 12px;
+      }
+      .jotting-document-toolbar .jotting-path {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--text-muted);
+        font-size: 12.5px;
+      }
+      .jotting-document-toolbar .jotting-actions {
+        display: flex;
+        gap: 4px;
+        margin-left: auto;
+      }
+      .jotting-document-toolbar .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 7px;
+        color: var(--text-muted);
+        background: transparent;
+      }
+      .jotting-document-toolbar .icon-button:hover {
+        color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .jotting-document-toolbar .icon {
+        width: 21px;
+        height: 21px;
+      }
+      .jotting-document-scroll {
+        overflow: auto;
+        background: var(--surface-soft);
+      }
+      .jotting-paper {
+        width: min(100% - 48px, 960px);
+        min-height: calc(100% - 48px);
+        margin: 24px auto 56px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: 0 14px 36px rgba(35, 45, 55, 0.07);
+      }
+      .jotting-cover {
+        position: relative;
+        height: clamp(220px, 34vh, 360px);
+        overflow: hidden;
+        background: #dce8e7;
+      }
+      .jotting-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .jotting-cover-actions {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        display: flex;
+        gap: 3px;
+        padding: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.65);
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 7px 20px rgba(30, 42, 52, 0.13);
+        backdrop-filter: blur(10px);
+      }
+      .jotting-cover-actions button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 30px;
+        gap: 6px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 6px;
+        color: #5e6870;
+        background: transparent;
+        font-size: 12px;
+      }
+      .jotting-cover-actions button:hover {
+        color: #3a4a52;
+        background: rgba(235, 242, 246, 0.95);
+      }
+      .jotting-cover-actions .icon {
+        width: 14px;
+        height: 14px;
+      }
+      .jotting-cover-picker {
+        position: absolute;
+        z-index: 4;
+        top: 54px;
+        right: 14px;
+        display: none;
+        grid-template-columns: repeat(3, 84px);
+        gap: 7px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-raised);
+        box-shadow: 0 14px 32px rgba(28, 39, 49, 0.16);
+      }
+      .jotting-cover-picker.open {
+        display: grid;
+      }
+      .jotting-cover-picker button {
+        width: 84px;
+        height: 52px;
+        padding: 0;
+        overflow: hidden;
+        border: 2px solid transparent;
+        border-radius: 7px;
+        background: transparent;
+      }
+      .jotting-cover-picker button:hover,
+      .jotting-cover-picker button.active {
+        border-color: var(--accent);
+      }
+      .jotting-cover-picker img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .jotting-markdown {
+        padding: clamp(38px, 6vw, 76px) clamp(38px, 7vw, 92px) 90px;
+        color: #3c3b38;
+        font-family: "Noto Serif SC Local", "Noto Serif SC", serif;
+        font-size: 17px;
+        font-weight: 420;
+        line-height: 2;
+      }
+      .jotting-markdown h1,
+      .jotting-markdown h2,
+      .jotting-markdown h3 {
+        color: #292824;
+        font-family: inherit;
+        letter-spacing: -0.02em;
+      }
+      .jotting-markdown h1 {
+        margin: 0 0 28px;
+        font-size: clamp(31px, 3vw, 42px);
+        line-height: 1.3;
+      }
+      .jotting-markdown h2 {
+        margin: 54px 0 18px;
+        font-size: 24px;
+      }
+      .jotting-markdown p {
+        margin: 0 0 22px;
+      }
+      .jotting-markdown strong {
+        color: #272620;
+        font-weight: 760;
+      }
+      .jotting-markdown em {
+        color: #665d55;
+      }
+      .jotting-markdown hr {
+        width: 88px;
+        height: 1px;
+        margin: 44px auto;
+        border: 0;
+        background: #d9d1c6;
+      }
+      .jotting-markdown blockquote {
+        margin: 30px 0;
+        padding: 20px 24px;
+        border-left: 3px solid #d7a747;
+        border-radius: 0 9px 9px 0;
+        color: #5d554c;
+        background: #fbf6e9;
+      }
+      .jotting-markdown mark {
+        padding: 1px 4px;
+        border-radius: 4px;
+        color: inherit;
+        background: linear-gradient(transparent 34%, #f5dfa0 34%, #f5dfa0 92%, transparent 92%);
+      }
+      .jotting-markdown .markdown-image {
+        width: 100%;
+        margin: 32px 0 12px;
+        border-radius: 10px;
+      }
+      .jotting-markdown table {
+        width: 100%;
+        margin: 30px 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border: 1px solid #ddd7ce;
+        border-radius: 9px;
+        font-family: "Noto Sans SC Variable", sans-serif;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .jotting-markdown th,
+      .jotting-markdown td {
+        padding: 11px 14px;
+        border-right: 1px solid #e6e0d8;
+        border-bottom: 1px solid #e6e0d8;
+        text-align: left;
+      }
+      .jotting-markdown th {
+        color: #615b54;
+        background: #f8f5ef;
+        font-weight: 650;
+      }
+      .jotting-markdown tr:last-child td {
+        border-bottom: 0;
+      }
+      .jotting-markdown th:last-child,
+      .jotting-markdown td:last-child {
+        border-right: 0;
+      }
+      .workspace[data-mode="jottings"][data-jotting-tree-collapsed="true"] {
+        --notes-current-width: 0px;
+      }
+      .workspace[data-mode="jottings"][data-jotting-tree-collapsed="true"] #jottingTreePanel {
+        overflow: hidden;
+        border-right: 0;
+        visibility: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <svg aria-hidden="true" width="0" height="0" style="position: absolute">
+      <defs></defs>
+    </svg>
+    <header class="app-header">
+      <label class="search-box"
+        ><svg class="icon">
+          <use href="../../assets/lucide-icons.svg#search"></use></svg
+        ><input
+          id="globalSearch"
+          aria-label="搜索笔记"
+          placeholder="搜索标题与正文…"
+        /><kbd>Ctrl K</kbd></label
+      >
+      <div class="header-actions">
+        <button
+          class="icon-button theme-button"
+          id="themeButton"
+          aria-label="主题：跟随系统"
+        >
+          <svg class="icon">
+            <use
+              id="themeIcon"
+              href="../../assets/lucide-icons.svg#monitor"
+            ></use>
+          </svg>
+        </button>
+      </div>
+    </header>
+    <main class="workspace" id="workspace" data-notes-collapsed="false">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand">
+            <img
+              src="../../assets/logo-CoolNote.png"
+              width="64"
+              height="64"
+              alt="CoolNote"
+            /><span>CoolNote</span>
+          </div>
+        </div>
+        <div class="sidebar-content">
+          <nav class="primary-nav" id="primaryNav">
+            <button class="nav-item system-view active" data-view="all">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#file-text"></use></svg
+              ><span>全部笔记</span><span class="nav-count">24</span>
+            </button>
+            <button class="nav-item system-view" data-view="jottings">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#feather"></use></svg
+              ><span>小记</span><span class="nav-count">12</span>
+            </button>
+            <button class="nav-item system-view" data-view="favorites">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#star"></use></svg
+              ><span>收藏</span><span class="nav-count">7</span>
+            </button>
+            <button class="nav-item system-view" data-view="pinned">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#pin"></use></svg
+              ><span>置顶</span><span class="nav-count">3</span>
+            </button>
+            <button class="nav-item system-view" data-view="archived">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#book-open"></use></svg
+              ><span>归档</span><span class="nav-count">4</span>
+            </button>
+            <button class="nav-item system-view" data-view="trash">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#trash-2"></use></svg
+              ><span>回收站</span><span class="nav-count">2</span>
+            </button>
+          </nav>
+          <div class="section-label row-label">
+            <span>分类</span
+            ><button
+              class="mini-action"
+              id="addCategory"
+              aria-label="添加分类"
+              title="添加分类"
+            >
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#plus"></use>
+              </svg>
+            </button>
+          </div>
+          <nav class="category-nav" id="categoryNav">
+            <div class="tree-row" data-category="产品设计">
+              <button class="nav-item category-item" style="--tree-depth: 0">
+                <span class="category-icon-trigger" title="双击更换图标"
+                  ><svg class="icon">
+                    <use
+                      href="../../assets/lucide-icons.svg#palette"
+                    ></use></svg></span
+                ><span class="category-name">产品设计</span></button
+              ><span class="tree-actions"
+                ><button class="create-tree" aria-label="在产品设计中新建">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#plus"></use>
+                  </svg></button
+                ><button class="delete-tree" aria-label="删除产品设计">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#trash-2"></use>
+                  </svg></button></span
+              ><span class="category-count">8</span>
+            </div>
+            <div class="tree-row" data-category="CoolNote">
+              <button
+                class="nav-item category-item active"
+                style="--tree-depth: 1"
+              >
+                <span class="category-icon-trigger" title="双击更换图标"
+                  ><svg class="icon">
+                    <use
+                      href="../../assets/lucide-icons.svg#notebook-tabs"
+                    ></use></svg></span
+                ><span class="category-name">CoolNote</span></button
+              ><span class="tree-actions"
+                ><button class="create-tree" aria-label="在 CoolNote 中新建">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#plus"></use>
+                  </svg></button
+                ><button class="delete-tree" aria-label="删除 CoolNote">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#trash-2"></use>
+                  </svg></button></span
+              ><span class="category-count">5</span>
+            </div>
+            <div class="tree-row" data-category="学习资料">
+              <button class="nav-item category-item" style="--tree-depth: 0">
+                <span class="category-icon-trigger" title="双击更换图标"
+                  ><svg class="icon">
+                    <use
+                      href="../../assets/lucide-icons.svg#flask-conical"
+                    ></use></svg></span
+                ><span class="category-name">学习资料</span></button
+              ><span class="tree-actions"
+                ><button class="create-tree" aria-label="在学习资料中新建">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#plus"></use>
+                  </svg></button
+                ><button class="delete-tree" aria-label="删除学习资料">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#trash-2"></use>
+                  </svg></button></span
+              ><span class="category-count">6</span>
+            </div>
+          </nav>
+        </div>
+      </aside>
+      <section
+        class="notes-panel"
+        id="notesPanel"
+        aria-label="笔记列表"
+        data-collapsed="false"
+        data-selecting="false"
+      >
+        <div class="notes-header">
+          <div class="notes-heading">
+            <strong>CoolNote</strong
+            ><span class="notes-count" id="notesCount">5</span>
+          </div>
+          <div class="notes-header-actions">
+            <button
+              class="icon-button"
+              id="directionButton"
+              aria-label="更新时间降序"
+              title="更新时间降序"
+            >
+              <svg class="icon">
+                <use
+                  id="directionIcon"
+                  href="../../assets/lucide-icons.svg#sort-desc"
+                ></use>
+              </svg>
+            </button>
+          </div>
+          <div class="selection-bar">
+            <strong id="selectionCount">已选择 1 项</strong
+            ><button data-bulk="favorite" aria-label="收藏" title="收藏">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#star"></use>
+              </svg></button
+            ><button data-bulk="move" aria-label="移动" title="移动">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#folder"></use>
+              </svg></button
+            ><button data-bulk="archive" aria-label="归档" title="归档">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#book-open"></use>
+              </svg></button
+            ><button
+              class="danger"
+              data-bulk="trash"
+              aria-label="移入回收站"
+              title="移入回收站"
+            >
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#trash-2"></use>
+              </svg></button
+            ><button
+              id="cancelSelection"
+              aria-label="取消选择"
+              title="取消选择"
+            >
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#x"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="notes-list" id="notesList" role="listbox"></div>
+      </section>
+      <section
+        class="jotting-tree-panel"
+        id="jottingTreePanel"
+        aria-label="小记资源树"
+      >
+        <div class="jotting-tree-header">
+          <div class="jotting-tree-heading">
+            <strong>小记</strong><span class="tree-count">12</span>
+          </div>
+          <div class="tree-header-actions">
+            <button class="icon-button" id="jottingCreateButton" aria-label="创建小记或目录" title="创建">
+              <svg class="icon"><use href="../../assets/lucide-icons.svg#plus"></use></svg>
+            </button>
+          </div>
+        </div>
+        <nav class="jotting-tree" id="jottingTree">
+          <div class="jotting-tree-node">
+            <button class="jotting-tree-row" data-kind="folder" data-expanded="true" style="--depth:0">
+              <span class="tree-chevron"><svg class="icon"><use href="../../assets/lucide-icons.svg#chevron-right"></use></svg></span>
+              <svg class="icon"><use href="../../assets/lucide-icons.svg#folder-open"></use></svg>
+              <span class="tree-name">生活沉淀</span>
+              <span class="tree-inline-action" data-tree-action="add-file" aria-label="在生活沉淀中新建小记"><svg class="icon"><use href="../../assets/lucide-icons.svg#plus"></use></svg></span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除生活沉淀"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span>
+            </button>
+            <div class="jotting-tree-children">
+              <button class="jotting-tree-row active" data-kind="file" style="--depth:1"><span class="tree-chevron"></span><svg class="icon"><use href="../../assets/lucide-icons.svg#file"></use></svg><span class="tree-name">倒影.md</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除倒影.md"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button>
+              <button class="jotting-tree-row" data-kind="file" style="--depth:1"><span class="tree-chevron"></span><svg class="icon"><use href="../../assets/lucide-icons.svg#file"></use></svg><span class="tree-name">晚风.md</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除晚风.md"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button>
+            </div>
+          </div>
+          <div class="jotting-tree-node">
+              <button class="jotting-tree-row" data-kind="folder" data-expanded="true" style="--depth:0"><span class="tree-chevron"><svg class="icon"><use href="../../assets/lucide-icons.svg#chevron-right"></use></svg></span><svg class="icon"><use href="../../assets/lucide-icons.svg#folder-open"></use></svg><span class="tree-name">读书与观影</span><span class="tree-inline-action" data-tree-action="add-file" aria-label="在读书与观影中新建小记"><svg class="icon"><use href="../../assets/lucide-icons.svg#plus"></use></svg></span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除读书与观影"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button>
+            <div class="jotting-tree-children">
+              <button class="jotting-tree-row" data-kind="file" style="--depth:1"><span class="tree-chevron"></span><svg class="icon"><use href="../../assets/lucide-icons.svg#file"></use></svg><span class="tree-name">月亮与六便士.md</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除月亮与六便士.md"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button>
+            </div>
+          </div>
+          <div class="jotting-tree-node">
+              <button class="jotting-tree-row" data-kind="folder" data-expanded="false" style="--depth:0"><span class="tree-chevron"><svg class="icon"><use href="../../assets/lucide-icons.svg#chevron-right"></use></svg></span><svg class="icon"><use href="../../assets/lucide-icons.svg#folder"></use></svg><span class="tree-name">旅行碎片</span><span class="tree-inline-action" data-tree-action="add-file" aria-label="在旅行碎片中新建小记"><svg class="icon"><use href="../../assets/lucide-icons.svg#plus"></use></svg></span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除旅行碎片"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button>
+            <div class="jotting-tree-children" hidden><button class="jotting-tree-row" data-kind="file" style="--depth:1"><span class="tree-chevron"></span><svg class="icon"><use href="../../assets/lucide-icons.svg#file"></use></svg><span class="tree-name">海边散步.md</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除海边散步.md"><svg class="icon"><use href="../../assets/lucide-icons.svg#trash-2"></use></svg></span></button></div>
+          </div>
+        </nav>
+      </section>
+      <section class="document-panel" id="normalDocumentWorkspace">
+        <div class="document-toolbar">
+          <button
+            class="icon-button panel-toggle"
+            id="notesToggle"
+            aria-label="收起笔记列表"
+          >
+            <svg class="icon">
+              <use
+                id="notesToggleIcon"
+                href="../../assets/lucide-icons.svg#panel-left-close"
+              ></use>
+            </svg>
+          </button>
+          <div class="document-actions">
+            <span class="save-status" id="saveStatus">已保存</span
+            ><button class="tool-action" id="shareButton">
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#share-2"></use></svg
+              >分享</button
+            ><button
+              class="tool-action icon-only document-menu-trigger"
+              id="documentMenuButton"
+              aria-label="文档菜单"
+            >
+              <svg class="icon">
+                <use href="../../assets/lucide-icons.svg#ellipsis"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div
+          class="reading-layout"
+          id="readingLayout"
+          data-outline-collapsed="false"
+        >
+          <div class="document-body">
+            <div class="document-heading">
+              <input
+                class="document-title-input"
+                id="documentTitle"
+                aria-label="笔记标题"
+                value="CoolNote 产品原型"
+              />
+              <div class="document-tags" id="documentTags">
+                <span class="document-chip">自动保存 · 本机笔记</span
+                ><button class="tag removable">
+                  产品设计
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#x"></use>
+                  </svg></button
+                ><button class="tag removable">
+                  进行中
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#x"></use>
+                  </svg></button
+                ><button class="document-chip add-tag" id="addTag">
+                  <svg class="icon">
+                    <use href="../../assets/lucide-icons.svg#plus"></use></svg
+                  >添加标签
+                </button>
+              </div>
+            </div>
+            <div
+              class="note-editor-content"
+              id="editorContent"
+              role="textbox"
+              aria-label="笔记正文"
+              aria-multiline="true"
+            >
+              <div class="prototype-block" contenteditable="true">
+                <span class="block-actions"
+                  ><button class="add-block" aria-label="添加块">
+                    <svg class="icon">
+                      <use href="../../assets/lucide-icons.svg#plus"></use>
+                    </svg></button
+                  ><button class="block-handle" aria-label="内容块操作与拖动">
+                    <svg class="icon">
+                      <use
+                        href="../../assets/lucide-icons.svg#grip-vertical"
+                      ></use>
+                    </svg></button
+                ></span>
+                <p>
+                  CoolNote
+                  是一款专注、安静的本地笔记工具。操作只在需要时出现，让内容始终成为视觉中心。
+                </p>
+              </div>
+              <div class="prototype-block" contenteditable="true">
+                <span class="block-actions"
+                  ><button class="add-block" aria-label="添加块">
+                    <svg class="icon">
+                      <use href="../../assets/lucide-icons.svg#plus"></use>
+                    </svg></button
+                  ><button class="block-handle" aria-label="内容块操作与拖动">
+                    <svg class="icon">
+                      <use
+                        href="../../assets/lucide-icons.svg#grip-vertical"
+                      ></use>
+                    </svg></button
+                ></span>
+                <h2 id="sectionInteraction">操作靠近对象</h2>
+              </div>
+              <div
+                class="prototype-block"
+                id="selectionBlock"
+                contenteditable="true"
+              >
+                <span class="block-actions"
+                  ><button class="add-block" aria-label="添加块">
+                    <svg class="icon">
+                      <use href="../../assets/lucide-icons.svg#plus"></use>
+                    </svg></button
+                  ><button class="block-handle" aria-label="内容块操作与拖动">
+                    <svg class="icon">
+                      <use
+                        href="../../assets/lucide-icons.svg#grip-vertical"
+                      ></use>
+                    </svg></button
+                ></span>
+                <p>
+                  <span id="selectableText"
+                    >选中这段文字可体验浮动格式菜单。</span
+                  >
+                  笔记管理操作留在列表，文本格式操作留在正文。
+                </p>
+              </div>
+              <div class="prototype-block" contenteditable="true">
+                <span class="block-actions"
+                  ><button class="add-block" aria-label="添加块">
+                    <svg class="icon">
+                      <use href="../../assets/lucide-icons.svg#plus"></use>
+                    </svg></button
+                  ><button class="block-handle" aria-label="内容块操作与拖动">
+                    <svg class="icon">
+                      <use
+                        href="../../assets/lucide-icons.svg#grip-vertical"
+                      ></use>
+                    </svg></button
+                ></span>
+                <h2 id="sectionQuiet">默认保持安静</h2>
+              </div>
+              <div
+                class="prototype-block empty-block"
+                id="emptyBlock"
+                contenteditable="true"
+              >
+                <span class="block-actions"
+                  ><button class="add-block" aria-label="添加块">
+                    <svg class="icon">
+                      <use href="../../assets/lucide-icons.svg#plus"></use>
+                    </svg></button
+                  ><button class="block-handle" aria-label="内容块操作与拖动">
+                    <svg class="icon">
+                      <use
+                        href="../../assets/lucide-icons.svg#grip-vertical"
+                      ></use>
+                    </svg></button
+                ></span>
+                <p>输入 / 插入内容</p>
+              </div>
+            </div>
+          </div>
+          <aside class="outline" id="outline" aria-label="文章大纲">
+            <div class="outline-header">
+              <button class="outline-title-toggle" id="outlineToggle">
+                <svg class="icon">
+                  <use
+                    href="../../assets/lucide-icons.svg#list-tree"
+                  ></use></svg
+                ><span>文章大纲</span>
+              </button>
+            </div>
+            <nav>
+              <button class="outline-link active" data-target="documentTitle">
+                CoolNote 产品原型</button
+              ><button class="outline-link" data-target="sectionInteraction">
+                操作靠近对象</button
+              ><button class="outline-link" data-target="sectionQuiet">
+                默认保持安静
+              </button>
+            </nav>
+          </aside>
+        </div>
+      </section>
+      <section class="jotting-document-panel" id="jottingWorkspace">
+        <div class="jotting-document-toolbar">
+          <button class="icon-button panel-toggle" id="jottingTreeToggle" aria-label="折叠小记导航栏" title="折叠小记导航栏"><svg class="icon"><use id="jottingTreeToggleIcon" href="../../assets/lucide-icons.svg#panel-left-close"></use></svg></button>
+          <div class="jotting-path"><span>小记</span><svg class="icon"><use href="../../assets/lucide-icons.svg#chevron-right"></use></svg><span>生活沉淀</span><svg class="icon"><use href="../../assets/lucide-icons.svg#chevron-right"></use></svg><strong id="jottingCurrentName">倒影.md</strong></div>
+          <div class="jotting-actions"><button class="icon-button" aria-label="收藏小记" title="收藏"><svg class="icon"><use href="../../assets/lucide-icons.svg#star"></use></svg></button><button class="icon-button" aria-label="小记菜单" title="更多"><svg class="icon"><use href="../../assets/lucide-icons.svg#ellipsis"></use></svg></button></div>
+        </div>
+        <div class="jotting-document-scroll">
+          <article class="jotting-paper">
+            <div class="jotting-cover">
+              <img id="jottingCoverImage" src="../../assets/jotting-cover-sky.svg" alt="小记封面" />
+              <div class="jotting-cover-actions">
+                <button id="chooseBuiltInCover"><svg class="icon"><use href="../../assets/lucide-icons.svg#image"></use></svg>内置图片</button>
+                <button id="uploadJottingCover"><svg class="icon"><use href="../../assets/lucide-icons.svg#image-up"></use></svg>上传</button>
+                <input type="file" id="jottingCoverInput" accept="image/*" hidden />
+              </div>
+              <div class="jotting-cover-picker" id="jottingCoverPicker">
+                <button class="active" data-cover="../../assets/jotting-cover-sky.svg" aria-label="天空封面"><img src="../../assets/jotting-cover-sky.svg" alt="" /></button>
+                <button data-cover="../../assets/jotting-cover-forest.svg" aria-label="森林封面"><img src="../../assets/jotting-cover-forest.svg" alt="" /></button>
+                <button data-cover="../../assets/jotting-cover-dusk.svg" aria-label="暮色封面"><img src="../../assets/jotting-cover-dusk.svg" alt="" /></button>
+              </div>
+            </div>
+            <div class="jotting-markdown" contenteditable="true" aria-label="小记 Markdown 正文">
+              <h1>倒影</h1>
+              <p><em>水面平静的时候，你能看到山的倒影。</em></p>
+              <p>那不是真的山。那是光线经过水面反射后进入你眼睛的虚像。倒影里的山顶朝下，树冠朝下，天空在脚下。</p>
+              <p>但你不会把倒影当成真的山。你知道那是假的。你知道继续走两步，或者风一吹，它就碎了。</p>
+              <hr />
+              <h2>看见，也是一种经过</h2>
+              <p>如果你看到的不只是山的倒影呢？当你注视水面的时候，你的脸也浮在倒影里，和山的影叠在一起。</p>
+              <blockquote><strong>你以为你在看山，其实你在看“你和山的关系”。</strong> 每一次观看，都带着当时的光线、位置与心情。</blockquote>
+              <p>这听起来像装深沉的问题。但它的核心其实很朴素：<mark>你看到的一切，都经过了你。</mark></p>
+              <img class="markdown-image" src="../../assets/jotting-cover-forest.svg" alt="林间远山" />
+              <h2>片刻记录</h2>
+              <table><thead><tr><th>时刻</th><th>感受</th><th>留下的话</th></tr></thead><tbody><tr><td>清晨</td><td>安静</td><td>世界尚未要求我成为谁</td></tr><tr><td>黄昏</td><td>松弛</td><td>允许今天停在这里</td></tr></tbody></table>
+              <p>所以我把这些并不宏大的时刻写下来。它们不服务于工作，也不急着成为答案，只是提醒我：<strong>生活曾经在这里发生。</strong></p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+    <div
+      class="prototype-layer selection-toolbar"
+      id="selectionToolbar"
+      role="toolbar"
+      aria-label="文本样式"
+    >
+      <button aria-label="块类型">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#check-square"></use></svg
+        ><svg class="icon chevron">
+          <use href="../../assets/lucide-icons.svg#chevron-down"></use>
+        </svg></button
+      ><span class="divider"></span
+      ><button aria-label="对齐">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#align-left"></use></svg
+        ><svg class="icon chevron">
+          <use href="../../assets/lucide-icons.svg#chevron-down"></use>
+        </svg></button
+      ><span class="divider"></span
+      ><button data-format="bold" aria-label="粗体"><b>B</b></button
+      ><button data-format="strike" aria-label="删除线"><s>S</s></button
+      ><button data-format="italic" aria-label="斜体"><i>I</i></button
+      ><button data-format="underline" aria-label="下划线"><u>U</u></button
+      ><button aria-label="链接">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#link"></use>
+        </svg></button
+      ><button aria-label="行内代码">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#code"></use>
+        </svg></button
+      ><button aria-label="文字颜色" style="color: #d89a00">
+        A<svg class="icon chevron">
+          <use href="../../assets/lucide-icons.svg#chevron-down"></use>
+        </svg></button
+      ><span class="divider"></span
+      ><button aria-label="更多样式">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#panels-top-left"></use>
+        </svg></button
+      ><button aria-label="转换">
+        <svg class="icon">
+          <use
+            href="../../assets/lucide-icons.svg#arrow-down-narrow-wide"
+          ></use>
+        </svg></button
+      ><button aria-label="评论">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#message-square"></use>
+        </svg>
+      </button>
+    </div>
+    <div
+      class="prototype-layer slash-menu"
+      id="slashMenu"
+      role="listbox"
+      aria-label="插入内容"
+    >
+      <div id="slashItems"></div>
+    </div>
+    <div class="prototype-layer prototype-menu" id="contextMenu"></div>
+    <div
+      class="prototype-layer prototype-menu"
+      id="blockMenu"
+      aria-label="内容块操作"
+    ></div>
+    <div
+      class="prototype-layer prototype-menu jotting-create-menu"
+      id="jottingCreateMenu"
+      aria-label="创建小记内容"
+    >
+      <button data-jotting-create="file">
+        <svg class="icon"><use href="../../assets/lucide-icons.svg#file-plus"></use></svg>新建小记
+      </button>
+      <button data-jotting-create="folder">
+        <svg class="icon"><use href="../../assets/lucide-icons.svg#folder-plus"></use></svg>新建目录
+      </button>
+    </div>
+    <div class="prototype-layer prototype-menu" id="documentMenu">
+      <button>
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#download"></use></svg
+        >导出 Markdown</button
+      ><button>
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#download"></use></svg
+        >导出 HTML</button
+      ><button>
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#download"></use></svg
+        >导出 JSON
+      </button>
+      <div class="separator"></div>
+      <button>
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#history"></use></svg
+        >版本历史</button
+      ><button class="danger">
+        <svg class="icon">
+          <use href="../../assets/lucide-icons.svg#trash-2"></use></svg
+        >移入回收站
+      </button>
+    </div>
+    <div class="prototype-layer icon-picker" id="iconPicker"></div>
+    <div class="prototype-dialog-backdrop" id="dialogBackdrop">
+      <section class="prototype-dialog" role="dialog" aria-modal="true">
+        <h2 id="dialogTitle">移动到分类</h2>
+        <p id="dialogCopy">选择目标分类，此操作不会改变笔记内容。</p>
+        <div class="choice-list" id="dialogChoices" hidden></div>
+        <div id="dialogField">
+          <label for="dialogInput">名称或分类</label
+          ><input id="dialogInput" value="产品设计 / CoolNote" />
+        </div>
+        <div class="dialog-actions" id="dialogActions">
+          <button id="dialogCancel">取消</button
+          ><button class="primary" id="dialogConfirm">确认</button>
+        </div>
+      </section>
+    </div>
+    <div class="prototype-toast" id="toast">
+      <span id="toastText">操作已完成</span
+      ><button id="undoButton">撤销</button>
+    </div>
+    <div class="prototype-hint">
+      产品原型：Hover、右键、勾选、选区、斜杠命令
+    </div>
+    <script>
+      const notes = [
+        {
+          title: "CoolNote 产品原型",
+          excerpt: "统一产品布局、状态与上下文交互。",
+          time: "8月12日 16:40",
+          tags: ["设计", "进行中"],
+          favorite: true,
+          pinned: true,
+        },
+        {
+          title: "组件系统设计",
+          excerpt: "基础组件、浮层组件与业务组件的统一约束。",
+          time: "8月12日 15:20",
+          tags: ["设计"],
+        },
+        {
+          title: "编辑器能力清单",
+          excerpt: "图片、附件、表格、公式与完整剪贴板格式。",
+          time: "8月11日 21:08",
+          tags: ["开发"],
+        },
+        {
+          title: "性能门禁计划",
+          excerpt: "10 万笔记和 100 万块的容量与 P95 指标。",
+          time: "8月10日 18:36",
+          tags: ["性能"],
+        },
+        {
+          title: "开发事故复盘",
+          excerpt: "记录流程膨胀、空间占用和交付偏差。",
+          time: "8月9日 10:12",
+          tags: ["复盘"],
+        },
+      ];
+      const slashGroups = [
+        {
+          label: "基础",
+          items: [
+            ["文本", "file-text", "blue"],
+            ["一级标题", "file-text", "blue"],
+            ["二级标题", "file-text", "blue"],
+            ["三级标题", "file-text", "blue"],
+            ["四级标题", "file-text", "blue"],
+            ["有序列表", "list-ordered", "blue"],
+            ["无序列表", "list", "blue"],
+            ["代码块", "code", "green"],
+            ["引用", "quote", "blue"],
+            ["分隔线", "align-left", "orange"],
+            ["链接", "link", "blue"],
+          ],
+        },
+        {
+          label: "常用",
+          items: [
+            ["任务", "check-square", "blue"],
+            ["图片", "image", "yellow"],
+            ["视频或文件", "paperclip", "cyan"],
+            ["表格", "table", "green"],
+            ["分栏", "columns-2", "blue"],
+            ["高亮块", "highlighter", "orange"],
+            ["同步块", "panels-top-left", "blue"],
+          ],
+        },
+      ];
+      const $ = (id) => document.getElementById(id),
+        notesList = $("notesList"),
+        notesPanel = $("notesPanel"),
+        contextMenu = $("contextMenu");
+      let selected = new Set(),
+        activeNote = 0,
+        sortDescending = true,
+        toastTimer,
+        themeIndex = 0,
+        savedRange = null,
+        slashIndex = 0,
+        currentCategoryRow = null;
+      const icon = (name) =>
+        `<svg class="icon"><use href="../../assets/lucide-icons.svg#${name}"></use></svg>`;
+      function renderNotes() {
+        notesList.innerHTML = notes
+          .map(
+            (note, index) =>
+              `<div class="note-card-row prototype-note-row ${index === activeNote ? "selected" : ""}" data-index="${index}"><input type="checkbox" aria-label="选择${note.title}" ${selected.has(index) ? "checked" : ""}><button class="note-card" type="button"><div class="note-title-row"><h2>${note.title}</h2></div><p>${note.excerpt}</p><div class="note-meta"><time>${note.time}</time>${note.tags
+                .slice(0, 2)
+                .map((tag) => `<span class="tag">${tag}</span>`)
+                .join(
+                  "",
+                )}</div></button><span class="note-status-icons">${note.pinned ? icon("pin") : ""}${note.favorite ? icon("star") : ""}</span><div class="note-hover-actions"><button class="icon-button favorite-button ${note.favorite ? "is-active" : ""}" aria-label="收藏">${icon("star")}</button><button class="icon-button more-button" aria-label="更多">${icon("ellipsis")}</button></div></div>`,
+          )
+          .join("");
+        notesPanel.dataset.selecting = String(selected.size > 0);
+        $("selectionCount").textContent = `已选择 ${selected.size} 项`;
+        $("notesCount").textContent = notes.length;
+      }
+      function closeLayers(except = "") {
+        [
+          "selectionToolbar",
+          "slashMenu",
+          "contextMenu",
+          "blockMenu",
+          "jottingCreateMenu",
+          "documentMenu",
+          "iconPicker",
+        ].forEach((id) => {
+          if (id !== except) $(id).classList.remove("open");
+        });
+      }
+      function place(layer, x, y) {
+        layer.style.left =
+          Math.max(8, Math.min(x, innerWidth - layer.offsetWidth - 8)) + "px";
+        layer.style.top =
+          Math.max(8, Math.min(y, innerHeight - layer.offsetHeight - 8)) + "px";
+      }
+      function toast(text) {
+        $("toastText").textContent = text;
+        $("toast").classList.add("open");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(
+          () => $("toast").classList.remove("open"),
+          6000,
+        );
+      }
+      function openContext(x, y, index) {
+        closeLayers("contextMenu");
+        contextMenu.dataset.index = index;
+        contextMenu.innerHTML = `<button data-action="pin">${icon("pin")}置顶</button><button data-action="favorite">${icon("star")}收藏</button><button data-action="move">${icon("folder")}移动到…</button><div class="separator"></div><button data-action="archive">${icon("book-open")}归档</button><button class="danger" data-action="trash">${icon("trash-2")}移入回收站</button>`;
+        contextMenu.classList.add("open");
+        requestAnimationFrame(() => place(contextMenu, x, y));
+      }
+      function openBlockMenu(x, y, block) {
+        closeLayers("blockMenu");
+        const blockMenu = $("blockMenu");
+        blockMenu.currentBlock = block;
+        blockMenu.innerHTML = `<button data-block-action="move-up">${icon("arrow-up")}上移内容块</button><button data-block-action="move-down">${icon("arrow-down")}下移内容块</button><button data-block-action="duplicate">${icon("copy")}复制内容块</button><div class="separator"></div><button class="danger" data-block-action="delete">${icon("trash-2")}删除内容块</button>`;
+        blockMenu.classList.add("open");
+        requestAnimationFrame(() => place(blockMenu, x, y));
+      }
+      notesList.addEventListener("click", (event) => {
+        if (!event.target.matches("input[type=checkbox]")) return;
+        event.stopPropagation();
+        const index = +event.target.closest(".prototype-note-row").dataset
+          .index;
+        selected.has(index) ? selected.delete(index) : selected.add(index);
+        renderNotes();
+      });
+      notesList.addEventListener("click", (event) => {
+        const row = event.target.closest(".prototype-note-row");
+        if (!row) return;
+        const index = +row.dataset.index;
+        if (event.target.closest(".favorite-button")) {
+          notes[index].favorite = !notes[index].favorite;
+          toast(notes[index].favorite ? "已收藏" : "已取消收藏");
+        } else if (event.target.closest(".more-button")) {
+          const r = event.target.closest("button").getBoundingClientRect();
+          openContext(r.right + 4, r.bottom + 4, index);
+          return;
+        } else if (event.target.closest(".note-card")) activeNote = index;
+        renderNotes();
+      });
+      notesList.addEventListener("contextmenu", (event) => {
+        const row = event.target.closest(".prototype-note-row");
+        if (!row) return;
+        event.preventDefault();
+        openContext(event.clientX, event.clientY, +row.dataset.index);
+      });
+      document.querySelectorAll(".system-view").forEach((button) => {
+        button.onclick = () => {
+          document
+            .querySelectorAll(".system-view")
+            .forEach((item) =>
+              item.classList.toggle("active", item === button),
+            );
+          document
+            .querySelectorAll(".category-item")
+            .forEach((item) => item.classList.remove("active"));
+          if (button.dataset.view === "jottings") {
+            $("workspace").dataset.mode = "jottings";
+            closeLayers();
+            return;
+          }
+          $("workspace").dataset.mode = "notes";
+          const labels = {
+            all: "全部笔记",
+            jottings: "小记",
+            favorites: "收藏",
+            pinned: "置顶",
+            archived: "归档",
+            trash: "回收站",
+          };
+          document.querySelector(".notes-heading strong").textContent =
+            labels[button.dataset.view];
+          const view = button.dataset.view;
+          document.querySelectorAll(".prototype-note-row").forEach((row) => {
+            const note = notes[+row.dataset.index];
+            row.hidden =
+              view === "favorites"
+                ? !note.favorite
+                : view === "pinned"
+                  ? !note.pinned
+                  : view === "archived"
+                    ? +row.dataset.index % 2 === 0
+                    : view === "trash"
+                      ? +row.dataset.index < notes.length - 2
+                      : false;
+          });
+          toast(`已切换到${labels[view]}`);
+        };
+      });
+      document.querySelectorAll(".category-item").forEach((button) => {
+        button.onclick = (event) => {
+          if (
+            event.target.closest(".category-icon-trigger") ||
+            event.target.closest(".category-name[contenteditable=true]")
+          )
+            return;
+          document
+            .querySelectorAll(".category-item")
+            .forEach((item) =>
+              item.classList.toggle("active", item === button),
+            );
+          document
+            .querySelectorAll(".system-view")
+            .forEach((item) => item.classList.remove("active"));
+          $("workspace").dataset.mode = "notes";
+          document.querySelector(".notes-heading strong").textContent =
+            button.closest(".tree-row").dataset.category;
+        };
+      });
+      contextMenu.onclick = (event) => {
+        const item = event.target.closest("[data-action]");
+        if (!item) return;
+        const action = item.dataset.action,
+          index = +contextMenu.dataset.index;
+        contextMenu.classList.remove("open");
+        if (action === "move")
+          openDialog(
+            "移动到分类",
+            "选择目标分类，此操作不会改变笔记内容。",
+            "产品设计 / CoolNote",
+          );
+        else {
+          if (action === "favorite")
+            notes[index].favorite = !notes[index].favorite;
+          if (action === "pin") notes[index].pinned = true;
+          if (action === "trash") notes.splice(index, 1);
+          renderNotes();
+          toast(
+            {
+              favorite: "收藏状态已更新",
+              pin: "已置顶",
+              archive: "已归档",
+              trash: "已移入回收站",
+            }[action],
+          );
+        }
+      };
+      document.querySelectorAll("[data-bulk]").forEach(
+        (button) =>
+          (button.onclick = () => {
+            const action = button.dataset.bulk;
+            if (action === "move")
+              openDialog(
+                "移动所选笔记",
+                "为所选笔记选择目标分类。",
+                "产品设计 / CoolNote",
+              );
+            else {
+              toast(`${selected.size} 项操作已完成`);
+              selected.clear();
+              renderNotes();
+            }
+          }),
+      );
+      $("cancelSelection").onclick = () => {
+        selected.clear();
+        renderNotes();
+      };
+      $("directionButton").onclick = () => {
+        sortDescending = !sortDescending;
+        $("directionIcon").setAttribute(
+          "href",
+          `../../assets/lucide-icons.svg#sort-${sortDescending ? "desc" : "asc"}`,
+        );
+        $("directionButton").setAttribute(
+          "aria-label",
+          `更新时间${sortDescending ? "降序" : "升序"}`,
+        );
+        $("directionButton").title =
+          `更新时间${sortDescending ? "降序" : "升序"}`;
+        toast(`已按更新时间${sortDescending ? "降序" : "升序"}排列`);
+      };
+      $("documentMenuButton").onclick = (event) => {
+        closeLayers("documentMenu");
+        $("documentMenu").classList.add("open");
+        const r = event.currentTarget.getBoundingClientRect();
+        requestAnimationFrame(() =>
+          place($("documentMenu"), r.right - 232, r.bottom + 5),
+        );
+      };
+      const selectionToolbar = $("selectionToolbar");
+      function showSelectionToolbar() {
+        const selection = getSelection();
+        if (
+          !selection ||
+          !selection.rangeCount ||
+          !selection.toString().trim() ||
+          !$("selectionBlock").contains(selection.anchorNode)
+        )
+          return;
+        savedRange = selection.getRangeAt(0).cloneRange();
+        closeLayers("selectionToolbar");
+        selectionToolbar.classList.add("open");
+        const rect = savedRange.getBoundingClientRect();
+        requestAnimationFrame(() =>
+          place(
+            selectionToolbar,
+            rect.left + rect.width / 2 - selectionToolbar.offsetWidth / 2,
+            rect.top - selectionToolbar.offsetHeight - 8,
+          ),
+        );
+      }
+      selectionToolbar.addEventListener("pointerdown", (event) =>
+        event.preventDefault(),
+      );
+      $("selectionBlock").addEventListener("mouseup", () =>
+        setTimeout(showSelectionToolbar, 0),
+      );
+      document.addEventListener("selectionchange", showSelectionToolbar);
+      selectionToolbar.onclick = (event) => {
+        const button = event.target.closest("[data-format]");
+        if (!button || !savedRange) return;
+        const selection = getSelection();
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+        document.execCommand(button.dataset.format);
+        button.classList.toggle("active");
+        savedRange = selection.rangeCount
+          ? selection.getRangeAt(0).cloneRange()
+          : savedRange;
+        selectionToolbar.classList.add("open");
+      };
+      const slashMenu = $("slashMenu"),
+        slashItems = $("slashItems"),
+        emptyBlock = $("emptyBlock");
+      function flatSlash(query = "") {
+        return slashGroups
+          .flatMap((group) =>
+            group.items.map((item) => ({ group: group.label, item })),
+          )
+          .filter((entry) => entry.item[0].includes(query));
+      }
+      function renderSlash(query = "") {
+        const matches = flatSlash(query);
+        slashIndex = Math.max(0, Math.min(slashIndex, matches.length - 1));
+        let last = "";
+        slashItems.innerHTML =
+          matches
+            .map((entry, index) => {
+              const label =
+                entry.group !== last
+                  ? `<div class="slash-label">${entry.group}</div>`
+                  : "";
+              last = entry.group;
+              return `${label}<button class="slash-item ${index === slashIndex ? "active" : ""}" role="option" aria-selected="${index === slashIndex}" data-type="${entry.item[0]}" data-index="${index}" data-tone="${entry.item[2]}">${icon(entry.item[1])}<span class="slash-copy"><b>${entry.item[0]}</b></span></button>`;
+            })
+            .join("") || '<div class="slash-empty">没有匹配的内容类型</div>';
+        slashItems
+          .querySelector(".active")
+          ?.scrollIntoView({ block: "nearest" });
+      }
+      function openSlash(anchor = emptyBlock, query = "") {
+        closeLayers("slashMenu");
+        slashMenu.classList.add("open");
+        slashIndex = 0;
+        renderSlash(query);
+        const selection = getSelection();
+        let r = anchor.getBoundingClientRect();
+        if (
+          selection &&
+          selection.rangeCount &&
+          anchor.contains(selection.anchorNode)
+        ) {
+          const range = selection.getRangeAt(0).cloneRange();
+          range.collapse(true);
+          const caret = range.getBoundingClientRect();
+          if (caret.width || caret.height) r = caret;
+        }
+        requestAnimationFrame(() => {
+          const below = r.bottom + 4;
+          const top =
+            below + slashMenu.offsetHeight <= innerHeight - 8
+              ? below
+              : r.top - slashMenu.offsetHeight - 4;
+          place(slashMenu, r.left, top);
+        });
+      }
+      function chooseSlash(type) {
+        emptyBlock.innerHTML = `<span class="block-actions"><button class="add-block" aria-label="添加块">${icon("plus")}</button><button class="block-handle" aria-label="内容块操作与拖动">${icon("grip-vertical")}</button></span><p>已插入${type}块</p>`;
+        closeLayers();
+        toast(`已插入${type}`);
+      }
+      emptyBlock.addEventListener("input", () => {
+        const text = emptyBlock.innerText;
+        const slash = text.lastIndexOf("/");
+        if (slash >= 0) openSlash(emptyBlock, text.slice(slash + 1).trim());
+        else slashMenu.classList.remove("open");
+      });
+      emptyBlock.addEventListener("keydown", (event) => {
+        if (!slashMenu.classList.contains("open")) return;
+        const count = flatSlash(
+          emptyBlock.innerText.split("/").pop().trim(),
+        ).length;
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          slashIndex = Math.min(count - 1, slashIndex + 1);
+          renderSlash(emptyBlock.innerText.split("/").pop().trim());
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          slashIndex = Math.max(0, slashIndex - 1);
+          renderSlash(emptyBlock.innerText.split("/").pop().trim());
+        }
+        if (event.key === "Enter" && count) {
+          event.preventDefault();
+          chooseSlash(slashItems.querySelector(".active").dataset.type);
+        }
+      });
+      document.querySelectorAll(".add-block").forEach(
+        (button) =>
+          (button.onclick = (event) => {
+            event.stopPropagation();
+            openSlash(event.currentTarget.closest(".prototype-block"));
+          }),
+      );
+      slashItems.onclick = (event) => {
+        const item = event.target.closest("[data-type]");
+        if (item) chooseSlash(item.dataset.type);
+      };
+      document.querySelectorAll(".block-handle").forEach(
+        (button) =>
+          (button.onclick = (event) => {
+            event.stopPropagation();
+            const r = event.currentTarget.getBoundingClientRect();
+            openBlockMenu(
+              r.right + 4,
+              r.bottom + 4,
+              event.currentTarget.closest(".prototype-block"),
+            );
+          }),
+      );
+      $("blockMenu").onclick = (event) => {
+        const button = event.target.closest("[data-block-action]");
+        if (!button) return;
+        const menu = $("blockMenu");
+        const block = menu.currentBlock;
+        if (!block) return;
+        const action = button.dataset.blockAction;
+        if (action === "move-up" && block.previousElementSibling)
+          block.parentElement.insertBefore(block, block.previousElementSibling);
+        if (action === "move-down" && block.nextElementSibling)
+          block.parentElement.insertBefore(block.nextElementSibling, block);
+        if (action === "duplicate") block.after(block.cloneNode(true));
+        if (action === "delete") block.remove();
+        closeLayers();
+        toast(
+          {
+            "move-up": "内容块已上移",
+            "move-down": "内容块已下移",
+            duplicate: "内容块已复制",
+            delete: "内容块已删除",
+          }[action],
+        );
+      };
+      function openDialog(title, copy, value = "") {
+        $("dialogTitle").textContent = title;
+        $("dialogCopy").textContent = copy;
+        $("dialogInput").value = value;
+        $("dialogChoices").hidden = true;
+        $("dialogField").hidden = false;
+        $("dialogActions").hidden = false;
+        closeLayers();
+        $("dialogBackdrop").classList.add("open");
+        setTimeout(() => $("dialogInput").focus(), 0);
+      }
+      function openCreateDialog(row) {
+        currentCategoryRow = row;
+        $("dialogTitle").textContent = `在“${row.dataset.category}”中新建`;
+        $("dialogCopy").textContent = "选择创建或导入方式。";
+        $("dialogField").hidden = true;
+        $("dialogActions").hidden = true;
+        $("dialogChoices").hidden = false;
+        $("dialogChoices").innerHTML =
+          `<button data-create="note">${icon("file-plus")}<span><strong>新建笔记</strong><small>在当前分类中新建空白笔记</small></span></button><button data-create="category">${icon("folder-plus")}<span><strong>新建分类</strong><small>创建当前分类的子分类</small></span></button><button data-create="import">${icon("upload")}<span><strong>导入笔记</strong><small>从 Markdown、HTML 或 JSON 导入</small></span></button>`;
+        closeLayers();
+        $("dialogBackdrop").classList.add("open");
+      }
+      $("dialogChoices").onclick = (event) => {
+        const choice = event.target.closest("[data-create]");
+        if (!choice) return;
+        $("dialogBackdrop").classList.remove("open");
+        toast(
+          {
+            note: "已新建笔记",
+            category: "已新建分类",
+            import: "已打开导入选择",
+          }[choice.dataset.create],
+        );
+      };
+      document
+        .querySelectorAll(".create-tree")
+        .forEach(
+          (button) =>
+            (button.onclick = () =>
+              openCreateDialog(button.closest(".tree-row"))),
+        );
+      document.querySelectorAll(".delete-tree").forEach(
+        (button) =>
+          (button.onclick = () => {
+            button.closest(".tree-row").remove();
+            toast("分类已删除");
+          }),
+      );
+      const categoryIcons = [
+        "notebook-tabs",
+        "lightbulb",
+        "flask-conical",
+        "briefcase-business",
+        "palette",
+        "code-xml",
+        "camera",
+        "music",
+        "gem",
+      ];
+      const categoryColors = [
+        "#858b91",
+        "#f2c94c",
+        "#f27798",
+        "#58c96b",
+        "#58aaf0",
+        "#ad7cf0",
+      ];
+      let categoryColor = categoryColors[0];
+      function openCategoryIconPicker(trigger) {
+        currentCategoryRow = trigger.closest(".tree-row");
+        categoryColor =
+          currentCategoryRow.dataset.iconColor || categoryColors[0];
+        $("iconPicker").style.setProperty("--picker-color", categoryColor);
+        $("iconPicker").innerHTML =
+          `<div class="icon-picker-colors">${categoryColors.map((color) => `<button class="icon-color ${color === categoryColor ? "active" : ""}" data-color="${color}" aria-label="选择颜色" style="--icon-color:${color}"></button>`).join("")}</div><div class="icon-picker-grid">${categoryIcons.map((name) => `<button data-icon="${name}" aria-label="${name}">${icon(name)}</button>`).join("")}</div>`;
+        $("iconPicker").classList.add("open");
+        const r = trigger.getBoundingClientRect();
+        requestAnimationFrame(() =>
+          place($("iconPicker"), r.left, r.bottom + 5),
+        );
+      }
+      $("categoryNav").addEventListener("dblclick", (event) => {
+        const trigger = event.target.closest(".category-icon-trigger");
+        if (trigger) {
+          event.stopPropagation();
+          openCategoryIconPicker(trigger);
+          return;
+        }
+        const name = event.target.closest(".category-name");
+        if (!name) return;
+        event.stopPropagation();
+        name.contentEditable = "true";
+        name.focus();
+        const range = document.createRange();
+        range.selectNodeContents(name);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+      });
+      $("categoryNav").addEventListener("click", (event) => {
+        const deleteButton = event.target.closest(".delete-tree");
+        const dynamicRow = deleteButton?.closest("[data-dynamic-category]");
+        if (dynamicRow) {
+          event.stopPropagation();
+          dynamicRow.remove();
+          closeLayers();
+          if (!dynamicRow.classList.contains("category-row-draft"))
+            toast("分类已删除");
+          return;
+        }
+        const trigger = event.target.closest(
+          ".category-row-draft .category-icon-trigger",
+        );
+        if (!trigger) return;
+        event.stopPropagation();
+        openCategoryIconPicker(trigger);
+      });
+      $("categoryNav").addEventListener("click", (event) => {
+        const button = event.target.closest(
+          "[data-dynamic-category] .category-item",
+        );
+        if (
+          !button ||
+          event.target.closest(".category-icon-trigger") ||
+          event.target.closest(".category-name[contenteditable=true]")
+        )
+          return;
+        document
+          .querySelectorAll(".category-item")
+          .forEach((item) => item.classList.toggle("active", item === button));
+        document
+          .querySelectorAll(".system-view")
+          .forEach((item) => item.classList.remove("active"));
+        document.querySelector(".notes-heading strong").textContent =
+          button.closest(".tree-row").dataset.category;
+      });
+      $("addCategory").onclick = () => {
+        const existing = $("categoryNav").querySelector(".category-row-draft");
+        if (existing) {
+          existing.querySelector(".category-name").focus();
+          return;
+        }
+        const row = document.createElement("div");
+        row.className = "tree-row category-row-draft";
+        row.dataset.dynamicCategory = "true";
+        row.dataset.category = "未命名分类";
+        row.dataset.iconColor = categoryColors[0];
+        row.innerHTML = `<button class="nav-item category-item" style="--tree-depth:0"><span class="category-icon-trigger" title="选择图标" style="--category-icon-color:${categoryColors[0]}">${icon("notebook-tabs")}</span><span class="category-name" contenteditable="true" data-placeholder="分类名称">未命名分类</span></button><span class="tree-actions"><button class="delete-tree" aria-label="取消添加分类">${icon("trash-2")}</button></span><span class="category-count">0</span>`;
+        $("categoryNav").append(row);
+        const name = row.querySelector(".category-name");
+        name.focus();
+        const range = document.createRange();
+        range.selectNodeContents(name);
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+        openCategoryIconPicker(row.querySelector(".category-icon-trigger"));
+      };
+      $("iconPicker").onclick = (event) => {
+        const colorButton = event.target.closest("[data-color]");
+        if (colorButton) {
+          categoryColor = colorButton.dataset.color;
+          $("iconPicker").style.setProperty("--picker-color", categoryColor);
+          $("iconPicker")
+            .querySelectorAll(".icon-color")
+            .forEach((button) =>
+              button.classList.toggle("active", button === colorButton),
+            );
+          currentCategoryRow.dataset.iconColor = categoryColor;
+          currentCategoryRow
+            .querySelector(".category-icon-trigger")
+            .style.setProperty("--category-icon-color", categoryColor);
+          return;
+        }
+        const button = event.target.closest("[data-icon]");
+        if (!button) return;
+        currentCategoryRow
+          .querySelector(".category-icon-trigger use")
+          .setAttribute(
+            "href",
+            `../../assets/lucide-icons.svg#${button.dataset.icon}`,
+          );
+        currentCategoryRow.dataset.iconColor = categoryColor;
+        currentCategoryRow
+          .querySelector(".category-icon-trigger")
+          .style.setProperty("--category-icon-color", categoryColor);
+        closeLayers();
+        toast("分类图标已更新");
+      };
+      document.querySelectorAll(".category-name").forEach(
+        (name) =>
+          (name.ondblclick = (event) => {
+            event.stopPropagation();
+            name.contentEditable = "true";
+            name.focus();
+            const range = document.createRange();
+            range.selectNodeContents(name);
+            getSelection().removeAllRanges();
+            getSelection().addRange(range);
+          }),
+      );
+      document.addEventListener("keydown", (event) => {
+        if (
+          event.target.matches(".category-name[contenteditable=true]") &&
+          event.key === "Enter"
+        ) {
+          event.preventDefault();
+          finishCategoryName(event.target);
+        }
+      });
+      function finishCategoryName(name) {
+        const row = name.closest(".tree-row");
+        const value = name.textContent.trim() || "未命名分类";
+        name.textContent = value;
+        name.contentEditable = "false";
+        row.dataset.category = value;
+        row.classList.remove("category-row-draft");
+        toast(row.dataset.dynamicCategory ? "分类已新建" : "分类已重命名");
+      }
+      document.addEventListener("focusout", (event) => {
+        if (
+          event.target.matches(".category-name[contenteditable=true]") &&
+          !event.target.closest(".category-row-draft")
+        )
+          event.target.contentEditable = "false";
+      });
+      document.addEventListener("pointerdown", (event) => {
+        const draft = $("categoryNav").querySelector(".category-row-draft");
+        if (
+          draft &&
+          !event.target.closest(".category-row-draft,#iconPicker,#addCategory")
+        )
+          finishCategoryName(draft.querySelector(".category-name"));
+      });
+
+      function addJottingTreeDraft(kind, parentChildren = $("jottingTree")) {
+        if ($("jottingTree").querySelector(".jotting-tree-draft")) return;
+        const draft = document.createElement("div");
+        draft.className = "jotting-tree-draft";
+        draft.innerHTML = `<input aria-label="${kind === "folder" ? "文件夹名称" : "小记名称"}" value="${kind === "folder" ? "新建文件夹" : "未命名小记.md"}">`;
+        parentChildren.append(draft);
+        const input = draft.querySelector("input");
+        input.focus();
+        input.select();
+        let done = false;
+        const commit = () => {
+          if (done) return;
+          done = true;
+          const value = input.value.trim() ||
+            (kind === "folder" ? "新建文件夹" : "未命名小记.md");
+          if (kind === "folder") {
+            const node = document.createElement("div");
+            node.className = "jotting-tree-node";
+            node.innerHTML = `<button class="jotting-tree-row" data-kind="folder" data-expanded="true" style="--depth:0"><span class="tree-chevron">${icon("chevron-right")}</span>${icon("folder-open")}<span class="tree-name">${value}</span><span class="tree-inline-action" data-tree-action="add-file" aria-label="在${value}中新建小记">${icon("plus")}</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除${value}">${icon("trash-2")}</span></button><div class="jotting-tree-children"></div>`;
+            draft.replaceWith(node);
+          } else {
+            const file = document.createElement("button");
+            file.className = "jotting-tree-row";
+            file.dataset.kind = "file";
+            file.style.setProperty("--depth", parentChildren === $("jottingTree") ? "0" : "1");
+            file.innerHTML = `<span class="tree-chevron"></span>${icon("file")}<span class="tree-name">${value}</span><span class="tree-inline-action" data-tree-action="delete" aria-label="删除${value}">${icon("trash-2")}</span>`;
+            draft.replaceWith(file);
+          }
+          toast(kind === "folder" ? "文件夹已新建" : "小记已新建");
+        };
+        input.onkeydown = (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+          if (event.key === "Escape") {
+            done = true;
+            draft.remove();
+          }
+        };
+        input.onblur = commit;
+      }
+      $("jottingCreateButton").onclick = (event) => {
+        event.stopPropagation();
+        closeLayers("jottingCreateMenu");
+        $("jottingCreateMenu").classList.add("open");
+        const rect = event.currentTarget.getBoundingClientRect();
+        requestAnimationFrame(() =>
+          place($("jottingCreateMenu"), rect.left - 142, rect.bottom + 5),
+        );
+      };
+      $("jottingCreateMenu").onclick = (event) => {
+        const action = event.target.closest("[data-jotting-create]");
+        if (!action) return;
+        closeLayers();
+        addJottingTreeDraft(
+          action.dataset.jottingCreate === "folder" ? "folder" : "file",
+        );
+      };
+      $("jottingTree").onclick = (event) => {
+        const deleteAction = event.target.closest('[data-tree-action="delete"]');
+        if (deleteAction) {
+          event.stopPropagation();
+          const row = deleteAction.closest(".jotting-tree-row");
+          const name = row.querySelector(".tree-name").textContent.trim();
+          if (row.dataset.kind === "folder") row.closest(".jotting-tree-node").remove();
+          else row.remove();
+          toast(`已删除${name}`);
+          return;
+        }
+        const addFile = event.target.closest('[data-tree-action="add-file"]');
+        if (addFile) {
+          event.stopPropagation();
+          const node = addFile.closest(".jotting-tree-node");
+          const folder = node.querySelector('[data-kind="folder"]');
+          const children = node.querySelector(".jotting-tree-children");
+          folder.dataset.expanded = "true";
+          children.hidden = false;
+          addJottingTreeDraft("file", children);
+          return;
+        }
+        const row = event.target.closest(".jotting-tree-row");
+        if (!row) return;
+        if (row.dataset.kind === "folder") {
+          const expanded = row.dataset.expanded === "true";
+          row.dataset.expanded = String(!expanded);
+          const children = row.closest(".jotting-tree-node").querySelector(".jotting-tree-children");
+          children.hidden = expanded;
+          row.querySelector('use[href*="folder"]').setAttribute(
+            "href",
+            `../../assets/lucide-icons.svg#folder${expanded ? "" : "-open"}`,
+          );
+          return;
+        }
+        $("jottingTree")
+          .querySelectorAll(".jotting-tree-row")
+          .forEach((item) => item.classList.toggle("active", item === row));
+        $("jottingCurrentName").textContent =
+          row.querySelector(".tree-name").textContent;
+      };
+      $("jottingTreeToggle").onclick = () => {
+        const collapsed = $("workspace").dataset.jottingTreeCollapsed === "true";
+        $("workspace").dataset.jottingTreeCollapsed = String(!collapsed);
+        $("jottingTreeToggleIcon").setAttribute(
+          "href",
+          `../../assets/lucide-icons.svg#panel-left-${collapsed ? "close" : "open"}`,
+        );
+      };
+      $("chooseBuiltInCover").onclick = (event) => {
+        event.stopPropagation();
+        $("jottingCoverPicker").classList.toggle("open");
+      };
+      $("jottingCoverPicker").onclick = (event) => {
+        const button = event.target.closest("[data-cover]");
+        if (!button) return;
+        $("jottingCoverImage").src = button.dataset.cover;
+        $("jottingCoverPicker")
+          .querySelectorAll("[data-cover]")
+          .forEach((item) => item.classList.toggle("active", item === button));
+        $("jottingCoverPicker").classList.remove("open");
+        toast("封面已更新");
+      };
+      $("uploadJottingCover").onclick = () => $("jottingCoverInput").click();
+      $("jottingCoverInput").onchange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          $("jottingCoverImage").src = reader.result;
+          toast("本地封面已载入");
+        };
+        reader.readAsDataURL(file);
+      };
+      $("addTag").onclick = () => {
+        if ($("documentTags").querySelector(".inline-tag-editor")) return;
+        const addTag = $("addTag");
+        const editor = document.createElement("label");
+        editor.className = "inline-tag-editor";
+        editor.innerHTML = `<input aria-label="输入标签" placeholder="输入标签名称">`;
+        addTag.replaceWith(editor);
+        const input = editor.querySelector("input");
+        input.focus();
+        let finished = false;
+        const commit = () => {
+          if (finished) return;
+          finished = true;
+          const value = input.value.trim();
+          if (value) {
+            const tag = document.createElement("button");
+            tag.className = "tag removable";
+            tag.innerHTML = `${value} ${icon("x")}`;
+            editor.before(tag);
+            toast("标签已添加");
+          }
+          if (editor.isConnected) editor.replaceWith(addTag);
+        };
+        input.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          }
+          if (event.key === "Escape") {
+            finished = true;
+            if (editor.isConnected) editor.replaceWith(addTag);
+          }
+        });
+        input.addEventListener("blur", commit, { once: true });
+      };
+      $("documentTags").addEventListener("click", (event) => {
+        const tag = event.target.closest(".tag.removable");
+        if (tag) tag.remove();
+      });
+      $("dialogCancel").onclick = () =>
+        $("dialogBackdrop").classList.remove("open");
+      $("dialogConfirm").onclick = () => {
+        $("dialogBackdrop").classList.remove("open");
+        toast("已确认");
+      };
+      $("dialogBackdrop").onclick = (event) => {
+        if (event.target === event.currentTarget)
+          event.currentTarget.classList.remove("open");
+      };
+      $("documentTitle").oninput = () => {
+        $("saveStatus").textContent = "正在保存…";
+        setTimeout(() => ($("saveStatus").textContent = "已保存"), 700);
+      };
+      $("editorContent").addEventListener("input", () => {
+        $("saveStatus").textContent = "正在保存…";
+        setTimeout(() => ($("saveStatus").textContent = "已保存"), 700);
+      });
+      $("notesToggle").onclick = () => {
+        const collapsed = $("workspace").dataset.notesCollapsed === "true";
+        $("workspace").dataset.notesCollapsed = String(!collapsed);
+        $("notesToggleIcon").setAttribute(
+          "href",
+          `../../assets/lucide-icons.svg#panel-left-${collapsed ? "close" : "open"}`,
+        );
+      };
+      $("outlineToggle").onclick = () => {
+        $("readingLayout").dataset.outlineCollapsed = String(
+          $("readingLayout").dataset.outlineCollapsed !== "true",
+        );
+      };
+      document.querySelectorAll(".outline-link").forEach(
+        (button) =>
+          (button.onclick = () => {
+            $(button.dataset.target).scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            document
+              .querySelectorAll(".outline-link")
+              .forEach((x) => x.classList.toggle("active", x === button));
+          }),
+      );
+      $("themeButton").onclick = () => {
+        themeIndex = (themeIndex + 1) % 3;
+        const modes = ["light", "dark", "light"],
+          icons = ["sun", "moon", "monitor"],
+          labels = ["浅色", "深色", "跟随系统"];
+        document.documentElement.dataset.theme = modes[themeIndex];
+        $("themeIcon").setAttribute(
+          "href",
+          `../../assets/lucide-icons.svg#${icons[themeIndex]}`,
+        );
+        $("themeButton").setAttribute(
+          "aria-label",
+          `主题：${labels[themeIndex]}`,
+        );
+      };
+      $("shareButton").onclick = () => toast("分享链接已复制");
+      $("undoButton").onclick = () => toast("操作已撤销");
+      $("globalSearch").oninput = (event) => {
+        const query = event.target.value.trim().toLowerCase();
+        document
+          .querySelectorAll(".prototype-note-row")
+          .forEach(
+            (row) =>
+              (row.hidden =
+                query && !row.textContent.toLowerCase().includes(query)),
+          );
+      };
+      document.addEventListener("keydown", (event) => {
+        if (
+          (event.ctrlKey || event.metaKey) &&
+          event.key.toLowerCase() === "k"
+        ) {
+          event.preventDefault();
+          $("globalSearch").focus();
+        }
+        if (event.key === "Escape") {
+          if ($("dialogBackdrop").classList.contains("open"))
+            $("dialogBackdrop").classList.remove("open");
+          else closeLayers();
+        }
+      });
+      document.addEventListener("click", (event) => {
+        if (event.target.closest("#selectionBlock,#selectionToolbar")) return;
+        if (
+          !event.target.closest(
+            ".prototype-layer,.more-button,#documentMenuButton,.block-handle,.category-icon-trigger,#addCategory,#jottingCreateButton",
+          )
+        )
+          closeLayers();
+      });
+      renderNotes();
+      renderSlash();
+    </script>
+  </body>
+</html>
