@@ -1,0 +1,270 @@
+.product-menu,
+.prototype-menu {
+  z-index: 100;
+  width: 224px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  overflow: auto;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.create-dropdown {
+  width: 224px;
+}
+
+.create-dropdown button {
+  min-height: 44px;
+  justify-content: flex-start;
+  padding: 5px 9px;
+}
+
+.create-dropdown button > span {
+  min-width: 0;
+}
+
+.create-dropdown .menu-title,
+.create-dropdown small {
+  display: block;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Design rule: creation menus always use regular weight. */
+.create-dropdown .menu-title { font-weight: 400; }
+
+.create-dropdown small {
+  margin-top: 1px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.document-menu,
+.category-create-menu,
+.jotting-create-menu,
+.note-list-menu {
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.product-menu button,
+.prototype-menu button {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 35px;
+  padding: 0 9px;
+  border-radius: 6px;
+  gap: 9px;
+  text-align: left;
+}
+
+.prototype-menu button > span {
+  min-width: 0;
+}
+
+.prototype-menu button strong,
+.prototype-menu button small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-picker {
+  position: fixed;
+  top: auto;
+  left: auto;
+}
+
+.slash-menu {
+  max-height: min(430px, calc(100vh - 16px));
+  padding: 0;
+  overflow: hidden;
+}
+
+.slash-menu-scroll {
+  width: 100%;
+  min-height: 0;
+  padding: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.jotting-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.jotting-save-status {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+}
+
+.jotting-paper:focus,
+.jotting-paper:focus-within,
+.jotting-markdown:focus,
+.jotting-markdown.ProseMirror-focused {
+  outline: 0;
+  box-shadow: 0 14px 36px rgba(35, 45, 55, 0.07);
+}
+
+.jotting-cover {
+  width: 100%;
+  margin-inline: 0;
+  border: 0;
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+}
+
+.jotting-cover::after,
+.jotting-cover img {
+  border: 0;
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+}
+
+.jotting-cover-picker {
+  position: fixed;
+  z-index: 35;
+  top: auto;
+  right: auto;
+  display: grid;
+}
+
+.confirm-delete {
+  color: #fff !important;
+  background: #b84545 !important;
+}
+
+.jotting-tree-row.is-dragging {
+  opacity: .45;
+}
+
+.jotting-tree-row.drop-target {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.jotting-tree.root-drop-target {
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+
+.sort-button .icon {
+  transition: transform 220ms ease, opacity 160ms ease;
+}
+
+.sort-button:active .icon {
+  transform: translateY(2px) scale(.9);
+  opacity: .55;
+}
+
+.notes-list[data-sort-direction] .note-card-row {
+  animation: sort-list-enter 220ms ease both;
+}
+
+.workspace > section,
+.workspace > aside {
+  animation: tab-view-enter 200ms ease both;
+}
+
+@keyframes sort-list-enter {
+  from { opacity: .25; transform: translateY(5px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes tab-view-enter {
+  from { opacity: .25; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+:root[data-theme="dark"] .jotting-paper,
+:root[data-theme="dark"] .jotting-document-scroll,
+:root[data-theme="dark"] .jotting-document-panel,
+:root[data-theme="dark"] .jotting-tree-panel {
+  color: var(--text-primary);
+  background: var(--surface);
+}
+
+:root[data-theme="dark"] .jotting-markdown,
+:root[data-theme="dark"] .jotting-markdown h1,
+:root[data-theme="dark"] .jotting-markdown h2,
+:root[data-theme="dark"] .jotting-markdown h3 {
+  color: #fff;
+}
+:root[data-theme="dark"] .jotting-markdown strong,
+:root[data-theme="dark"] .jotting-markdown b { color:#fff; }
+:root[data-theme="dark"] .jotting-markdown em { color:var(--text-secondary); }
+:root[data-theme="dark"] .jotting-tree-heading strong,
+:root[data-theme="dark"] .jotting-path strong { color:#fff; }
+:root[data-theme="dark"] .jotting-markdown blockquote { color:var(--text-secondary); border-color:var(--border); }
+:root[data-theme="dark"] .jotting-markdown code { color:#d8e9ff; background:rgba(255,255,255,.08); }
+
+.sidebar { overflow: hidden; }
+.sidebar-content { display:flex; min-height:0; height:calc(100% - 86px); flex-direction:column; overflow:hidden; }
+.primary-nav, .section-label { flex:0 0 auto; }
+.category-nav { min-height:0; flex:1 1 auto; align-content:start; grid-auto-rows:43px; gap:4px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.category-pinned { margin-bottom:2px; border-radius:9px; background:color-mix(in srgb,var(--accent-soft) 58%,transparent); }
+.category-pin-mark { width:12px!important; height:12px!important; margin-left:auto; color:var(--accent)!important; }
+
+.note-create-menu-trigger { color:var(--text-muted); background:transparent; box-shadow:none; }
+.note-create-menu-trigger .icon { width:18px; height:18px; }
+.note-create-dropdown { width:224px; }
+.empty-trash-button { color:#b84545; }
+.note-category-token { display:inline-flex; max-width:110px; height:20px; align-items:center; padding:0 8px; overflow:hidden; border:0; border-radius:999px; color:#0874cf; background:#e8f4ff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+:root[data-theme="dark"] .note-category-token { color:#8dccff; background:rgba(22,135,232,.2); }
+
+.document-menu, .document-menu button, .note-list-menu, .note-list-menu button { text-align:left!important; }
+.document-menu button, .note-list-menu button { justify-content:flex-start!important; }
+.document-menu button > .icon:first-child,
+.note-list-menu button > .icon:first-child { margin-left:0!important; margin-right:0!important; }
+.selection-toolbar-inner { display:flex; align-items:center; gap:2px; }
+.selection-toolbar .heading-tool { min-width:34px; font-size:12px; font-weight:650; }
+.editor-surface .block-actions { position:absolute!important; }
+.block-insert-menu { transform-origin:top left; }
+.inline-input-popover.is-mermaid { align-items:stretch; }
+.inline-input-popover textarea { width:min(480px,calc(100vw - 130px)); min-height:150px; resize:vertical; padding:10px; border:1px solid var(--border); border-radius:7px; color:var(--text-primary); background:var(--surface); outline:0; font:13px/1.55 ui-monospace,monospace; }
+.mermaid-diagram { width:100%; margin:20px 0; padding:18px; overflow:auto; border:0; border-radius:12px; background:color-mix(in srgb,var(--surface-hover) 75%,transparent); text-align:center; }
+.mermaid-diagram svg { max-width:100%; height:auto; }
+.mermaid-diagram.is-error { color:#b84545; text-align:left; white-space:pre-wrap; }
+
+/* Text blocks never gain a frame, including selection and double-click states. */
+.note-editor-content [data-block-id],
+.note-editor-content [data-block-id]:focus,
+.note-editor-content .ProseMirror-selectednode,
+.note-editor-content *:focus-visible { border-color:transparent!important; outline:0!important; box-shadow:none!important; }
+
+.jotting-inline-rename { flex:1; min-width:0; height:27px; padding:0 4px; border:0; border-radius:0; color:var(--text-primary); background:transparent; outline:0; }
+.jotting-tree-row { cursor:default; user-select:none; }
+.jotting-tree-row[data-kind="file"] { cursor:grab; }
+.jotting-tree-row.is-dragging { cursor:grabbing; }
+
+:root[data-theme="dark"] .jotting-markdown p,
+:root[data-theme="dark"] .jotting-markdown li {
+  color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .jotting-cover-actions {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+}
+
+:root[data-theme="dark"] .jotting-cover-actions button {
+  color: var(--text-secondary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace > section,
+  .workspace > aside,
+  .notes-list[data-sort-direction] .note-card-row {
+    animation: none;
+  }
+}

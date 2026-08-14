@@ -14,6 +14,10 @@ export const SUPPORTED_TOP_LEVEL_NODES = new Set([
   'taskList',
   'blockquote',
   'codeBlock',
+  'image',
+  'table',
+  'blockMath',
+  'mermaid',
 ])
 
 const SUPPORTED_NODES = new Set([
@@ -22,17 +26,29 @@ const SUPPORTED_NODES = new Set([
   'taskItem',
   'text',
   'hardBreak',
+  'image',
+  'table',
+  'tableRow',
+  'tableHeader',
+  'tableCell',
+  'blockMath',
+  'inlineMath',
+  'mermaid',
 ])
 
-const SUPPORTED_MARKS = new Set(['bold', 'italic', 'strike', 'code'])
+const SUPPORTED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link'])
 
 const ALLOWED_CHILDREN: Record<string, Set<string>> = {
-  paragraph: new Set(['text', 'hardBreak']),
-  heading: new Set(['text', 'hardBreak']),
+  paragraph: new Set(['text', 'hardBreak', 'inlineMath', 'image']),
+  heading: new Set(['text', 'hardBreak', 'inlineMath', 'image']),
   codeBlock: new Set(['text']),
   bulletList: new Set(['listItem']),
   orderedList: new Set(['listItem']),
   taskList: new Set(['taskItem']),
+  table: new Set(['tableRow']),
+  tableRow: new Set(['tableHeader', 'tableCell']),
+  tableHeader: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath']),
+  tableCell: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath']),
   listItem: new Set([
     'paragraph',
     'heading',
@@ -62,6 +78,10 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   ]),
   text: new Set(),
   hardBreak: new Set(),
+  image: new Set(),
+  blockMath: new Set(),
+  inlineMath: new Set(),
+  mermaid: new Set(),
 }
 
 function validateNode(node: DocumentNode) {

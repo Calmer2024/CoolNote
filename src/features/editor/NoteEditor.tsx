@@ -1,153 +1,66 @@
-import { Extension } from '@tiptap/core'
+import { Extension, InputRule, Node, mergeAttributes } from '@tiptap/core'
+import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
+import { Mathematics } from '@tiptap/extension-mathematics'
+import Placeholder from '@tiptap/extension-placeholder'
+import { TableKit } from '@tiptap/extension-table'
 import TaskItem from '@tiptap/extension-task-item'
 import TaskList from '@tiptap/extension-task-list'
+import Underline from '@tiptap/extension-underline'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Plugin } from '@tiptap/pm/state'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import 'katex/dist/katex.min.css'
 
-import type { NoteDto, VersionedDocument } from '../../shared/tauri/contracts'
-import {
-  SUPPORTED_TOP_LEVEL_NODES,
-  normalizeDocument,
-  toTiptapDocument,
-} from './document'
+import type { NoteDto, TagDto, VersionedDocument } from '../../shared/tauri/contracts'
+import { Icon } from '../../shared/components/Icon'
+import { FloatingLayer } from '../../shared/components/Overlay'
+import { SUPPORTED_TOP_LEVEL_NODES, normalizeDocument, toTiptapDocument } from './document'
 
-export type EditorChange = {
-  title: string
-  documentJson: VersionedDocument
-}
+export type EditorChange = { title: string; documentJson: VersionedDocument }
+const StableBlockIds=Extension.create({name:'stableBlockIds',addGlobalAttributes(){return[{types:[...SUPPORTED_TOP_LEVEL_NODES],attributes:{blockId:{default:null,parseHTML:element=>element.getAttribute('data-block-id'),renderHTML:attributes=>attributes.blockId?{'data-block-id':attributes.blockId,tabindex:'-1'}:{}}}}]},addProseMirrorPlugins(){return[new Plugin({appendTransaction:(_transactions,_oldState,state)=>{const transaction=state.tr;let changed=false;state.doc.forEach((node,offset)=>{if(SUPPORTED_TOP_LEVEL_NODES.has(node.type.name)&&!node.attrs.blockId){transaction.setNodeMarkup(offset,undefined,{...node.attrs,blockId:crypto.randomUUID()});changed=true}});return changed?transaction:null}})]}})
+const MarkdownMathShortcuts=Extension.create({name:'markdownMathShortcuts',priority:1100,addInputRules(){return[
+  new InputRule({find:/^\$\$([^$\n]+)\$\$$/,handler:({state,range,match})=>{const $from=state.doc.resolve(range.from);state.tr.replaceWith($from.before(),$from.after(),state.schema.nodes.blockMath.create({latex:match[1].trim()}))}}),
+  new InputRule({find:/(?<!\$)\$([^$\n]+)\$$/,handler:({state,range,match})=>{state.tr.replaceWith(range.from,range.to,state.schema.nodes.inlineMath.create({latex:match[1].trim()}))}}),
+]}})
+const MermaidNode=Node.create({name:'mermaid',group:'block',atom:true,draggable:true,addAttributes(){return{source:{default:'graph TD\n  A[开始] --> B[完成]',parseHTML:element=>element.getAttribute('data-source')??'',renderHTML:attrs=>({'data-source':attrs.source})}}},parseHTML(){return[{tag:'div[data-type="mermaid"]'}]},renderHTML({HTMLAttributes}){return['div',mergeAttributes(HTMLAttributes,{'data-type':'mermaid',class:'mermaid-diagram'})]},addNodeView(){return({node})=>{const dom=document.createElement('div');dom.className='mermaid-diagram';dom.setAttribute('contenteditable','false');let current=node;const render=async()=>{try{const module=await import('mermaid');module.default.initialize({startOnLoad:false,securityLevel:'strict',theme:document.documentElement.dataset.theme==='dark'?'dark':'neutral'});const id=`coolnote-mermaid-${crypto.randomUUID()}`;const result=await module.default.render(id,current.attrs.source);dom.innerHTML=result.svg;dom.classList.remove('is-error')}catch{dom.textContent=current.attrs.source;dom.classList.add('is-error')}};void render();return{dom,update:next=>{if(next.type.name!=='mermaid')return false;current=next;void render();return true}}}}})
 
-const StableBlockIds = Extension.create({
-  name: 'stableBlockIds',
+type Props={note:NoteDto;availableTags:TagDto[];focusTitle?:boolean;onChange:(change:EditorChange)=>void;onTagsChange:(tagIds:string[])=>void;onCreateTag:(name:string)=>Promise<TagDto>;onAddAttachment:(file:File)=>Promise<string>}
+type Point={left:number;top:number}
+type InputLayer={kind:'link'|'inlineMath'|'blockMath'|'mermaid'|'tag';value:string}|null
+const slashItems=[
+  {name:'正文',copy:'普通文本段落',icon:'pilcrow',run:(e:any)=>e.chain().focus().setParagraph().run()},
+  {name:'一级标题',copy:'大章节标题',icon:'heading-1',run:(e:any)=>e.chain().focus().toggleHeading({level:1}).run()},
+  {name:'二级标题',copy:'章节标题',icon:'heading-2',run:(e:any)=>e.chain().focus().toggleHeading({level:2}).run()},
+  {name:'无序列表',copy:'项目符号列表',icon:'list',run:(e:any)=>e.chain().focus().toggleBulletList().run()},
+  {name:'任务列表',copy:'可勾选任务',icon:'list-checks',run:(e:any)=>e.chain().focus().toggleTaskList().run()},
+  {name:'引用',copy:'引用或强调内容',icon:'quote',run:(e:any)=>e.chain().focus().toggleBlockquote().run()},
+  {name:'代码块',copy:'等宽代码内容',icon:'square-code',run:(e:any)=>e.chain().focus().toggleCodeBlock().run()},
+  {name:'分隔线',copy:'分隔内容区段',icon:'minus',run:(e:any)=>e.chain().focus().setHorizontalRule().run()},
+]
 
-  addGlobalAttributes() {
-    return [
-      {
-        types: [...SUPPORTED_TOP_LEVEL_NODES],
-        attributes: {
-          blockId: {
-            default: null,
-            parseHTML: (element) => element.getAttribute('data-block-id'),
-            renderHTML: (attributes) =>
-              attributes.blockId
-                ? {
-                    'data-block-id': attributes.blockId,
-                    tabindex: '-1',
-                  }
-                : {},
-          },
-        },
-      },
-    ]
-  },
-
-  addProseMirrorPlugins() {
-    return [
-      new Plugin({
-        appendTransaction: (_transactions, _oldState, state) => {
-          const transaction = state.tr
-          let changed = false
-          state.doc.forEach((node, offset) => {
-            if (
-              SUPPORTED_TOP_LEVEL_NODES.has(node.type.name) &&
-              !node.attrs.blockId
-            ) {
-              transaction.setNodeMarkup(offset, undefined, {
-                ...node.attrs,
-                blockId: crypto.randomUUID(),
-              })
-              changed = true
-            }
-          })
-          return changed ? transaction : null
-        },
-      }),
-    ]
-  },
-})
-
-type NoteEditorProps = {
-  note: NoteDto
-  focusTitle?: boolean
-  onChange: (change: EditorChange) => void
-}
-
-export function NoteEditor({ note, focusTitle = false, onChange }: NoteEditorProps) {
-  const titleRef = useRef<HTMLInputElement>(null)
-  const document = useMemo(() => normalizeDocument(note.document), [note.id])
-  const latestTitle = useRef(note.title)
-  const latestDocument = useRef(document)
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-        horizontalRule: false,
-        link: false,
-        underline: false,
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      StableBlockIds,
-    ],
-    content: toTiptapDocument(document),
-    editorProps: {
-      attributes: {
-        class: 'note-editor-content',
-        role: 'textbox',
-        'aria-label': '笔记正文',
-        'aria-multiline': 'true',
-      },
-    },
-    onUpdate: ({ editor: currentEditor }) => {
-      const json = currentEditor.getJSON()
-      const nextDocument = normalizeDocument({
-        schemaVersion: 1,
-        type: 'doc',
-        content: json.content ?? [],
-      })
-      latestDocument.current = nextDocument
-      onChange({ title: latestTitle.current, documentJson: nextDocument })
-    },
-  })
-
-  useEffect(() => {
-    latestTitle.current = note.title
-  }, [note.title])
-
-  useEffect(() => {
-    latestDocument.current = document
-    editor?.commands.setContent(toTiptapDocument(document), { emitUpdate: false })
-  }, [document, editor, note.id])
-
-  useEffect(() => {
-    if (focusTitle) titleRef.current?.focus()
-  }, [focusTitle, note.id])
-
-  return (
-    <div className="document-body">
-      <div className="document-heading">
-        <input
-          ref={titleRef}
-          className="document-title-input"
-          aria-label="笔记标题"
-          value={note.title}
-          placeholder="无标题笔记"
-          onChange={(event) => {
-            latestTitle.current = event.target.value
-            onChange({
-              title: event.target.value,
-              documentJson: latestDocument.current,
-            })
-          }}
-        />
-        <div className="document-tags" aria-label="笔记元数据">
-          <span className="document-chip">本机笔记</span>
-        </div>
-      </div>
-      <EditorContent editor={editor} />
-    </div>
-  )
+export function NoteEditor({note,availableTags,focusTitle=false,onChange,onTagsChange,onCreateTag,onAddAttachment}:Props){
+  const titleRef=useRef<HTMLInputElement>(null);const fileRef=useRef<HTMLInputElement>(null);const slashRef=useRef<HTMLDivElement>(null);const addBlockRef=useRef<HTMLButtonElement>(null);const normalizedDocument=useMemo(()=>normalizeDocument(note.document),[note.id]);const latestTitle=useRef(note.title);const latestDocument=useRef(normalizedDocument)
+  const [selection,setSelection]=useState<Point|null>(null);const [slash,setSlash]=useState<Point|null>(null);const [blockInsertMenu,setBlockInsertMenu]=useState(false);const [slashIndex,setSlashIndex]=useState(0);const [blockPoint,setBlockPoint]=useState<Point|null>(null);const [tagDraft,setTagDraft]=useState<string|null>(null);const [inputLayer,setInputLayer]=useState<InputLayer>(null)
+  const updateLayers=(current:any)=>{const {from,to,$from}=current.state.selection;try{const start=current.view.coordsAtPos(from);if(from!==to){const end=current.view.coordsAtPos(to);setSelection({left:start.left,top:Math.min(start.top,end.top)-8})}else setSelection(null);const nodeStart=$from.before(1);const blockDom=current.view.nodeDOM(nodeStart);const blockBox=blockDom instanceof HTMLElement?blockDom.getBoundingClientRect():null;const surfaceBox=current.view.dom.closest('.editor-surface')?.getBoundingClientRect();const point=current.view.coordsAtPos(Math.max(1,nodeStart));setBlockPoint({left:(blockBox?.left??point.left)-(surfaceBox?.left??0)-34,top:(blockBox?.top??point.top)-(surfaceBox?.top??0)});setSlash(from===to&&$from.parent.type.name==='paragraph'&&$from.parent.textContent==='/'?{left:start.left,top:start.bottom+6}:null)}catch{setSelection(null)}}
+  const editor=useEditor({immediatelyRender:false,extensions:[StarterKit.configure({heading:{levels:[1,2,3]},link:false,underline:false}),Underline,Link.configure({openOnClick:false,autolink:true,defaultProtocol:'https'}),Image.configure({allowBase64:true,inline:false}),TableKit.configure({table:{resizable:true}}),TaskList,TaskItem.configure({nested:true}),Mathematics.configure({katexOptions:{throwOnError:false}}),MarkdownMathShortcuts,MermaidNode,Placeholder.configure({placeholder:'输入 / 插入内容'}),StableBlockIds],content:toTiptapDocument(normalizedDocument),editorProps:{attributes:{class:'note-editor-content',role:'textbox','aria-label':'笔记正文','aria-multiline':'true'},handleKeyDown:(view,event)=>{if(event.key==='/'&&view.state.selection.empty&&view.state.selection.$from.parent.type.name==='paragraph'&&view.state.selection.$from.parent.textContent===''){window.setTimeout(()=>{const point=view.coordsAtPos(view.state.selection.from);setBlockInsertMenu(false);setSlash({left:point.left,top:point.bottom+6});setSlashIndex(0)},0)}return false}},onSelectionUpdate:({editor:current})=>updateLayers(current),onFocus:({editor:current})=>updateLayers(current),onBlur:()=>{window.setTimeout(()=>setSelection(null),120)},onUpdate:({editor:current})=>{const next=normalizeDocument({schemaVersion:1,type:'doc',content:current.getJSON().content??[]});latestDocument.current=next;onChange({title:latestTitle.current,documentJson:next});updateLayers(current)}})
+  useEffect(()=>{latestTitle.current=note.title},[note.title]);useEffect(()=>{latestDocument.current=normalizedDocument;editor?.commands.setContent(toTiptapDocument(normalizedDocument),{emitUpdate:false})},[normalizedDocument,editor,note.id]);useEffect(()=>{if(focusTitle)titleRef.current?.focus()},[focusTitle,note.id])
+  useEffect(()=>{if(!editor)return;const reposition=()=>editor.isFocused&&updateLayers(editor);window.addEventListener('resize',reposition);window.addEventListener('scroll',reposition,true);return()=>{window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true)}},[editor])
+  useEffect(()=>{if(!editor)return;const total=slashItems.length+4;const handler=(event:KeyboardEvent)=>{if(!slash&&!blockInsertMenu)return;if(event.key==='ArrowDown'){event.preventDefault();setSlashIndex(x=>(x+1)%total)}if(event.key==='ArrowUp'){event.preventDefault();setSlashIndex(x=>(x-1+total)%total)}if(event.key==='Enter'){event.preventDefault();runSlash(slashIndex)}if(event.key==='Escape'){setSlash(null);setBlockInsertMenu(false)}};document.addEventListener('keydown',handler,true);return()=>document.removeEventListener('keydown',handler,true)},[editor,slash,blockInsertMenu,slashIndex])
+  useEffect(()=>{slashRef.current?.querySelector('.slash-item.active')?.scrollIntoView({block:'nearest'})},[slashIndex])
+  if(!editor)return null
+  const addFile=async(file:File)=>{const url=await onAddAttachment(file);if(file.type.startsWith('image/'))editor.chain().focus().setImage({src:url,alt:file.name,title:file.name}).run();else editor.chain().focus().insertContent(`<p><a href="${url}" download="${file.name}">${file.name}</a></p>`).run()}
+  function runSlash(index:number){if(!editor)return;const {from}=editor.state.selection;if(blockInsertMenu){const insertAt=activeBlock().to;editor.chain().focus().insertContentAt(insertAt,{type:'paragraph'}).setTextSelection(insertAt+1).run()}else editor.chain().focus().deleteRange({from:Math.max(1,from-1),to:from}).run();if(index<slashItems.length)slashItems[index].run(editor);else if(index===slashItems.length)fileRef.current?.click();else if(index===slashItems.length+1)editor.chain().focus().insertTable({rows:3,cols:3,withHeaderRow:true}).run();else if(index===slashItems.length+2)setInputLayer({kind:'blockMath',value:'\\sum_{i=1}^{n} i'});else setInputLayer({kind:'mermaid',value:'graph TD\n  A[开始] --> B[完成]'});setSlash(null);setBlockInsertMenu(false)}
+  const applyInput=async()=>{if(!inputLayer)return;const value=inputLayer.value.trim();if(!value){setInputLayer(null);return}if(inputLayer.kind==='link')editor.chain().focus().extendMarkRange('link').setLink({href:value}).run();if(inputLayer.kind==='inlineMath')editor.chain().focus().insertInlineMath({latex:value}).run();if(inputLayer.kind==='blockMath')editor.chain().focus().insertBlockMath({latex:value}).run();if(inputLayer.kind==='mermaid')editor.chain().focus().insertContent({type:'mermaid',attrs:{source:value}}).run();if(inputLayer.kind==='tag'){const existing=availableTags.find(tag=>tag.name.toLowerCase()===value.toLowerCase());const tag=existing??await onCreateTag(value);onTagsChange([...note.tags.map(x=>x.id),tag.id])}setInputLayer(null)}
+  const commitTag=async()=>{if(tagDraft===null)return;const value=tagDraft.trim();setTagDraft(null);if(!value)return;const existing=availableTags.find(tag=>tag.name.toLowerCase()===value.toLowerCase());const tag=existing??await onCreateTag(value);if(!note.tags.some(item=>item.id===tag.id))onTagsChange([...note.tags.map(item=>item.id),tag.id])}
+  const activeBlock=()=>{const {$from}=editor.state.selection;return {from:$from.before(1),to:$from.after(1)}}
+  return <div className="document-body">
+    <div className="document-heading"><input ref={titleRef} className="document-title-input" aria-label="笔记标题" value={note.title} placeholder="无标题笔记" onChange={event=>{latestTitle.current=event.target.value;onChange({title:event.target.value,documentJson:latestDocument.current})}}/><div className="document-tags" id="documentTags"><span className="document-chip">自动保存 · 本机笔记</span>{note.tags.map(tag=><button className="tag removable" key={tag.id} onClick={()=>onTagsChange(note.tags.filter(x=>x.id!==tag.id).map(x=>x.id))}>{tag.name}<Icon name="x"/></button>)}{tagDraft===null?<button className="document-chip add-tag" id="addTag" onClick={()=>setTagDraft('')}><Icon name="plus"/>添加标签</button>:<label className="inline-tag-editor"><input autoFocus aria-label="输入标签" placeholder="输入标签名称" value={tagDraft} onChange={event=>setTagDraft(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void commitTag()}if(event.key==='Escape')setTagDraft(null)}} onBlur={()=>void commitTag()} list="availableTags"/><datalist id="availableTags">{availableTags.filter(tag=>!note.tags.some(item=>item.id===tag.id)).map(tag=><option key={tag.id} value={tag.name}/>)}</datalist></label>}</div></div>
+    <div className="editor-surface"><EditorContent editor={editor}/>{blockPoint&&<div className="block-actions" style={blockPoint}><button ref={addBlockRef} aria-label="添加内容块" aria-expanded={blockInsertMenu} onMouseDown={e=>e.preventDefault()} onClick={()=>{setSlash(null);setSlashIndex(0);setBlockInsertMenu(value=>!value)}}><Icon name="plus"/></button></div>}</div>
+    <FloatingLayer open={!!selection} point={selection??undefined} placement="top-start" gap={8} className="selection-toolbar product-layer" onDismiss={()=>setSelection(null)}>{selection&&<div className="selection-toolbar-inner" onMouseDown={e=>e.preventDefault()}><button className={`heading-tool${editor.isActive('heading',{level:1})?' active':''}`} title="一级标题" onClick={()=>editor.chain().focus().toggleHeading({level:1}).run()}>H1</button><button className={`heading-tool${editor.isActive('heading',{level:2})?' active':''}`} title="二级标题" onClick={()=>editor.chain().focus().toggleHeading({level:2}).run()}>H2</button><button className={`heading-tool${editor.isActive('heading',{level:3})?' active':''}`} title="三级标题" onClick={()=>editor.chain().focus().toggleHeading({level:3}).run()}>H3</button><span className="divider"/><button className={editor.isActive('bold')?'active':''} onClick={()=>editor.chain().focus().toggleBold().run()}><strong>B</strong></button><button onClick={()=>editor.chain().focus().toggleItalic().run()}><i>I</i></button><button onClick={()=>editor.chain().focus().toggleUnderline().run()}><u>U</u></button><button onClick={()=>editor.chain().focus().toggleStrike().run()}><s>S</s></button><button onClick={()=>editor.chain().focus().toggleCode().run()}><Icon name="code"/></button><span className="divider"/><button onClick={()=>setInputLayer({kind:'link',value:editor.getAttributes('link').href??'https://'})}><Icon name="link"/></button></div>}</FloatingLayer>
+    <FloatingLayer open={!!slash||blockInsertMenu} anchor={blockInsertMenu?addBlockRef:undefined} point={blockInsertMenu?undefined:slash??undefined} placement="bottom-start" gap={4} className="slash-menu product-layer block-insert-menu" onDismiss={()=>{setSlash(null);setBlockInsertMenu(false)}}>{(slash||blockInsertMenu)&&<div ref={slashRef} className="slash-menu-scroll"><div className="slash-label">基础块</div>{slashItems.map((item,index)=><button className={`slash-item${index===slashIndex?' active':''}`} key={item.name} onMouseDown={e=>e.preventDefault()} onMouseEnter={()=>setSlashIndex(index)} onClick={()=>runSlash(index)}><Icon name={item.icon}/><span className="slash-copy"><strong>{item.name}</strong><small>{item.copy}</small></span></button>)}<div className="slash-label">媒体与高级内容</div><button className={`slash-item${slashIndex===slashItems.length?' active':''}`} onMouseEnter={()=>setSlashIndex(slashItems.length)} onClick={()=>runSlash(slashItems.length)}><Icon name="paperclip"/><span className="slash-copy"><strong>图片或附件</strong><small>保存到本机附件目录</small></span></button><button className={`slash-item${slashIndex===slashItems.length+1?' active':''}`} onMouseEnter={()=>setSlashIndex(slashItems.length+1)} onClick={()=>runSlash(slashItems.length+1)}><Icon name="table"/><span className="slash-copy"><strong>表格</strong><small>3 × 3 数据表格</small></span></button><button className={`slash-item${slashIndex===slashItems.length+2?' active':''}`} onMouseEnter={()=>setSlashIndex(slashItems.length+2)} onClick={()=>runSlash(slashItems.length+2)}><Icon name="code"/><span className="slash-copy"><strong>数学公式</strong><small>支持 $ 行内与 $$ 块公式</small></span></button><button className={`slash-item${slashIndex===slashItems.length+3?' active':''}`} onMouseEnter={()=>setSlashIndex(slashItems.length+3)} onClick={()=>runSlash(slashItems.length+3)}><Icon name="list-tree"/><span className="slash-copy"><strong>Mermaid 图</strong><small>流程图、时序图与结构图</small></span></button></div>}</FloatingLayer>
+    {inputLayer&&<div className={`inline-input-popover product-layer${inputLayer.kind==='mermaid'?' is-mermaid':''}`}>{inputLayer.kind==='mermaid'?<textarea autoFocus aria-label="输入 Mermaid 源码" value={inputLayer.value} onChange={e=>setInputLayer({...inputLayer,value:e.target.value})} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();void applyInput()}if(e.key==='Escape')setInputLayer(null)}}/>:<input autoFocus aria-label="输入内容" placeholder={inputLayer.kind==='link'?'输入链接地址':inputLayer.kind==='tag'?'输入标签名称':'输入 LaTeX 公式'} value={inputLayer.value} onChange={e=>setInputLayer({...inputLayer,value:e.target.value})} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void applyInput()}if(e.key==='Escape')setInputLayer(null)}}/>}<button onClick={()=>void applyInput()}>确认</button></div>}
+    <input ref={fileRef} hidden type="file" onChange={event=>{const file=event.target.files?.[0];if(file)void addFile(file);event.target.value=''}}/>
+  </div>
 }

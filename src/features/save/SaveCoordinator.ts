@@ -14,6 +14,7 @@ export type SaveRetryMetadata = {
 
 type SaveCoordinatorOptions = {
   debounceMs: number
+  onSaved?: (result: SaveNoteResult) => void
 }
 
 function createTransactionId() {
@@ -129,6 +130,7 @@ export class SaveCoordinator {
         this.retryCount = 0
         this.recoverySafeFailure = false
         this.revisions.set(saved.noteId, saved.revision)
+        this.options.onSaved?.(saved)
         if (this.pending?.noteId === saved.noteId) {
           this.pending = { ...this.pending, baseRevision: saved.revision }
         }

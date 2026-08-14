@@ -1,317 +1,77 @@
-import { getCurrentWindow } from '@tauri-apps/api/window'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { NoteEditor } from '../features/editor/NoteEditor'
-import { useNotes } from '../features/notes/useNotes'
+import { JottingsWorkspace } from '../features/jottings/JottingsWorkspace'
 import { NotesPanel } from '../features/notes/NotesPanel'
+import { useNotes } from '../features/notes/useNotes'
 import { deriveOutline, Outline } from '../features/outline/Outline'
 import { RecoveryDialog } from '../features/recovery/RecoveryDialog'
 import { SaveStatus } from '../features/save/SaveStatus'
 import { useSaveCoordinator } from '../features/save/useSaveCoordinator'
 import { ThemeButton } from '../features/theme/ThemeButton'
 import { Icon } from '../shared/components/Icon'
-import {
-  getNote,
-  listRecoveryCandidates,
-  resolveRecovery,
-} from '../shared/tauri/commands'
-import type { RecoveryCandidateDto } from '../shared/tauri/contracts'
+import { ACTION_ICONS } from '../shared/components/iconRegistry'
+import { FloatingLayer, GlobalTooltip, ProductDialog, ProductToast, type DialogState, type ToastState } from '../shared/components/Overlay'
+import { getNote, listRecoveryCandidates, resolveRecovery, saveAttachment } from '../shared/tauri/commands'
+import type { BatchAction, CategoryDto, NoteView, RecoveryCandidateDto } from '../shared/tauri/contracts'
 
-const deferredItems = [
-  { label: '日程', icon: 'calendar-days' },
-  { label: '收藏', icon: 'star' },
-  { label: '回收站', icon: 'trash-2' },
-]
+const views:Array<{id:NoteView|'jottings';label:string;icon:string}>=[{id:'all',label:'全部笔记',icon:'file-text'},{id:'jottings',label:'小记',icon:'feather'},{id:'favorites',label:'收藏',icon:'star'},{id:'pinned',label:'置顶',icon:'pin'},{id:'archived',label:'归档',icon:'book-open'},{id:'trash',label:'回收站',icon:'trash-2'}]
+const viewTitle:Record<NoteView,string>={all:'全部笔记',favorites:'收藏',pinned:'置顶',archived:'归档',trash:'回收站'}
+const inverse:Partial<Record<BatchAction,BatchAction>>={favorite:'unfavorite',unfavorite:'favorite',pin:'unpin',unpin:'pin',archive:'unarchive',unarchive:'archive',trash:'restore',restore:'trash'}
+const actionMessage:Partial<Record<BatchAction,string>>={favorite:'已收藏',unfavorite:'已取消收藏',pin:'已置顶',unpin:'已取消置顶',archive:'已归档',unarchive:'已取消归档',trash:'已移到回收站',restore:'已恢复',deletePermanently:'已永久删除'}
+const categoryIcons=['notebook-tabs','lightbulb','flask-conical','briefcase-business','palette','code-xml','camera','music','gem','book-open','calendar-days','feather','file-text','folder','graduation-cap','image','message-square','monitor','pencil','star','tag','table','highlighter','history']
+const categoryColors=['#858b91','#f2c94c','#f27798','#58c96b','#58aaf0','#ad7cf0']
+const fileToBase64=(file:File)=>new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result).split(',')[1]??'');reader.onerror=()=>reject(reader.error);reader.readAsDataURL(file)})
 
-export function App() {
-  const notes = useNotes()
-  const { coordinator, state: saveState, recoverySafeFailure } = useSaveCoordinator()
-  const [notesCollapsed, setNotesCollapsed] = useState(false)
-  const [outlineCollapsed, setOutlineCollapsed] = useState(false)
-  const [focusTitleNoteId, setFocusTitleNoteId] = useState<string | null>(null)
-  const [recoveryCandidates, setRecoveryCandidates] = useState<RecoveryCandidateDto[]>([])
-  const [recoveryBusy, setRecoveryBusy] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [editorVersion, setEditorVersion] = useState(0)
-  const recoveryCandidate = recoveryCandidates[0] ?? null
-
-  const outlineItems = useMemo(
-    () => (notes.selectedNote ? deriveOutline(notes.selectedNote.document) : []),
-    [notes.selectedNote],
-  )
-
-  const flushBeforeLeaving = async () => {
-    const result = await coordinator.flush()
-    if (result === 'blocked') {
-      setSaveError('当前内容无法安全保存，请先修正后再切换笔记。')
-      return false
-    }
-    return true
-  }
-
-  const handleCreate = async () => {
-    if (!(await flushBeforeLeaving())) return
-    const created = await notes.create()
-    if (created) setFocusTitleNoteId(created.id)
-  }
-
-  const handleSelect = async (noteId: string) => {
-    if (!(await flushBeforeLeaving())) return
-    setFocusTitleNoteId(null)
-    await notes.select(noteId)
-  }
-
-  const handleRestoreDraft = async () => {
-    if (!recoveryCandidate) return
-    setRecoveryBusy(true)
-    setSaveError(null)
-    try {
-      if (!(await flushBeforeLeaving())) return
-      const draft = await resolveRecovery(recoveryCandidate.draft.noteId, 'restoreDraft')
-      if (!draft) {
-        setSaveError('恢复草稿已不可用，请保留当前数据库版本。')
-        return
-      }
-      const databaseNote = await getNote(draft.noteId)
-      notes.applyRecoveredDraft(databaseNote, draft)
-      coordinator.enqueue({
-        noteId: databaseNote.id,
-        baseRevision: databaseNote.revision,
-        title: draft.title,
-        documentJson: draft.documentJson,
-      })
-      coordinator.markRecovered()
-      setEditorVersion((value) => value + 1)
-      setRecoveryCandidates((candidates) => candidates.slice(1))
-    } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : '恢复草稿失败，请重试。')
-    } finally {
-      setRecoveryBusy(false)
-    }
-  }
-
-  const handleKeepDatabaseVersion = async () => {
-    if (!recoveryCandidate) return
-    setRecoveryBusy(true)
-    setSaveError(null)
-    try {
-      await resolveRecovery(recoveryCandidate.draft.noteId, 'keepDatabaseVersion')
-      setRecoveryCandidates((candidates) => candidates.slice(1))
-    } catch (cause) {
-      setSaveError(cause instanceof Error ? cause.message : '无法处理恢复草稿，请重试。')
-    } finally {
-      setRecoveryBusy(false)
-    }
-  }
-
-  useEffect(() => {
-    if (notes.status !== 'ready') return
-    let active = true
-    void listRecoveryCandidates()
-      .then((candidates) => {
-        if (active) setRecoveryCandidates(candidates)
-      })
-      .catch((cause) => {
-        if (active) {
-          setSaveError(cause instanceof Error ? cause.message : '无法检查恢复草稿。')
-        }
-      })
-    return () => {
-      active = false
-    }
-  }, [notes.status])
-
-  useEffect(() => {
-    if (!('__TAURI_INTERNALS__' in window)) return
-    let unlisten: (() => void) | undefined
-    let disposed = false
-    let allowClose = false
-
-    void getCurrentWindow()
-      .onCloseRequested(async (event) => {
-        if (allowClose) return
-        event.preventDefault()
-        if ((await coordinator.flush()) === 'blocked') {
-          setSaveError('当前内容无法安全保存，已取消关闭。')
-          return
-        }
-        allowClose = true
-        await getCurrentWindow().close()
-      })
-      .then((release) => {
-        if (disposed) release()
-        else unlisten = release
-      })
-      .catch((cause) => {
-        if (!disposed) {
-          setSaveError(cause instanceof Error ? cause.message : '无法注册关闭监听。')
-        }
-      })
-
-    return () => {
-      disposed = true
-      unlisten?.()
-    }
-  }, [coordinator])
-
-  return (
-    <>
-      <header className="app-header">
-        <button
-          className="search-box"
-          type="button"
-          aria-label="搜索笔记"
-          title="后续里程碑提供"
-          disabled
-        >
-          <Icon name="search" />
-          <span className="search-placeholder">搜索笔记...</span>
-          <kbd>Ctrl K</kbd>
-        </button>
-        <div className="header-actions">
-          <ThemeButton
-            library={notes.library}
-            onLibraryChange={notes.updateLibrary}
-            onError={(message) => setSaveError(message || null)}
-          />
-          <button
-            className="new-note-button"
-            type="button"
-            disabled={notes.status !== 'ready' || notes.isCreating}
-            onClick={() => void handleCreate()}
-          >
-            <Icon name="plus" />
-            <span>{notes.isCreating ? '新建中…' : '新建'}</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="workspace" data-notes-collapsed={notesCollapsed}>
-        <aside className="sidebar" aria-label="主导航">
-          <div className="sidebar-header">
-            <div className="brand">
-              <img src="/assets/logo.svg" width="42" height="42" alt="" />
-              <span>CoolNote</span>
-            </div>
-          </div>
-          <div className="sidebar-content">
-            <nav className="primary-nav" aria-label="系统视图">
-              <button className="nav-item active" type="button" aria-current="page">
-                <Icon name="file-text" />
-                <span>全部笔记</span>
-              </button>
-              {deferredItems.map((item) => (
-                <button
-                  className="nav-item"
-                  type="button"
-                  key={item.label}
-                  disabled
-                  title="后续里程碑提供"
-                >
-                  <Icon name={item.icon} />
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </nav>
-            <div className="section-label">分类</div>
-            <p className="sidebar-empty">分类将在后续里程碑提供</p>
-          </div>
-        </aside>
-
-        <NotesPanel
-          notes={notes.notes}
-          total={notes.total}
-          selectedNoteId={notes.selectedNoteId}
-          collapsed={notesCollapsed}
-          loading={notes.status === 'booting'}
-          canLoadMore={notes.notes.length < notes.total}
-          loadingMore={notes.isLoadingMore}
-          onLoadMore={() => void notes.loadMore()}
-          onSelect={(noteId) => void handleSelect(noteId)}
-        />
-
-        <section className="document-panel" aria-label="笔记工作区">
-          <div className="document-toolbar">
-            <button
-              className="icon-button panel-toggle"
-              type="button"
-              aria-label={notesCollapsed ? '展开笔记列表' : '收起笔记列表'}
-              title={notesCollapsed ? '展开笔记列表' : '收起笔记列表'}
-              onClick={() => setNotesCollapsed((value) => !value)}
-            >
-              <Icon name={notesCollapsed ? 'panel-left-open' : 'panel-left-close'} />
-            </button>
-            <div className="document-actions">
-              <SaveStatus state={saveState} recoverySafeFailure={recoverySafeFailure} />
-            </div>
-          </div>
-
-          {(notes.error || saveError) && notes.status !== 'failed' && (
-            <div className="command-error" role="alert">
-              <Icon name="circle-alert" />
-              <span>{notes.error ?? saveError}</span>
-            </div>
-          )}
-
-          {notes.status === 'failed' ? (
-            <div className="document-empty" role="alert">
-              <Icon name="circle-alert" className="empty-document-icon" />
-              <h1>无法打开笔记库</h1>
-              <p>{notes.error}</p>
-              <button className="retry-button" type="button" onClick={() => void notes.retry()}>
-                重试
-              </button>
-            </div>
-          ) : (
-            <div
-              className="reading-layout"
-              data-outline-collapsed={outlineCollapsed}
-            >
-              {notes.selectedNote ? (
-                <NoteEditor
-                  key={`${notes.selectedNote.id}-${editorVersion}`}
-                  note={notes.selectedNote}
-                  focusTitle={focusTitleNoteId === notes.selectedNote.id}
-                  onChange={({ title, documentJson }) => {
-                    notes.updateDraft(notes.selectedNote!.id, title, documentJson)
-                    coordinator.enqueue({
-                      noteId: notes.selectedNote!.id,
-                      baseRevision: notes.selectedNote!.revision,
-                      title,
-                      documentJson,
-                    })
-                  }}
-                />
-              ) : (
-                <div className="document-empty">
-                  <Icon name="book-open-text" className="empty-document-icon" />
-                  <h1>
-                    {notes.status === 'booting'
-                      ? '正在打开笔记库…'
-                      : notes.isLoadingNote
-                        ? '正在打开笔记…'
-                      : '选择或新建一篇笔记'}
-                  </h1>
-                  <p>你的内容将保存在本机笔记库中。</p>
-                </div>
-              )}
-              <Outline
-                items={outlineItems}
-                collapsed={outlineCollapsed}
-                onToggle={() => setOutlineCollapsed((value) => !value)}
-              />
-            </div>
-          )}
-        </section>
-      </main>
-      {recoveryCandidate && (
-        <RecoveryDialog
-          candidate={recoveryCandidate}
-          busy={recoveryBusy}
-          onRestore={() => void handleRestoreDraft()}
-          onKeepDatabaseVersion={() => void handleKeepDatabaseVersion()}
-        />
-      )}
-    </>
-  )
+export function App(){
+  const notes=useNotes();const {coordinator,state:saveState,recoverySafeFailure}=useSaveCoordinator(notes.applySaved)
+  const [mode,setMode]=useState<NoteView|'jottings'>('all');const [notesCollapsed,setNotesCollapsed]=useState(false);const [jottingTreeCollapsed,setJottingTreeCollapsed]=useState(false);const [outlineCollapsed,setOutlineCollapsed]=useState(false)
+  const [focusTitleNoteId,setFocusTitleNoteId]=useState<string|null>(null);const [recoveryCandidates,setRecoveryCandidates]=useState<RecoveryCandidateDto[]>([]);const [recoveryBusy,setRecoveryBusy]=useState(false);const [saveError,setSaveError]=useState<string|null>(null);const [editorVersion,setEditorVersion]=useState(0)
+  const [dialog,setDialog]=useState<DialogState|null>(null);const [toast,setToast]=useState<ToastState|null>(null);const [documentMenu,setDocumentMenu]=useState<'closed'|'main'|'move'>('closed')
+  const importRef=useRef<HTMLInputElement>(null);const documentMenuRef=useRef<HTMLButtonElement>(null);const recoveryCandidate=recoveryCandidates[0]??null;const outlineItems=useMemo(()=>notes.selectedNote?deriveOutline(notes.selectedNote.document):[],[notes.selectedNote]);const showToast=useCallback((message:string,undo?:()=>void|Promise<void>)=>setToast({id:Date.now(),message,undo}),[])
+  const listTitle=notes.categoryId?notes.categories.find(c=>c.id===notes.categoryId)?.name??'分类':notes.tagId?`# ${notes.tags.find(t=>t.id===notes.tagId)?.name??'标签'}`:viewTitle[notes.view]
+  const flushBeforeLeaving=async()=>{const result=await coordinator.flush();if(result==='blocked'){setSaveError('当前内容无法安全保存，请先修正后再切换。');return false}return true}
+  const handleCreate=async(categoryId?:string|null)=>{if(!(await flushBeforeLeaving()))return;if(categoryId!==undefined)notes.setCategory(categoryId);const created=await notes.create(categoryId);if(created){setFocusTitleNoteId(created.id);setMode('all');showToast('笔记已新建')}}
+  const handleSelect=async(id:string)=>{if(!(await flushBeforeLeaving()))return;setFocusTitleNoteId(null);await notes.select(id)}
+  const handleImport=async(file:File)=>{const extension=file.name.split('.').pop()?.toLowerCase();const format=extension==='json'?'json':extension==='html'||extension==='htm'?'html':'markdown';await notes.importContent(await file.text(),format);showToast('笔记已导入')}
+  const performAction=async(ids:string[],action:BatchAction)=>{try{await notes.performBatch(action,ids);const undoAction=inverse[action];showToast(actionMessage[action]??'操作已完成',undoAction?async()=>{await notes.performBatch(undoAction,ids);showToast('操作已撤销')}:undefined)}catch(cause){setSaveError(cause instanceof Error?cause.message:'操作失败')}}
+  const moveNotes=async(ids:string[],categoryId:string)=>{await notes.moveSelected(categoryId,ids);showToast('笔记已移动')}
+  const share=async()=>{if(!notes.selectedNote)return;await navigator.clipboard.writeText(`# ${notes.selectedNote.title}\n\n${notes.selectedNote.plainText}`);showToast('笔记内容已复制')}
+  const chooseMode=async(next:NoteView|'jottings')=>{if(!(await flushBeforeLeaving()))return;setMode(next);setDocumentMenu('closed');if(next!=='jottings')notes.setView(next)}
+  const restoreDraft=async()=>{if(!recoveryCandidate)return;setRecoveryBusy(true);try{if(!(await flushBeforeLeaving()))return;const draft=await resolveRecovery(recoveryCandidate.draft.noteId,'restoreDraft');if(!draft)return;const databaseNote=await getNote(draft.noteId);notes.applyRecoveredDraft(databaseNote,draft);coordinator.enqueue({noteId:databaseNote.id,baseRevision:databaseNote.revision,title:draft.title,documentJson:draft.documentJson});coordinator.markRecovered();setEditorVersion(v=>v+1);setRecoveryCandidates(c=>c.slice(1))}catch(cause){setSaveError(cause instanceof Error?cause.message:'恢复草稿失败')}finally{setRecoveryBusy(false)}}
+  const keepDatabase=async()=>{if(!recoveryCandidate)return;setRecoveryBusy(true);try{await resolveRecovery(recoveryCandidate.draft.noteId,'keepDatabaseVersion');setRecoveryCandidates(c=>c.slice(1))}finally{setRecoveryBusy(false)}}
+  useEffect(()=>{if(notes.status!=='ready')return;let active=true;void listRecoveryCandidates().then(c=>{if(active)setRecoveryCandidates(c)}).catch(c=>{if(active)setSaveError(c instanceof Error?c.message:'无法检查恢复草稿')});return()=>{active=false}},[notes.status])
+  useEffect(()=>{const shortcuts=(event:KeyboardEvent)=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();document.querySelector<HTMLInputElement>('[aria-label="搜索笔记"]')?.focus()}if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='n'){event.preventDefault();void handleCreate()}};document.addEventListener('keydown',shortcuts);return()=>document.removeEventListener('keydown',shortcuts)})
+  return <>
+    <GlobalTooltip/>
+    <header className="app-header"><label className="search-box"><Icon name="search"/><input aria-label="搜索笔记" placeholder="搜索标题与正文…" value={notes.search} onChange={e=>notes.setSearch(e.target.value)}/><kbd>Ctrl K</kbd></label><div className="header-actions"><ThemeButton library={notes.library} onLibraryChange={notes.updateLibrary} onError={message=>setSaveError(message||null)}/></div></header>
+    <main className="workspace" data-mode={mode==='jottings'?'jottings':'notes'} data-notes-collapsed={notesCollapsed} data-jotting-tree-collapsed={jottingTreeCollapsed}>
+      <aside className="sidebar"><div className="sidebar-header"><div className="brand"><img src="./assets/logo-CoolNote.png" width="64" height="64" alt="CoolNote"/><span>CoolNote</span></div></div><div className="sidebar-content"><nav className="primary-nav">{views.map(item=><button key={item.id} className={`nav-item system-view${mode===item.id&&!notes.categoryId?' active':''}`} onClick={()=>void chooseMode(item.id)}><Icon name={item.icon}/><span>{item.label}</span><span className="nav-count">{notes.systemCounts[item.id]}</span></button>)}</nav>
+        <CategoryTree categories={notes.categories} activeId={mode==='jottings'?null:notes.categoryId} onSelect={id=>{setMode('all');notes.setCategory(id)}} onCreate={notes.addCategory} onRename={notes.editCategory} onAppearance={notes.editCategoryAppearance} onPin={notes.pinCategory} onDelete={async category=>{await notes.removeCategory(category.id);showToast('分类已删除')}} onCreateNote={id=>void handleCreate(id)} onImport={id=>{notes.setCategory(id);importRef.current?.click()}} onToast={showToast}/>
+      </div></aside>
+      {mode==='jottings'?<JottingsWorkspace collapsed={jottingTreeCollapsed} onToggle={()=>setJottingTreeCollapsed(x=>!x)} onToast={showToast} onError={setSaveError}/>:<><NotesPanel notes={notes.notes} total={notes.total} selectedNoteId={notes.selectedNoteId} selectedIds={notes.selectedIds} collapsed={notesCollapsed} loading={notes.status==='booting'} canLoadMore={notes.notes.length<notes.total} loadingMore={notes.isLoadingMore} title={listTitle} sortDirection={notes.sortDirection} view={notes.view} categories={notes.categories} showCreate={notes.view!=='trash'} onCreate={()=>void handleCreate(notes.categoryId)} onImport={()=>importRef.current?.click()} onEmptyTrash={()=>void notes.clearTrash().then(()=>showToast('回收站已清空'))} onDirection={notes.setSortDirection} onToggleSelected={notes.toggleSelected} onSelectAll={notes.selectAll} onClearSelection={notes.clearSelection} onLoadMore={()=>void notes.loadMore()} onSelect={id=>void handleSelect(id)} onAction={(ids,action)=>void performAction(ids,action)} onMove={(ids,id)=>void moveNotes(ids,id)}/>
+        <section className="document-panel"><div className="document-toolbar"><button className="icon-button panel-toggle" aria-label={notesCollapsed?'展开笔记列表':'收起笔记列表'} onClick={()=>setNotesCollapsed(x=>!x)}><Icon name={notesCollapsed?'panel-left-open':'panel-left-close'}/></button><div className="document-actions"><SaveStatus state={saveState} recoverySafeFailure={recoverySafeFailure}/>{notes.selectedNote&&<><button className="tool-action" onClick={()=>void share()}><Icon name="share-2"/>分享</button><button ref={documentMenuRef} className="tool-action icon-only document-menu-trigger" aria-label="文档菜单" onClick={()=>setDocumentMenu(value=>value==='closed'?'main':'closed')}><Icon name="ellipsis"/></button></>}</div></div>
+          <FloatingLayer open={documentMenu!=='closed'&&!!notes.selectedNote} anchor={documentMenuRef} placement="bottom-end" className="product-menu document-menu" role="menu" onDismiss={()=>setDocumentMenu('closed')}>{notes.selectedNote&&documentMenu==='main'&&<><button onClick={()=>{setDocumentMenu('closed');void performAction([notes.selectedNote!.id],notes.selectedNote!.isPinned?'unpin':'pin')}}><Icon name="pin"/>{notes.selectedNote.isPinned?'取消置顶':'置顶'}</button><button onClick={()=>{setDocumentMenu('closed');void performAction([notes.selectedNote!.id],notes.selectedNote!.isFavorite?'unfavorite':'favorite')}}><Icon name="star"/>{notes.selectedNote.isFavorite?'取消收藏':'收藏'}</button><button onClick={()=>setDocumentMenu('move')}><Icon name="folder"/>移动到<Icon name="chevron-right"/></button><div className="separator"/><button onClick={()=>{setDocumentMenu('closed');void performAction([notes.selectedNote!.id],notes.selectedNote!.isArchived?'unarchive':'archive')}}><Icon name="book-open"/>{notes.selectedNote.isArchived?'取消归档':'归档'}</button><button className="danger" onClick={()=>{setDocumentMenu('closed');void performAction([notes.selectedNote!.id],'trash')}}><Icon name="trash-2"/>移到回收站</button></>}{notes.selectedNote&&documentMenu==='move'&&<><button onClick={()=>setDocumentMenu('main')}><Icon name="chevron-right"/>返回</button><div className="separator"/>{notes.categories.map(category=><button key={category.id} onClick={()=>{setDocumentMenu('closed');void moveNotes([notes.selectedNote!.id],category.id)}}><Icon name={category.iconName||'folder'}/>{category.name}</button>)}</>}</FloatingLayer>
+          {(notes.error||saveError)&&<div className="command-error"><Icon name="message-square"/><span>{notes.error??saveError}</span><button aria-label="关闭错误" onClick={()=>setSaveError(null)}><Icon name="x"/></button></div>}
+          {notes.status==='failed'?<div className="document-empty"><h1>无法打开笔记库</h1><p>{notes.error}</p><button className="retry-button" onClick={()=>void notes.retry()}>重试</button></div>:<div className="reading-layout" data-outline-collapsed={outlineCollapsed}>{notes.selectedNote?<NoteEditor key={`${notes.selectedNote.id}-${editorVersion}`} note={notes.selectedNote} availableTags={notes.tags} focusTitle={focusTitleNoteId===notes.selectedNote.id} onChange={({title,documentJson})=>{notes.updateDraft(notes.selectedNote!.id,title,documentJson);coordinator.enqueue({noteId:notes.selectedNote!.id,baseRevision:notes.selectedNote!.revision,title,documentJson})}} onTagsChange={tagIds=>void notes.replaceTags([notes.selectedNote!.id],tagIds)} onCreateTag={notes.addTag} onAddAttachment={async file=>{const data=await fileToBase64(file);return(await saveAttachment(notes.selectedNote!.id,file.name,file.type||'application/octet-stream',data)).dataUrl}}/>:<div className="document-empty"><Icon name="book-open-text" className="empty-document-icon"/><h1>{notes.isLoadingNote?'正在打开笔记…':'选择或新建一篇笔记'}</h1><p>内容自动保存在本机 SQLite 笔记库中。</p><button className="new-empty-note" onClick={()=>void handleCreate()}><Icon name="plus"/>新建笔记</button></div>}<Outline items={outlineItems} collapsed={outlineCollapsed} onToggle={()=>setOutlineCollapsed(x=>!x)}/></div>}
+        </section></>}
+    </main>
+    <input ref={importRef} hidden type="file" accept=".md,.markdown,.html,.htm,.json,.txt" onChange={e=>{const file=e.target.files?.[0];if(file)void handleImport(file);e.target.value=''}}/>
+    <ProductDialog state={dialog} onClose={()=>setDialog(null)}/><ProductToast toast={toast} onClose={()=>setToast(null)}/>
+    {recoveryCandidate&&<RecoveryDialog candidate={recoveryCandidate} busy={recoveryBusy} onRestore={()=>void restoreDraft()} onKeepDatabaseVersion={()=>void keepDatabase()}/>}
+  </>
 }
+
+type CategoryProps={categories:CategoryDto[];activeId:string|null;onSelect:(id:string)=>void;onCreate:(name:string,parentId?:string|null)=>Promise<CategoryDto>;onRename:(id:string,name:string)=>Promise<void>;onAppearance:(id:string,icon:string,color:string)=>Promise<void>;onPin:(id:string,pinned:boolean)=>Promise<void>;onDelete:(category:CategoryDto)=>void|Promise<void>;onCreateNote:(id:string)=>void;onImport:(id:string)=>void;onToast:(message:string)=>void}
+type CategoryDraft={parentId:string|null;name:string;icon:string;color:string}
+function CategoryTree(props:CategoryProps){
+  const [draft,setDraft]=useState<CategoryDraft|null>(null);const [draftPickerOpen,setDraftPickerOpen]=useState(false);const [renaming,setRenaming]=useState<string|null>(null);const [picker,setPicker]=useState<{category:CategoryDto;icon:string;color:string;anchor:HTMLElement}|null>(null);const [menu,setMenu]=useState<{category:CategoryDto;anchor:HTMLElement}|null>(null);const [deleteConfirm,setDeleteConfirm]=useState<string|null>(null);const draftInputRef=useRef<HTMLInputElement>(null)
+  const beginDraft=(parentId:string|null,name:string)=>{setDraft(current=>current??{parentId,name,icon:'notebook-tabs',color:categoryColors[0]});setDraftPickerOpen(true)}
+  const commit=async()=>{if(!draft)return;const pending=draft;const name=pending.name.trim();setDraft(null);setDraftPickerOpen(false);if(!name)return;const created=await props.onCreate(name,pending.parentId);await props.onAppearance(created.id,pending.icon,pending.color);props.onToast('分类已新建')}
+  const children=(id:string|null)=>props.categories.filter(category=>category.parentId===id)
+  const row=(category:CategoryDto,depth:number)=><div className={`tree-row${category.isPinned?' category-pinned':''}`} data-category={category.name} data-icon-color={category.color} key={category.id} style={{'--tree-depth':depth} as React.CSSProperties} onContextMenu={event=>{event.preventDefault();setMenu({category,anchor:event.currentTarget})}} onPointerLeave={()=>setDeleteConfirm(current=>current===category.id?null:current)}><button className={`nav-item category-item${props.activeId===category.id?' active':''}`} onClick={()=>props.onSelect(category.id)} onDoubleClick={event=>{const trigger=(event.target as Element).closest<HTMLElement>('.category-icon-trigger');if(trigger)setPicker({category,icon:category.iconName,color:category.color,anchor:trigger});else setRenaming(category.id)}}><span className="category-icon-trigger" title="双击更换图标" style={{'--category-icon-color':category.color} as React.CSSProperties}><Icon name={category.iconName||'folder'}/></span>{renaming===category.id?<input autoFocus className="category-name-input" defaultValue={category.name} onClick={e=>e.stopPropagation()} onBlur={e=>{const value=e.target.value.trim();setRenaming(null);if(value&&value!==category.name)void props.onRename(category.id,value).then(()=>props.onToast('分类已重命名'))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();if(e.key==='Escape')setRenaming(null)}}/>:<span className="category-name">{category.name}</span>}{category.isPinned&&<Icon name="pin" className="category-pin-mark"/>}</button><span className="tree-actions"><button className="create-tree" aria-label={`在${category.name}中新建`} onClick={event=>setMenu({category,anchor:event.currentTarget})}><Icon name={ACTION_ICONS.create}/></button>{category.id!=='00000000-0000-4000-8000-000000000001'&&<button className={`delete-tree${deleteConfirm===category.id?' confirm-delete':''}`} aria-label={deleteConfirm===category.id?`确认删除${category.name}`:`删除${category.name}`} title={deleteConfirm===category.id?'再次点击确认删除':'删除'} onClick={()=>{if(deleteConfirm===category.id){setDeleteConfirm(null);void props.onDelete(category)}else setDeleteConfirm(category.id)}}><Icon name={deleteConfirm===category.id?ACTION_ICONS.confirm:ACTION_ICONS.delete}/></button>}</span><span className="category-count">{category.noteCount}</span></div>
+  const renderLevel=(parentId:string|null,depth:number):React.ReactNode[]=>children(parentId).flatMap(category=>[row(category,depth),...renderLevel(category.id,depth+1)])
+  return <><div className="section-label row-label"><span>分类</span><button className="mini-action" id="addCategory" aria-label="添加分类" title="添加分类" onClick={()=>beginDraft(null,'未命名分类')}><Icon name="plus"/></button></div><nav className="category-nav" id="categoryNav">{renderLevel(null,0)}{draft&&<div className="tree-row category-row-draft" data-dynamic-category="true" data-category={draft.name} data-icon-color={draft.color}><button className="nav-item category-item" style={{'--tree-depth':0} as React.CSSProperties}><span className="category-icon-trigger" title="选择图标" style={{'--category-icon-color':draft.color} as React.CSSProperties} onClick={()=>setDraftPickerOpen(true)}><Icon name={draft.icon}/></span><input ref={draftInputRef} autoFocus className="category-name category-name-input" aria-label="分类名称" value={draft.name} onFocus={event=>event.currentTarget.select()} onBlur={event=>{if(!event.relatedTarget?.closest?.('.icon-picker'))void commit()}} onChange={event=>setDraft({...draft,name:event.target.value})} onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();void commit()}if(event.key==='Escape'){setDraft(null);setDraftPickerOpen(false)}}}/></button><span className="tree-actions"><button className="delete-tree" aria-label="取消添加分类" onMouseDown={event=>event.preventDefault()} onClick={()=>{setDraft(null);setDraftPickerOpen(false)}}><Icon name="x"/></button></span><span className="category-count">0</span></div>}</nav><FloatingLayer open={!!menu} anchor={{current:menu?.anchor??null}} placement="bottom-start" className="product-menu create-dropdown category-create-menu" onDismiss={()=>setMenu(null)}>{menu&&<><button data-create="note" onClick={()=>{props.onCreateNote(menu.category.id);setMenu(null)}}><Icon name="file-plus"/><span><span className="menu-title">新建笔记</span><small>在当前分类中新建空白笔记</small></span></button><button onClick={()=>{void props.onPin(menu.category.id,!menu.category.isPinned).then(()=>props.onToast(menu.category.isPinned?'分类已取消置顶':'分类已置顶'));setMenu(null)}}><Icon name="pin"/><span className="menu-title">{menu.category.isPinned?'取消置顶':'置顶分类'}</span></button><button data-create="import" onClick={()=>{props.onImport(menu.category.id);setMenu(null)}}><Icon name="upload"/><span><span className="menu-title">导入笔记</span><small>从 Markdown、HTML 或 JSON 导入</small></span></button></>}</FloatingLayer>{draft&&<FloatingLayer open={draftPickerOpen} anchor={draftInputRef} placement="bottom-start" className="prototype-layer icon-picker open" onDismiss={()=>setDraftPickerOpen(false)} style={{'--picker-color':draft.color} as React.CSSProperties}><CategoryIconPickerContent icon={draft.icon} color={draft.color} onColor={color=>setDraft({...draft,color})} onIcon={icon=>setDraft({...draft,icon})}/></FloatingLayer>} {picker&&<CategoryIconPicker anchor={{current:picker.anchor}} icon={picker.icon} color={picker.color} onDismiss={()=>setPicker(null)} onColor={color=>setPicker({...picker,color})} onIcon={icon=>{void props.onAppearance(picker.category.id,icon,picker.color).then(()=>props.onToast('分类图标已更新'));setPicker(null)}}/>}</>
+}
+function CategoryIconPickerContent({icon,color,onIcon,onColor}:{icon:string;color:string;onIcon:(icon:string)=>void;onColor:(color:string)=>void}){return <><div className="icon-picker-colors">{categoryColors.map(value=><button key={value} className={`icon-color${color===value?' active':''}`} data-color={value} aria-label="选择颜色" style={{'--icon-color':value} as React.CSSProperties} onClick={()=>onColor(value)}/>)}</div><div className="icon-picker-grid">{categoryIcons.map(value=><button key={value} data-icon={value} aria-label={value} className={icon===value?'active':''} onClick={()=>onIcon(value)}><Icon name={value}/></button>)}</div></>}
+function CategoryIconPicker({anchor,icon,color,onIcon,onColor,onDismiss}:{anchor:React.RefObject<HTMLElement|null>;icon:string;color:string;onIcon:(icon:string)=>void;onColor:(color:string)=>void;onDismiss:()=>void}){return <FloatingLayer open anchor={anchor} placement="bottom-start" className="prototype-layer icon-picker open" onDismiss={onDismiss} style={{'--picker-color':color} as React.CSSProperties}><CategoryIconPickerContent icon={icon} color={color} onIcon={onIcon} onColor={onColor}/></FloatingLayer>}
