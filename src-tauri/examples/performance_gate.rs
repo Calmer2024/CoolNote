@@ -90,6 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             client_transaction_id: Uuid::new_v4().to_string(),
             title: format!("性能保存 {sample}"),
             document_json: serde_json::to_value(note.document)?,
+            markdown_snapshot: format!("# 性能保存 {sample}\n\n性能正文\n"),
         })?;
         assert_eq!(saved.revision, note.revision + 1);
         save_times.push(started.elapsed().as_secs_f64() * 1000.0);
