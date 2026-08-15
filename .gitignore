@@ -26,6 +26,7 @@ src-tauri/target/
 .env
 .env.local
 .env.*.local
+.secrets/
 
 # OS and temporary files
 .DS_Store
