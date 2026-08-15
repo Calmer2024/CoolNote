@@ -202,7 +202,8 @@ impl WorkspaceService {
         let hash = hash_document(&document);
         let now = Utc::now().to_rfc3339();
         let category_id = category_id.unwrap_or(UNCATEGORIZED_ID);
-        self.database.with_write(|tx| { tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,schema_version,content_hash,revision,is_favorite,is_pinned,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,1,?6,1,0,0,0,?7,?7,NULL)",params![id,category_id,title,document_json,plain_text,hash,now])?; Ok(()) })?;
+        let markdown_snapshot = format!("# {title}\n\n{plain_text}\n");
+        self.database.with_write(|tx| { tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,markdown_snapshot,schema_version,content_hash,revision,is_favorite,is_pinned,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7,1,0,0,0,?8,?8,NULL)",params![id,category_id,title,document_json,plain_text,markdown_snapshot,hash,now])?; Ok(()) })?;
         self.get_note(&id)
     }
 
@@ -469,6 +470,23 @@ impl WorkspaceService {
     }
 
     pub fn export_notes(&self, note_ids: &[String], format: &str) -> Result<String, AppError> {
+        if format == "markdown" {
+            return self.database.with_read(|connection| {
+                let mut exported = Vec::with_capacity(note_ids.len());
+                for id in note_ids {
+                    let snapshot = connection.query_row(
+                        "SELECT markdown_snapshot FROM notes WHERE id=?1",
+                        [id],
+                        |row| row.get::<_, String>(0),
+                    ).map_err(|error| match error {
+                        rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(id.clone()),
+                        other => AppError::Database(other),
+                    })?;
+                    exported.push(snapshot);
+                }
+                Ok(exported.join("\n\n---\n\n"))
+            });
+        }
         let notes = note_ids
             .iter()
             .map(|id| self.get_note(id))
@@ -496,11 +514,7 @@ impl WorkspaceService {
                 })
                 .collect::<Vec<_>>()
                 .join("\n")),
-            _ => Ok(notes
-                .iter()
-                .map(|n| format!("# {}\n\n{}", n.title, n.plain_text))
-                .collect::<Vec<_>>()
-                .join("\n\n---\n\n")),
+            _ => unreachable!("markdown is handled before JSON parsing"),
         }
     }
     pub fn import_notes(

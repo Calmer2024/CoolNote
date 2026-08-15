@@ -15,6 +15,8 @@ const JOTTINGS_MIGRATION: &str = include_str!("../../migrations/0005_jottings.sq
 const JOTTING_FAVORITES_MIGRATION: &str =
     include_str!("../../migrations/0006_jotting_favorites.sql");
 const CATEGORY_PINNING_MIGRATION: &str = include_str!("../../migrations/0007_category_pinning.sql");
+const NOTE_MARKDOWN_SNAPSHOTS_MIGRATION: &str =
+    include_str!("../../migrations/0008_note_markdown_snapshots.sql");
 
 #[derive(Debug)]
 pub struct Database {
@@ -66,6 +68,9 @@ impl Database {
         }
         if self.user_version()? < 7 {
             self.lock()?.execute_batch(CATEGORY_PINNING_MIGRATION)?;
+        }
+        if self.user_version()? < 8 {
+            self.lock()?.execute_batch(NOTE_MARKDOWN_SNAPSHOTS_MIGRATION)?;
         }
         Ok(())
     }
@@ -124,9 +129,11 @@ mod tests {
         let database = Database::open(&directory.path().join("coolnote.db"))
             .expect("fresh database should open");
 
-        assert_eq!(database.user_version().expect("user version"), 7);
+        assert_eq!(database.user_version().expect("user version"), 8);
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert!(column_exists(&database, "categories", "is_pinned"));
+        assert!(column_exists(&database, "notes", "markdown_snapshot"));
+        assert_eq!(database.query_i64("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='note_versions'").expect("version table"),1);
     }
 
     #[test]
@@ -159,7 +166,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version five database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 7);
+        assert_eq!(database.user_version().expect("user version"), 8);
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert_eq!(
             database

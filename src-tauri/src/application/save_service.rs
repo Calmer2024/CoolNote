@@ -3,6 +3,7 @@ use std::sync::Arc;
 use chrono::Utc;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::domain::document::{derive_plain_text, hash_document, validate_document};
 use crate::domain::error::AppError;
@@ -17,6 +18,7 @@ pub struct SaveNoteRequest {
     pub client_transaction_id: String,
     pub title: String,
     pub document_json: serde_json::Value,
+    pub markdown_snapshot: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -67,6 +69,11 @@ impl SaveService {
         let document_json = serde_json::to_value(&document)?;
         let serialized = serde_json::to_string(&document)?;
         let plain_text = derive_plain_text(&document);
+        let markdown_snapshot = if request.markdown_snapshot.trim().is_empty() {
+            format!("# {}\n\n{}\n", request.title, plain_text)
+        } else {
+            request.markdown_snapshot.clone()
+        };
         let content_hash = hash_document(&document);
         let updated_at = Utc::now().to_rfc3339();
 
@@ -78,6 +85,7 @@ impl SaveService {
                 client_transaction_id: request.client_transaction_id.clone(),
                 title: request.title.clone(),
                 document_json,
+                markdown_snapshot: markdown_snapshot.clone(),
                 content_hash: content_hash.clone(),
                 created_at: updated_at.clone(),
             })
@@ -90,13 +98,14 @@ impl SaveService {
         let result = self.database.with_write(|transaction| {
             let changed = transaction.execute(
                 "UPDATE notes SET title=?1, document_json=?2, plain_text=?3,
-                 content_hash=?4, schema_version=1, revision=revision+1, updated_at=?5
-                 WHERE id=?6 AND revision=?7 AND deleted_at IS NULL",
+                 content_hash=?4, markdown_snapshot=?5, schema_version=1, revision=revision+1, updated_at=?6
+                 WHERE id=?7 AND revision=?8 AND deleted_at IS NULL",
                 params![
                     request.title,
                     serialized,
                     plain_text,
                     content_hash,
+                    markdown_snapshot,
                     updated_at,
                     request.note_id,
                     request.base_revision,
@@ -121,6 +130,10 @@ impl SaveService {
                     current,
                 });
             }
+            transaction.execute(
+                "INSERT INTO note_versions(id,note_id,revision,title,markdown_snapshot,created_at) VALUES(?1,?2,?3,?4,?5,?6)",
+                params![Uuid::new_v4().to_string(),request.note_id,request.base_revision+1,request.title,markdown_snapshot,updated_at],
+            )?;
             Ok(SaveNoteResult {
                 note_id: request.note_id.clone(),
                 revision: request.base_revision + 1,

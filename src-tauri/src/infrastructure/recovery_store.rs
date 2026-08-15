@@ -20,6 +20,8 @@ pub struct RecoveryRecord {
     pub title: String,
     #[serde(alias = "document_json")]
     pub document_json: serde_json::Value,
+    #[serde(default, alias = "markdown_snapshot")]
+    pub markdown_snapshot: String,
     #[serde(alias = "content_hash")]
     pub content_hash: String,
     #[serde(alias = "created_at")]

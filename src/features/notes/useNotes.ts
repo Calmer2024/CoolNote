@@ -35,6 +35,7 @@ import type {
   VersionedDocument,
 } from '../../shared/tauri/contracts'
 import { normalizeDocument } from '../editor/document'
+import { parseMarkdownDocument } from '../editor/markdown'
 
 type NotesStatus = 'booting' | 'ready' | 'failed'
 const PAGE_SIZE = 80
@@ -186,7 +187,10 @@ export function useNotes() {
   }, [])
 
   const applyRecoveredDraft = useCallback((databaseNote: NoteDto, draft: RecoveryRecordDto) => {
-    const restored = { ...databaseNote, title: draft.title, document: normalizeDocument(draft.documentJson as VersionedDocument) }
+    let document:VersionedDocument
+    try { document=normalizeDocument(draft.documentJson as VersionedDocument) }
+    catch { document=parseMarkdownDocument(draft.markdownSnapshot).document }
+    const restored = { ...databaseNote, title: draft.title, document }
     setSelectedNoteId(restored.id); setSelectedNote(restored); setNotes((current) => current.map((note) => note.id === restored.id ? toSummary(restored) : note))
   }, [])
 
