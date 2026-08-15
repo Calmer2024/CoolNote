@@ -33,7 +33,6 @@ CREATE TABLE notes (
   content_hash TEXT NOT NULL,
   revision INTEGER NOT NULL,
   is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)),
-  is_pinned INTEGER NOT NULL DEFAULT 0 CHECK (is_pinned IN (0, 1)),
   is_archived INTEGER NOT NULL DEFAULT 0 CHECK (is_archived IN (0, 1)),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,

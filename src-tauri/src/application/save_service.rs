@@ -75,6 +75,42 @@ impl SaveService {
             request.markdown_snapshot.clone()
         };
         let content_hash = hash_document(&document);
+
+        let current = self.database.with_read(|connection| {
+            connection
+                .query_row(
+                    "SELECT revision,title,content_hash,updated_at FROM notes WHERE id=?1 AND deleted_at IS NULL",
+                    [&request.note_id],
+                    |row| {
+                        Ok((
+                            row.get::<_, i64>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                            row.get::<_, String>(3)?,
+                        ))
+                    },
+                )
+                .map_err(|error| match error {
+                    rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(request.note_id.clone()),
+                    other => AppError::Database(other),
+                })
+        })?;
+        if current.0 != request.base_revision {
+            return Err(AppError::RevisionConflict {
+                note_id: request.note_id.clone(),
+                expected: request.base_revision,
+                current: current.0,
+            });
+        }
+        if current.1 == request.title && current.2 == content_hash {
+            return Ok(SaveNoteResult {
+                note_id: request.note_id,
+                revision: current.0,
+                updated_at: current.3,
+                content_hash,
+            });
+        }
+
         let updated_at = Utc::now().to_rfc3339();
 
         self.recovery
@@ -144,5 +180,43 @@ impl SaveService {
 
         self.recovery.remove(&request.note_id)?;
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::application::workspace_service::WorkspaceService;
+    use crate::domain::note::UNCATEGORIZED_ID;
+    use crate::infrastructure::database::Database;
+
+    #[test]
+    fn identical_save_keeps_revision_and_updated_at() {
+        let directory = tempfile::tempdir().expect("temporary library");
+        let database = Arc::new(Database::open(&directory.path().join("coolnote.db")).expect("database"));
+        let recovery = RecoveryStore::new(directory.path().join("recovery")).expect("recovery store");
+        database.with_write(|transaction| {
+            transaction.execute(
+                "INSERT INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at)
+                 VALUES(?1,NULL,'未分类','folder','#1687e8',0,'now','now',NULL)",
+                [UNCATEGORIZED_ID],
+            )?;
+            Ok(())
+        }).expect("uncategorized category");
+        let workspace = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        let note = workspace.create_note(None, "未修改笔记", None).expect("note");
+        let service = SaveService::new(Uuid::new_v4().to_string(), database, recovery);
+        let saved = service.save_note(SaveNoteRequest {
+            note_id: note.id.clone(),
+            base_revision: note.revision,
+            client_transaction_id: Uuid::new_v4().to_string(),
+            title: note.title.clone(),
+            document_json: serde_json::to_value(&note.document).expect("document json"),
+            markdown_snapshot: format!("# {}\n\n{}\n", note.title, note.plain_text),
+        }).expect("idempotent save");
+
+        assert_eq!(saved.revision, note.revision);
+        assert_eq!(saved.updated_at, note.updated_at);
+        assert_eq!(workspace.get_note(&note.id).expect("reloaded note").updated_at, note.updated_at);
     }
 }

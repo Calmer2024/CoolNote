@@ -17,6 +17,9 @@ const JOTTING_FAVORITES_MIGRATION: &str =
 const CATEGORY_PINNING_MIGRATION: &str = include_str!("../../migrations/0007_category_pinning.sql");
 const NOTE_MARKDOWN_SNAPSHOTS_MIGRATION: &str =
     include_str!("../../migrations/0008_note_markdown_snapshots.sql");
+const REMOVE_TAGS_MOOD_ATTACHMENT_DEDUPE_MIGRATION: &str =
+    include_str!("../../migrations/0009_remove_tags_mood_attachment_dedupe.sql");
+const REMOVE_PINNING_MIGRATION: &str = include_str!("../../migrations/0010_remove_pinning.sql");
 
 #[derive(Debug)]
 pub struct Database {
@@ -72,6 +75,19 @@ impl Database {
         if self.user_version()? < 8 {
             self.lock()?.execute_batch(NOTE_MARKDOWN_SNAPSHOTS_MIGRATION)?;
         }
+        if self.user_version()? < 9 {
+            self.lock()?.execute_batch(REMOVE_TAGS_MOOD_ATTACHMENT_DEDUPE_MIGRATION)?;
+        }
+        if self.user_version()? < 10 {
+            self.lock()?.execute_batch("DROP INDEX IF EXISTS idx_notes_active_sort;")?;
+            if self.column_exists("notes", "is_pinned")? {
+                self.lock()?.execute_batch("ALTER TABLE notes DROP COLUMN is_pinned;")?;
+            }
+            if self.column_exists("categories", "is_pinned")? {
+                self.lock()?.execute_batch("ALTER TABLE categories DROP COLUMN is_pinned;")?;
+            }
+            self.lock()?.execute_batch(REMOVE_PINNING_MIGRATION)?;
+        }
         Ok(())
     }
 
@@ -105,6 +121,13 @@ impl Database {
     pub fn query_text(&self, sql: &str) -> Result<String, AppError> {
         Ok(self.lock()?.query_row(sql, [], |row| row.get(0))?)
     }
+
+    fn column_exists(&self, table: &str, column: &str) -> Result<bool, AppError> {
+        let connection = self.lock()?;
+        let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+        let columns = statement.query_map([], |row| row.get::<_, String>(1))?.collect::<Result<Vec<_>,_>>()?;
+        Ok(columns.iter().any(|value| value == column))
+    }
 }
 
 #[cfg(test)]
@@ -129,10 +152,14 @@ mod tests {
         let database = Database::open(&directory.path().join("coolnote.db"))
             .expect("fresh database should open");
 
-        assert_eq!(database.user_version().expect("user version"), 8);
+        assert_eq!(database.user_version().expect("user version"), 10);
         assert!(column_exists(&database, "jottings", "is_favorite"));
-        assert!(column_exists(&database, "categories", "is_pinned"));
+        assert!(!column_exists(&database, "categories", "is_pinned"));
+        assert!(!column_exists(&database, "notes", "is_pinned"));
         assert!(column_exists(&database, "notes", "markdown_snapshot"));
+        assert!(column_exists(&database, "notes", "mood"));
+        assert!(column_exists(&database, "attachments", "content_hash"));
+        assert_eq!(database.query_i64("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='tags'").expect("tags removed"),0);
         assert_eq!(database.query_i64("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='note_versions'").expect("version table"),1);
     }
 
@@ -166,7 +193,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version five database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 8);
+        assert_eq!(database.user_version().expect("user version"), 10);
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert_eq!(
             database

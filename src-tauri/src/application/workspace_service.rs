@@ -5,15 +5,14 @@ use base64::Engine as _;
 use chrono::Utc;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::domain::document::{
     derive_plain_text, empty_document, hash_document, validate_document, Document,
 };
 use crate::domain::error::AppError;
-use crate::domain::note::{
-    Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, Tag, UNCATEGORIZED_ID,
-};
+use crate::domain::note::{Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, SearchResult, UNCATEGORIZED_ID};
 use crate::infrastructure::database::Database;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -21,7 +20,6 @@ use crate::infrastructure::database::Database;
 pub struct NoteQuery {
     pub view: String,
     pub category_id: Option<String>,
-    pub tag_id: Option<String>,
     pub search: Option<String>,
     pub sort_by: String,
     pub sort_direction: String,
@@ -34,8 +32,6 @@ pub struct NoteQuery {
 pub enum BatchAction {
     Favorite,
     Unfavorite,
-    Pin,
-    Unpin,
     Archive,
     Unarchive,
     Trash,
@@ -47,7 +43,6 @@ pub enum BatchAction {
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceSnapshot {
     pub categories: Vec<Category>,
-    pub tags: Vec<Tag>,
     pub system_counts: SystemCounts,
 }
 
@@ -56,7 +51,6 @@ pub struct WorkspaceSnapshot {
 pub struct SystemCounts {
     pub all: i64,
     pub favorites: i64,
-    pub pinned: i64,
     pub archived: i64,
     pub trash: i64,
     pub jottings: i64,
@@ -75,7 +69,6 @@ struct TransferNote {
     title: String,
     document: Document,
     category_id: Option<String>,
-    tags: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -95,11 +88,9 @@ impl WorkspaceService {
     pub fn snapshot(&self) -> Result<WorkspaceSnapshot, AppError> {
         Ok(WorkspaceSnapshot {
             categories: self.list_categories()?,
-            tags: self.list_tags()?,
             system_counts: self.database.with_read(|c| Ok(SystemCounts {
                 all:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=0",[],|r|r.get(0))?,
                 favorites:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=0 AND is_favorite=1",[],|r|r.get(0))?,
-                pinned:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=0 AND is_pinned=1",[],|r|r.get(0))?,
                 archived:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=1",[],|r|r.get(0))?,
                 trash:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NOT NULL",[],|r|r.get(0))?,
                 jottings:c.query_row("SELECT COUNT(*) FROM jottings",[],|r|r.get(0))?,
@@ -109,7 +100,7 @@ impl WorkspaceService {
 
     pub fn list_notes(&self, query: NoteQuery) -> Result<Page<NoteSummary>, AppError> {
         let view = match query.view.as_str() {
-            "all" | "favorites" | "pinned" | "archived" | "trash" => query.view,
+            "all" | "favorites" | "archived" | "trash" => query.view,
             _ => "all".to_owned(),
         };
         let order_column = match query.sort_by.as_str() {
@@ -125,12 +116,10 @@ impl WorkspaceService {
         let state_clause = match view.as_str() {
             "trash" => "n.deleted_at IS NOT NULL",
             "favorites" => "n.deleted_at IS NULL AND n.is_archived=0 AND n.is_favorite=1",
-            "pinned" => "n.deleted_at IS NULL AND n.is_archived=0 AND n.is_pinned=1",
             "archived" => "n.deleted_at IS NULL AND n.is_archived=1",
             _ => "n.deleted_at IS NULL AND n.is_archived=0",
         };
         let category = query.category_id.filter(|value| !value.is_empty());
-        let tag = query.tag_id.filter(|value| !value.is_empty());
         let search = query.search.unwrap_or_default().trim().to_owned();
         let fts_query = if search.is_empty() {
             String::new()
@@ -138,7 +127,7 @@ impl WorkspaceService {
             format!("\"{}\"", search.replace('"', "\"\""))
         };
         let where_sql = format!(
-            "{state_clause} AND (?1 IS NULL OR n.category_id=?1) AND (?2 IS NULL OR EXISTS (SELECT 1 FROM note_tags nt WHERE nt.note_id=n.id AND nt.tag_id=?2)) AND (?3='' OR n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?3))"
+            "{state_clause} AND (?1 IS NULL OR n.category_id=?1) AND (?2='' OR n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?2))"
         );
         let safe_offset = query.offset.max(0);
         let safe_limit = query.limit.clamp(1, 500);
@@ -146,21 +135,21 @@ impl WorkspaceService {
             let total_sql = format!("SELECT COUNT(*) FROM notes n WHERE {where_sql}");
             let total = connection.query_row(
                 &total_sql,
-                params![category, tag, fts_query],
+                params![category, fts_query],
                 |row| row.get(0),
             )?;
             let sql = format!(
-                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_pinned,n.is_archived,n.deleted_at,n.updated_at FROM notes n WHERE {where_sql} ORDER BY n.is_pinned DESC, {order_column} {direction}, n.id ASC LIMIT ?4 OFFSET ?5"
+                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_archived,n.deleted_at,n.mood,n.updated_at FROM notes n WHERE {where_sql} ORDER BY {order_column} {direction}, n.id ASC LIMIT ?3 OFFSET ?4"
             );
             let mut statement = connection.prepare(&sql)?;
             let rows = statement.query_map(
-                params![category, tag, fts_query, safe_limit, safe_offset],
+                params![category, fts_query, safe_limit, safe_offset],
                 |row| {
                     Ok((
                         row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
                         row.get::<_, i64>(3)?, row.get::<_, String>(4)?, row.get::<_, bool>(5)?,
-                        row.get::<_, bool>(6)?, row.get::<_, bool>(7)?, row.get::<_, Option<String>>(8)?,
-                        row.get::<_, String>(9)?,
+                        row.get::<_, bool>(6)?, row.get::<_, Option<String>>(7)?,
+                        row.get::<_, Option<String>>(8)?, row.get::<_, String>(9)?,
                     ))
                 },
             )?;
@@ -169,8 +158,8 @@ impl WorkspaceService {
                 let raw = row?;
                 items.push(NoteSummary {
                     id: raw.0.clone(), title: raw.1, excerpt: raw.2, revision: raw.3,
-                    category_id: raw.4, is_favorite: raw.5, is_pinned: raw.6,
-                    is_archived: raw.7, deleted_at: raw.8, tags: tags_for(connection, &raw.0)?, updated_at: raw.9,
+                    category_id: raw.4, is_favorite: raw.5,
+                    is_archived: raw.6, deleted_at: raw.7, mood: raw.8, updated_at: raw.9,
                 });
             }
             Ok(Page { items, total })
@@ -180,12 +169,12 @@ impl WorkspaceService {
     pub fn get_note(&self, note_id: &str) -> Result<Note, AppError> {
         self.database.with_read(|connection| {
             let raw = connection.query_row(
-                "SELECT id,category_id,title,document_json,plain_text,content_hash,revision,is_favorite,is_pinned,is_archived,deleted_at,created_at,updated_at FROM notes WHERE id=?1",
+                "SELECT id,category_id,title,document_json,plain_text,content_hash,revision,is_favorite,is_archived,deleted_at,mood,created_at,updated_at FROM notes WHERE id=?1",
                 [note_id],
-                |row| Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,String>(3)?,row.get::<_,String>(4)?,row.get::<_,String>(5)?,row.get::<_,i64>(6)?,row.get::<_,bool>(7)?,row.get::<_,bool>(8)?,row.get::<_,bool>(9)?,row.get::<_,Option<String>>(10)?,row.get::<_,String>(11)?,row.get::<_,String>(12)?)),
+                |row| Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,String>(3)?,row.get::<_,String>(4)?,row.get::<_,String>(5)?,row.get::<_,i64>(6)?,row.get::<_,bool>(7)?,row.get::<_,bool>(8)?,row.get::<_,Option<String>>(9)?,row.get::<_,Option<String>>(10)?,row.get::<_,String>(11)?,row.get::<_,String>(12)?)),
             ).map_err(|error| match error { rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(note_id.to_owned()), other => AppError::Database(other) })?;
             let value = serde_json::from_str(&raw.3)?;
-            Ok(Note { id:raw.0.clone(),category_id:raw.1,title:raw.2,document:validate_document(&value)?,plain_text:raw.4,content_hash:raw.5,revision:raw.6,is_favorite:raw.7,is_pinned:raw.8,is_archived:raw.9,deleted_at:raw.10,tags:tags_for(connection,&raw.0)?,created_at:raw.11,updated_at:raw.12 })
+            Ok(Note { id:raw.0,category_id:raw.1,title:raw.2,document:validate_document(&value)?,plain_text:raw.4,content_hash:raw.5,revision:raw.6,is_favorite:raw.7,is_archived:raw.8,deleted_at:raw.9,mood:raw.10,created_at:raw.11,updated_at:raw.12 })
         })
     }
 
@@ -203,7 +192,7 @@ impl WorkspaceService {
         let now = Utc::now().to_rfc3339();
         let category_id = category_id.unwrap_or(UNCATEGORIZED_ID);
         let markdown_snapshot = format!("# {title}\n\n{plain_text}\n");
-        self.database.with_write(|tx| { tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,markdown_snapshot,schema_version,content_hash,revision,is_favorite,is_pinned,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7,1,0,0,0,?8,?8,NULL)",params![id,category_id,title,document_json,plain_text,markdown_snapshot,hash,now])?; Ok(()) })?;
+        self.database.with_write(|tx| { tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,markdown_snapshot,schema_version,content_hash,revision,is_favorite,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7,1,0,0,?8,?8,NULL)",params![id,category_id,title,document_json,plain_text,markdown_snapshot,hash,now])?; Ok(()) })?;
         self.get_note(&id)
     }
 
@@ -220,16 +209,12 @@ impl WorkspaceService {
             let sql = match action {
                 BatchAction::Favorite => "UPDATE notes SET is_favorite=1 WHERE id=?1 AND deleted_at IS NULL",
                 BatchAction::Unfavorite => "UPDATE notes SET is_favorite=0 WHERE id=?1",
-                BatchAction::Pin => "UPDATE notes SET is_pinned=1 WHERE id=?1 AND deleted_at IS NULL",
-                BatchAction::Unpin => "UPDATE notes SET is_pinned=0 WHERE id=?1",
-                BatchAction::Archive => {
-                    "UPDATE notes SET is_archived=1,is_pinned=0 WHERE id=?1 AND deleted_at IS NULL"
-                }
+                BatchAction::Archive => "UPDATE notes SET is_archived=1 WHERE id=?1 AND deleted_at IS NULL",
                 BatchAction::Unarchive => {
                     "UPDATE notes SET is_archived=0 WHERE id=?1 AND deleted_at IS NULL"
                 }
                 BatchAction::Trash => {
-                    "UPDATE notes SET deleted_at=?2,is_pinned=0,is_favorite=0 WHERE id=?1 AND deleted_at IS NULL"
+                    "UPDATE notes SET deleted_at=?2,is_favorite=0 WHERE id=?1 AND deleted_at IS NULL"
                 }
                 BatchAction::Restore => {
                     "UPDATE notes SET deleted_at=NULL WHERE id=?1 AND deleted_at IS NOT NULL"
@@ -270,8 +255,8 @@ impl WorkspaceService {
 
     pub fn list_categories(&self) -> Result<Vec<Category>, AppError> {
         self.database.with_read(|connection| {
-            let mut st=connection.prepare("SELECT c.id,c.parent_id,c.name,c.icon_name,c.color,c.sort_order,c.is_pinned,(SELECT COUNT(*) FROM notes n WHERE n.category_id=c.id AND n.deleted_at IS NULL) FROM categories c WHERE c.deleted_at IS NULL ORDER BY c.is_pinned DESC,c.sort_order,c.name")?;
-            let values = st.query_map([],|r|Ok(Category{id:r.get(0)?,parent_id:r.get(1)?,name:r.get(2)?,icon_name:r.get(3)?,color:r.get(4)?,sort_order:r.get(5)?,is_pinned:r.get(6)?,note_count:r.get(7)?}))?.collect::<Result<Vec<_>,_>>()?;
+            let mut st=connection.prepare("SELECT c.id,c.parent_id,c.name,c.icon_name,c.color,c.sort_order,(SELECT COUNT(*) FROM notes n WHERE n.category_id=c.id AND n.deleted_at IS NULL) FROM categories c WHERE c.deleted_at IS NULL ORDER BY c.sort_order,c.name")?;
+            let values = st.query_map([],|r|Ok(Category{id:r.get(0)?,parent_id:r.get(1)?,name:r.get(2)?,icon_name:r.get(3)?,color:r.get(4)?,sort_order:r.get(5)?,note_count:r.get(6)?}))?.collect::<Result<Vec<_>,_>>()?;
             Ok(values)
         })
     }
@@ -323,15 +308,6 @@ impl WorkspaceService {
             Ok(())
         })
     }
-    pub fn set_category_pinned(&self, id: &str, is_pinned: bool) -> Result<(), AppError> {
-        self.database.with_write(|tx| {
-            tx.execute(
-                "UPDATE categories SET is_pinned=?1,updated_at=?2 WHERE id=?3 AND deleted_at IS NULL",
-                params![is_pinned, Utc::now().to_rfc3339(), id],
-            )?;
-            Ok(())
-        })
-    }
     pub fn delete_category(&self, id: &str) -> Result<(), AppError> {
         if id == UNCATEGORIZED_ID {
             return Err(AppError::InvalidRequest("不能删除未分类".into()));
@@ -357,60 +333,31 @@ impl WorkspaceService {
         })
     }
 
-    pub fn list_tags(&self) -> Result<Vec<Tag>, AppError> {
-        self.database.with_read(|c| {
-            let mut st =
-                c.prepare("SELECT id,name,color FROM tags ORDER BY name COLLATE NOCASE")?;
-            let values = st
-                .query_map([], |r| {
-                    Ok(Tag {
-                        id: r.get(0)?,
-                        name: r.get(1)?,
-                        color: r.get(2)?,
-                    })
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-            Ok(values)
-        })
-    }
-    pub fn create_tag(&self, name: &str, color: &str) -> Result<Tag, AppError> {
-        let name = name.trim();
-        if name.is_empty() {
-            return Err(AppError::InvalidRequest("标签名称不能为空".into()));
-        };
-        let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+    pub fn set_note_mood(&self, note_id: &str, mood: Option<&str>) -> Result<(), AppError> {
+        let mood = mood.map(str::trim).filter(|value| !value.is_empty());
         self.database.with_write(|tx| {
-            tx.execute(
-                "INSERT INTO tags(id,name,color,created_at,updated_at) VALUES(?1,?2,?3,?4,?4)",
-                params![id, name, color, now],
-            )?;
-            Ok(())
-        })?;
-        Ok(Tag {
-            id,
-            name: name.into(),
-            color: color.into(),
-        })
-    }
-    pub fn delete_tag(&self, id: &str) -> Result<(), AppError> {
-        self.database.with_write(|tx| {
-            tx.execute("DELETE FROM tags WHERE id=?1", [id])?;
+            tx.execute("UPDATE notes SET mood=?1 WHERE id=?2", params![mood,note_id])?;
             Ok(())
         })
     }
-    pub fn set_note_tags(&self, note_ids: &[String], tag_ids: &[String]) -> Result<(), AppError> {
-        self.database.with_write(|tx| {
-            for note in note_ids {
-                tx.execute("DELETE FROM note_tags WHERE note_id=?1", [note])?;
-                for tag in tag_ids {
-                    tx.execute(
-                        "INSERT OR IGNORE INTO note_tags(note_id,tag_id) VALUES(?1,?2)",
-                        params![note, tag],
-                    )?;
-                }
+
+    pub fn global_search(&self, query: &str, limit: i64) -> Result<Vec<SearchResult>, AppError> {
+        let query = query.trim();
+        if query.is_empty() { return Ok(Vec::new()); }
+        let like = format!("%{}%", query);
+        let limit = limit.clamp(1, 50);
+        self.database.with_read(|connection| {
+            let mut results = Vec::new();
+            let mut notes = connection.prepare("SELECT id,title,substr(plain_text,1,180),updated_at FROM notes WHERE deleted_at IS NULL AND (title LIKE ?1 OR plain_text LIKE ?1) ORDER BY updated_at DESC LIMIT ?2")?;
+            for row in notes.query_map(params![like,limit], |row| Ok(SearchResult{id:row.get(0)?,kind:"note".into(),title:row.get(1)?,excerpt:row.get(2)?,updated_at:row.get(3)?}))? { results.push(row?); }
+            let remaining = (limit - results.len() as i64).max(0);
+            if remaining > 0 {
+                let mut jottings = connection.prepare("SELECT id,name,substr(content,1,180),updated_at FROM jottings WHERE name LIKE ?1 OR content LIKE ?1 ORDER BY updated_at DESC LIMIT ?2")?;
+                for row in jottings.query_map(params![like,remaining], |row| Ok(SearchResult{id:row.get(0)?,kind:"jotting".into(),title:row.get(1)?,excerpt:strip_markup(&row.get::<_,String>(2)?),updated_at:row.get(3)?}))? { results.push(row?); }
             }
-            Ok(())
+            results.sort_by(|a,b| b.updated_at.cmp(&a.updated_at));
+            results.truncate(limit as usize);
+            Ok(results)
         })
     }
 
@@ -429,26 +376,29 @@ impl WorkspaceService {
         }
         std::fs::create_dir_all(&self.attachments_root)?;
         let id = Uuid::new_v4().to_string();
+        let content_hash = Sha256::digest(&bytes).iter().map(|byte|format!("{byte:02x}")).collect::<String>();
         let extension = Path::new(file_name)
             .extension()
             .and_then(|v| v.to_str())
             .unwrap_or("bin");
-        let relative = format!("{id}.{extension}");
-        std::fs::write(self.attachments_root.join(&relative), &bytes)?;
+        let relative = self.database.with_read(|connection| connection.query_row("SELECT relative_path FROM attachments WHERE content_hash=?1 LIMIT 1",[&content_hash],|row|row.get::<_,String>(0)).map_err(AppError::from)).ok().unwrap_or_else(||format!("{content_hash}.{extension}"));
+        let full_path = self.attachments_root.join(&relative);
+        if !full_path.exists() { std::fs::write(&full_path, &bytes)?; }
         let now = Utc::now().to_rfc3339();
-        self.database.with_write(|tx|{tx.execute("INSERT INTO attachments(id,note_id,file_name,media_type,size_bytes,relative_path,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7)",params![id,note_id,file_name,media_type,bytes.len() as i64,relative,now])?;Ok(())})?;
+        self.database.with_write(|tx|{tx.execute("INSERT INTO attachments(id,note_id,file_name,media_type,size_bytes,content_hash,relative_path,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![id,note_id,file_name,media_type,bytes.len() as i64,content_hash,relative,now])?;Ok(())})?;
         Ok(Attachment {
             id,
             note_id: note_id.into(),
             file_name: file_name.into(),
             media_type: media_type.into(),
             size_bytes: bytes.len() as i64,
+            content_hash,
             data_url: format!("data:{media_type};base64,{data_base64}"),
             created_at: now,
         })
     }
     pub fn list_attachments(&self, note_id: &str) -> Result<Vec<Attachment>, AppError> {
-        self.database.with_read(|c|{let mut st=c.prepare("SELECT id,note_id,file_name,media_type,size_bytes,relative_path,created_at FROM attachments WHERE note_id=?1 ORDER BY created_at")?;let rows=st.query_map([note_id],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,i64>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?)))?;let mut out=Vec::new();for row in rows{let v=row?;let bytes=std::fs::read(self.attachments_root.join(&v.5))?;out.push(Attachment{id:v.0,note_id:v.1,file_name:v.2,media_type:v.3.clone(),size_bytes:v.4,data_url:format!("data:{};base64,{}",v.3,base64::engine::general_purpose::STANDARD.encode(bytes)),created_at:v.6})}Ok(out)})
+        self.database.with_read(|c|{let mut st=c.prepare("SELECT id,note_id,file_name,media_type,size_bytes,content_hash,relative_path,created_at FROM attachments WHERE note_id=?1 ORDER BY created_at")?;let rows=st.query_map([note_id],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,i64>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?,r.get::<_,String>(7)?)))?;let mut out=Vec::new();for row in rows{let v=row?;let bytes=std::fs::read(self.attachments_root.join(&v.6))?;out.push(Attachment{id:v.0,note_id:v.1,file_name:v.2,media_type:v.3.clone(),size_bytes:v.4,content_hash:v.5,data_url:format!("data:{};base64,{}",v.3,base64::engine::general_purpose::STANDARD.encode(bytes)),created_at:v.7})}Ok(out)})
     }
     pub fn delete_attachment(&self, id: &str) -> Result<(), AppError> {
         let path = self.database.with_read(|c| {
@@ -459,14 +409,13 @@ impl WorkspaceService {
             )
             .map_err(AppError::from)
         })?;
-        let full = self.attachments_root.join(path);
-        if full.exists() {
-            std::fs::remove_file(full)?
-        }
-        self.database.with_write(|tx| {
+        let remaining = self.database.with_write(|tx| {
             tx.execute("DELETE FROM attachments WHERE id=?1", [id])?;
-            Ok(())
-        })
+            Ok(tx.query_row("SELECT COUNT(*) FROM attachments WHERE relative_path=?1",[&path],|row|row.get::<_,i64>(0))?)
+        })?;
+        let full = self.attachments_root.join(path);
+        if remaining == 0 && full.exists() { std::fs::remove_file(full)? }
+        Ok(())
     }
 
     pub fn export_notes(&self, note_ids: &[String], format: &str) -> Result<String, AppError> {
@@ -499,7 +448,6 @@ impl WorkspaceService {
                         title: n.title.clone(),
                         document: n.document.clone(),
                         category_id: Some(n.category_id.clone()),
-                        tags: n.tags.iter().map(|t| t.name.clone()).collect(),
                     })
                     .collect::<Vec<_>>(),
             )?),
@@ -691,18 +639,15 @@ impl WorkspaceService {
     }
 }
 
-fn tags_for(connection: &rusqlite::Connection, note_id: &str) -> Result<Vec<Tag>, AppError> {
-    let mut st=connection.prepare("SELECT t.id,t.name,t.color FROM tags t JOIN note_tags nt ON nt.tag_id=t.id WHERE nt.note_id=?1 ORDER BY t.name")?;
-    let values = st
-        .query_map([note_id], |r| {
-            Ok(Tag {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                color: r.get(2)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(values)
+fn strip_markup(value: &str) -> String {
+    let mut output = String::new();
+    let mut in_tag = false;
+    for ch in value.chars() {
+        if ch == '<' { in_tag = true; }
+        else if ch == '>' { in_tag = false; }
+        else if !in_tag { output.push(ch); }
+    }
+    output
 }
 fn escape_html(value: &str) -> String {
     value

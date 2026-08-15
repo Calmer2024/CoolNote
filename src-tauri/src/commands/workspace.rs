@@ -6,7 +6,7 @@ use crate::application::workspace_service::{
 };
 use crate::commands::notes::CommandError;
 use crate::domain::note::{
-    Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, Tag,
+    Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, SearchResult,
 };
 
 #[tauri::command]
@@ -122,20 +122,6 @@ pub async fn update_category_appearance(
 }
 
 #[tauri::command]
-pub async fn set_category_pinned(
-    state: tauri::State<'_, AppState>,
-    category_id: String,
-    is_pinned: bool,
-) -> Result<(), CommandError> {
-    run(state, move |services| {
-        services
-            .workspace
-            .set_category_pinned(&category_id, is_pinned)
-    })
-    .await
-}
-
-#[tauri::command]
 pub async fn delete_category(
     state: tauri::State<'_, AppState>,
     category_id: String,
@@ -147,36 +133,25 @@ pub async fn delete_category(
 }
 
 #[tauri::command]
-pub async fn create_tag(
+pub async fn set_note_mood(
     state: tauri::State<'_, AppState>,
-    name: String,
-    color: String,
-) -> Result<Tag, CommandError> {
+    note_id: String,
+    mood: Option<String>,
+) -> Result<(), CommandError> {
     run(state, move |services| {
-        services.workspace.create_tag(&name, &color)
+        services.workspace.set_note_mood(&note_id, mood.as_deref())
     })
     .await
 }
 
 #[tauri::command]
-pub async fn delete_tag(
+pub async fn global_search(
     state: tauri::State<'_, AppState>,
-    tag_id: String,
-) -> Result<(), CommandError> {
+    query: String,
+    limit: i64,
+) -> Result<Vec<SearchResult>, CommandError> {
     run(state, move |services| {
-        services.workspace.delete_tag(&tag_id)
-    })
-    .await
-}
-
-#[tauri::command]
-pub async fn set_note_tags(
-    state: tauri::State<'_, AppState>,
-    note_ids: Vec<String>,
-    tag_ids: Vec<String>,
-) -> Result<(), CommandError> {
-    run(state, move |services| {
-        services.workspace.set_note_tags(&note_ids, &tag_ids)
+        services.workspace.global_search(&query, limit)
     })
     .await
 }

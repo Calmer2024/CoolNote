@@ -40,10 +40,9 @@ pub struct Note {
     pub content_hash: String,
     pub revision: i64,
     pub is_favorite: bool,
-    pub is_pinned: bool,
     pub is_archived: bool,
     pub deleted_at: Option<String>,
-    pub tags: Vec<Tag>,
+    pub mood: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -57,10 +56,9 @@ pub struct NoteSummary {
     pub revision: i64,
     pub category_id: String,
     pub is_favorite: bool,
-    pub is_pinned: bool,
     pub is_archived: bool,
     pub deleted_at: Option<String>,
-    pub tags: Vec<Tag>,
+    pub mood: Option<String>,
     pub updated_at: String,
 }
 
@@ -73,16 +71,7 @@ pub struct Category {
     pub icon_name: String,
     pub color: String,
     pub sort_order: i64,
-    pub is_pinned: bool,
     pub note_count: i64,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Tag {
-    pub id: String,
-    pub name: String,
-    pub color: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -93,8 +82,19 @@ pub struct Attachment {
     pub file_name: String,
     pub media_type: String,
     pub size_bytes: i64,
+    pub content_hash: String,
     pub data_url: String,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResult {
+    pub id: String,
+    pub kind: String,
+    pub title: String,
+    pub excerpt: String,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

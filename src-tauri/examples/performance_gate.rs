@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             params![UNCATEGORIZED_ID, now],
         )?;
         let mut insert = tx.prepare_cached(
-            "INSERT INTO notes(id,category_id,title,document_json,plain_text,schema_version,content_hash,revision,is_favorite,is_pinned,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,1,?6,1,0,0,0,?7,?7,NULL)",
+            "INSERT INTO notes(id,category_id,title,document_json,plain_text,schema_version,content_hash,revision,is_favorite,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,1,?6,1,0,0,?7,?7,NULL)",
         )?;
         for note_index in 0..NOTE_COUNT {
             let content = (0..BLOCKS_PER_NOTE)
@@ -68,7 +68,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let page = workspace.list_notes(NoteQuery {
             view: "all".into(),
             category_id: None,
-            tag_id: None,
             search: Some("note".into()),
             sort_by: "updatedAt".into(),
             sort_direction: "desc".into(),

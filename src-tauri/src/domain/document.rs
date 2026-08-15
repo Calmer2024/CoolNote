@@ -20,6 +20,7 @@ const ALLOWED_TOP_LEVEL_NODES: &[&str] = &[
     "table",
     "blockMath",
     "mermaid",
+    "media",
     "horizontalRule",
 ];
 
@@ -43,6 +44,7 @@ const ALLOWED_NESTED_NODES: &[&str] = &[
     "blockMath",
     "inlineMath",
     "mermaid",
+    "media",
     "horizontalRule",
 ];
 
@@ -223,7 +225,7 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "blockquote"
                 | "codeBlock"
         ),
-        "text" | "hardBreak" | "image" | "blockMath" | "inlineMath" | "mermaid"
+        "text" | "hardBreak" | "image" | "media" | "blockMath" | "inlineMath" | "mermaid"
         | "horizontalRule" => false,
         _ => false,
     }
@@ -254,11 +256,11 @@ fn validate_node_attributes(node: &DocumentNode) -> Result<(), AppError> {
             node.node_type
         )));
     }
-    if node.node_type != "image"
+    if !matches!(node.node_type.as_str(), "image" | "media")
         && (node.attrs.src.is_some() || node.attrs.alt.is_some() || node.attrs.title.is_some())
     {
         return Err(AppError::InvalidDocument(format!(
-            "node {} does not accept image attributes",
+            "node {} does not accept media attributes",
             node.node_type
         )));
     }

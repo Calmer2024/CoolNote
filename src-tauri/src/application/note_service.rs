@@ -33,9 +33,9 @@ impl NoteService {
             transaction.execute(
                 "INSERT INTO notes
                  (id, category_id, title, document_json, plain_text, schema_version,
-                  content_hash, revision, is_favorite, is_pinned, is_archived,
+                  content_hash, revision, is_favorite, is_archived,
                   created_at, updated_at, deleted_at)
-                 VALUES (?1, ?2, '', ?3, ?4, 1, ?5, 1, 0, 0, 0, ?6, ?6, NULL)",
+                 VALUES (?1, ?2, '', ?3, ?4, 1, ?5, 1, 0, 0, ?6, ?6, NULL)",
                 params![
                     id,
                     UNCATEGORIZED_ID,
@@ -74,10 +74,9 @@ impl NoteService {
                         revision: row.get(3)?,
                         category_id: UNCATEGORIZED_ID.to_owned(),
                         is_favorite: false,
-                        is_pinned: false,
                         is_archived: false,
                         deleted_at: None,
-                        tags: Vec::new(),
+                        mood: None,
                         updated_at: row.get(4)?,
                     })
                 })?
@@ -123,10 +122,9 @@ impl NoteService {
                 content_hash: raw.5,
                 revision: raw.6,
                 is_favorite: false,
-                is_pinned: false,
                 is_archived: false,
                 deleted_at: None,
-                tags: Vec::new(),
+                mood: None,
                 created_at: raw.7,
                 updated_at: raw.8,
             })

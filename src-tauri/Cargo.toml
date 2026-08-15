@@ -1,6 +1,6 @@
 [package]
 name = "coolnote"
-version = "0.1.14"
+version = "0.1.17"
 description = "Production-grade local-first notes for Windows"
 authors = ["Calmer2024"]
 edition = "2021"
