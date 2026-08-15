@@ -21,7 +21,6 @@ export const ACTION_ICONS = {
   move: 'folder',
   archive: 'book-open',
   favorite: 'star',
-  pin: 'pin',
   more: 'ellipsis',
   sortAscending: 'sort-asc',
   sortDescending: 'sort-desc',

@@ -1776,7 +1776,7 @@ a {
 .editor-surface { position:relative; }
 .slash-type-badge { display:grid; flex:0 0 20px; width:20px; height:20px; place-items:center; color:var(--text-secondary); font-size:12px; font-weight:700; }
 .block-menu { width:170px; }
-.inline-input-popover { left:50%; top:84px; display:flex; gap:5px; padding:6px; transform:translateX(-50%); }
+.inline-input-popover { display:flex; gap:5px; padding:6px; }
 .inline-input-popover input { width:260px; height:34px; border:1px solid var(--border); border-radius:7px; padding:0 9px; color:var(--text-primary); background:var(--surface); outline:0; }
 .inline-input-popover button { border:0; border-radius:7px; padding:0 12px; color:#fff; background:var(--accent); }
 .tag.removable { display:inline-flex; align-items:center; gap:3px; }

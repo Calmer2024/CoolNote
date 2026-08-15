@@ -918,9 +918,6 @@
       .system-view[data-view="favorites"].active .icon {
         color: #d69a00;
       }
-      .system-view[data-view="pinned"].active .icon {
-        color: var(--accent);
-      }
       .system-view[data-view="archived"].active .icon {
         color: #7b8794;
       }

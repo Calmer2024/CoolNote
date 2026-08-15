@@ -13,6 +13,7 @@ const inlineMarkdown=(nodes:DocumentNode[]=[]):string=>nodes.map(node=>{
   if(node.type==='hardBreak')return '  \n'
   if(node.type==='inlineMath')return `$${String(node.attrs?.latex??'')}$`
   if(node.type==='image')return `![${node.attrs?.alt??''}](${node.attrs?.src??''}${node.attrs?.title?` "${node.attrs.title}"`:''})`
+  if(node.type==='media')return `[${node.attrs?.fileName??'附件'}](${node.attrs?.src??''})`
   let value=escapeMarkdown(node.text??'')
   for(const mark of node.marks??[]){
     if(mark.type==='code')value=`\`${value}\``
@@ -76,6 +77,7 @@ const blockHtml=(node:DocumentNode):string=>{
   if(node.type==='blockMath')return `<div class="block-math">$$ ${escapeHtml(String(node.attrs?.latex??''))} $$</div>`
   if(node.type==='horizontalRule')return '<hr>'
   if(node.type==='image')return `<p><img src="${escapeHtml(String(node.attrs?.src??''))}" alt="${escapeHtml(String(node.attrs?.alt??''))}"></p>`
+  if(node.type==='media'){const type=String(node.attrs?.mediaType??'');const src=escapeHtml(String(node.attrs?.src??''));const name=escapeHtml(String(node.attrs?.fileName??'附件'));if(type.startsWith('audio/'))return `<audio controls src="${src}"></audio>`;if(type.startsWith('video/'))return `<video controls src="${src}"></video>`;return `<p><a href="${src}">${name}</a></p>`}
   if(node.type==='bulletList'||node.type==='orderedList'||node.type==='taskList'){
     const tag=node.type==='orderedList'?'ol':'ul'
     return `<${tag}>${content.map(item=>`<li>${node.type==='taskList'?`<span class="checkbox">${item.attrs?.checked?'☑':'☐'}</span> `:''}${(item.content??[]).map(blockHtml).join('')}</li>`).join('')}</${tag}>`

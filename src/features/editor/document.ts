@@ -18,6 +18,7 @@ export const SUPPORTED_TOP_LEVEL_NODES = new Set([
   'table',
   'blockMath',
   'mermaid',
+  'media',
   'horizontalRule',
 ])
 
@@ -35,6 +36,7 @@ const SUPPORTED_NODES = new Set([
   'blockMath',
   'inlineMath',
   'mermaid',
+  'media',
   'horizontalRule',
 ])
 
@@ -84,6 +86,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   blockMath: new Set(),
   inlineMath: new Set(),
   mermaid: new Set(),
+  media: new Set(),
   horizontalRule: new Set(),
 }
 

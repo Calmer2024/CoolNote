@@ -19,8 +19,8 @@ import type {
   NoteQuery,
   BatchAction,
   CategoryDto,
-  TagDto,
   AttachmentDto,
+  SearchResultDto,
   JottingDto,
   JottingFolderDto,
   JottingSnapshotDto,
@@ -62,9 +62,8 @@ export const moveNotes = (noteIds: string[], categoryId: string) => call<number>
 export const createCategory = (name: string, parentId?: string | null) => call<CategoryDto>('create_category', { name, parentId: parentId ?? null }, () => web.webCreateCategory(name, parentId))
 export const renameCategory = (categoryId: string, name: string) => call<void>('rename_category', { categoryId, name }, () => web.webRenameCategory(categoryId, name))
 export const deleteCategory = (categoryId: string) => call<void>('delete_category', { categoryId }, () => web.webDeleteCategory(categoryId))
-export const createTag = (name: string, color = '#1687e8') => call<TagDto>('create_tag', { name, color }, () => web.webCreateTag(name, color))
-export const deleteTag = (tagId: string) => call<void>('delete_tag', { tagId }, () => web.webDeleteTag(tagId))
-export const setNoteTags = (noteIds: string[], tagIds: string[]) => call<void>('set_note_tags', { noteIds, tagIds }, () => web.webSetTags(noteIds, tagIds))
+export const setNoteMood = (noteId:string,mood:string|null) => call<void>('set_note_mood',{noteId,mood},()=>web.webSetMood(noteId,mood))
+export const globalSearch = (query:string,limit=16) => call<SearchResultDto[]>('global_search',{query,limit},()=>web.webGlobalSearch(query,limit))
 export const saveAttachment = (noteId: string, fileName: string, mediaType: string, dataBase64: string) => call<AttachmentDto>('save_attachment', { noteId, fileName, mediaType, dataBase64 }, () => web.webSaveAttachment(noteId,fileName,mediaType,dataBase64))
 export const listAttachments = (noteId: string) => call<AttachmentDto[]>('list_attachments', { noteId }, () => web.webListAttachments(noteId))
 export const deleteAttachment = (attachmentId: string) => call<void>('delete_attachment', { attachmentId }, () => web.webDeleteAttachment(attachmentId))
@@ -74,7 +73,6 @@ export const importNotes = (content: string, format: 'markdown' | 'html' | 'json
   return call<NoteDto[]>('import_notes', { content, format, categoryId: categoryId ?? null, title: parsed?.title ?? null, documentJson: parsed?.document ?? null }, () => web.webImport(content, format, categoryId, parsed ?? undefined))
 }
 export const updateCategoryAppearance = (categoryId:string,iconName:string,color:string) => call<void>('update_category_appearance',{categoryId,iconName,color},()=>web.webUpdateCategoryAppearance(categoryId,iconName,color))
-export const setCategoryPinned = (categoryId:string,isPinned:boolean) => call<void>('set_category_pinned',{categoryId,isPinned},()=>web.webSetCategoryPinned(categoryId,isPinned))
 export const getJottingSnapshot = () => call<JottingSnapshotDto>('get_jotting_snapshot',undefined,web.webJottingSnapshot)
 export const createJottingFolder = (name:string,parentId?:string|null) => call<JottingFolderDto>('create_jotting_folder',{name,parentId:parentId??null},()=>web.webCreateJottingFolder(name,parentId))
 export const createJotting = (name:string,folderId?:string|null) => call<JottingDto>('create_jotting',{name,folderId:folderId??null},()=>web.webCreateJotting(name,folderId))

@@ -3,10 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   batchNotes,
   createCategory,
-  createTag,
   createWorkspaceNote,
   deleteCategory,
-  deleteTag,
   emptyTrash,
   getWorkspaceNote,
   getWorkspaceSnapshot,
@@ -15,8 +13,7 @@ import {
   moveNotes,
   queryNotes,
   renameCategory,
-  setNoteTags,
-  setCategoryPinned,
+  setNoteMood,
   updateCategoryAppearance,
 } from '../../shared/tauri/commands'
 import type {
@@ -30,7 +27,6 @@ import type {
   NoteView,
   RecoveryRecordDto,
   SaveNoteResult,
-  TagDto,
   SystemCountsDto,
   VersionedDocument,
 } from '../../shared/tauri/contracts'
@@ -48,10 +44,9 @@ function toSummary(note: NoteDto): NoteSummaryDto {
     revision: note.revision,
     categoryId: note.categoryId,
     isFavorite: note.isFavorite,
-    isPinned: note.isPinned,
     isArchived: note.isArchived,
     deletedAt: note.deletedAt,
-    tags: note.tags,
+    mood: note.mood,
     updatedAt: note.updatedAt,
   }
 }
@@ -61,15 +56,13 @@ export function useNotes() {
   const [library, setLibrary] = useState<LibraryDto | null>(null)
   const [notes, setNotes] = useState<NoteSummaryDto[]>([])
   const [categories, setCategories] = useState<CategoryDto[]>([])
-  const [tags, setTags] = useState<TagDto[]>([])
-  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,pinned:0,archived:0,trash:0,jottings:0})
+  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0})
   const [total, setTotal] = useState(0)
   const [selectedNote, setSelectedNote] = useState<NoteDto | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [view, setViewState] = useState<NoteView>('all')
   const [categoryId, setCategoryIdState] = useState<string | null>(null)
-  const [tagId, setTagIdState] = useState<string | null>(null)
   const [search, setSearchState] = useState('')
   const [sortBy, setSortByState] = useState<NoteSort>('updatedAt')
   const [sortDirection, setSortDirectionState] = useState<'asc' | 'desc'>('desc')
@@ -78,8 +71,8 @@ export function useNotes() {
   const [isLoadingNote, setIsLoadingNote] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const selectionToken = useRef(0)
-  const queryRef = useRef({ view, categoryId, tagId, search, sortBy, sortDirection })
-  queryRef.current = { view, categoryId, tagId, search, sortBy, sortDirection }
+  const queryRef = useRef({ view, categoryId, search, sortBy, sortDirection })
+  queryRef.current = { view, categoryId, search, sortBy, sortDirection }
 
   const makeQuery = useCallback((offset = 0): NoteQuery => ({
     ...queryRef.current,
@@ -90,7 +83,6 @@ export function useNotes() {
   const refreshWorkspace = useCallback(async () => {
     const snapshot = await getWorkspaceSnapshot()
     setCategories(snapshot.categories)
-    setTags(snapshot.tags)
     setSystemCounts(snapshot.systemCounts)
   }, [])
 
@@ -116,7 +108,6 @@ export function useNotes() {
       ])
       setLibrary(initializedLibrary)
       setCategories(snapshot.categories)
-      setTags(snapshot.tags)
       setSystemCounts(snapshot.systemCounts)
       setNotes(page.items)
       setTotal(page.total)
@@ -132,7 +123,7 @@ export function useNotes() {
     if (status !== 'ready') return
     const timer = setTimeout(() => void refreshNotes().catch((cause) => setError(cause instanceof Error ? cause.message : '无法刷新笔记')), 180)
     return () => clearTimeout(timer)
-  }, [view, categoryId, tagId, search, sortBy, sortDirection, refreshNotes, status])
+  }, [view, categoryId, search, sortBy, sortDirection, refreshNotes, status])
 
   const select = useCallback(async (noteId: string) => {
     const token = ++selectionToken.current
@@ -204,24 +195,20 @@ export function useNotes() {
   }, [refreshNotes, refreshWorkspace, selectedIds, selectedNoteId])
   const clearTrash = useCallback(async () => { await emptyTrash(); setSelectedNote(null); setSelectedNoteId(null); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace])
   const moveSelected = useCallback(async (target: string, requestedIds?: string[]) => { const ids=requestedIds??[...selectedIds]; if(!ids.length)return; await moveNotes(ids,target); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace,selectedIds])
-  const replaceTags = useCallback(async (noteIds: string[], tagIds: string[]) => { await setNoteTags(noteIds,tagIds); await refreshNotes(); if(selectedNoteId&&noteIds.includes(selectedNoteId)) await select(selectedNoteId) }, [refreshNotes,select,selectedNoteId])
+  const updateMood = useCallback(async (mood:string|null) => { if(!selectedNoteId)return; await setNoteMood(selectedNoteId,mood); setSelectedNote(current=>current?{...current,mood}:current); setNotes(current=>current.map(note=>note.id===selectedNoteId?{...note,mood}:note)) }, [selectedNoteId])
 
   return {
-    status, library, notes, categories, tags, systemCounts, total, selectedNote, selectedNoteId, selectedIds,
-    view, categoryId, tagId, search, sortBy, sortDirection, error, isCreating, isLoadingNote, isLoadingMore,
-    create, select, loadMore, updateDraft, applySaved, applyRecoveredDraft, toggleSelected, selectAll, performBatch, clearTrash, moveSelected, replaceTags,
+    status, library, notes, categories, systemCounts, total, selectedNote, selectedNoteId, selectedIds,
+    view, categoryId, search, sortBy, sortDirection, error, isCreating, isLoadingNote, isLoadingMore,
+    create, select, loadMore, updateDraft, applySaved, applyRecoveredDraft, toggleSelected, selectAll, performBatch, clearTrash, moveSelected, updateMood,
     clearSelection: () => setSelectedIds(new Set()),
-    setView: (next: NoteView) => { setViewState(next); setCategoryIdState(null); setTagIdState(null) },
-    setCategory: (id: string | null) => { setCategoryIdState(id); setTagIdState(null); setViewState('all') },
-    setTag: (id: string | null) => { setTagIdState(id); setCategoryIdState(null); setViewState('all') },
+    setView: (next: NoteView) => { setViewState(next); setCategoryIdState(null) },
+    setCategory: (id: string | null) => { setCategoryIdState(id); setViewState('all') },
     setSearch: setSearchState, setSortBy: setSortByState, setSortDirection: setSortDirectionState,
     addCategory: async (name: string, parentId?: string | null) => { const created=await createCategory(name,parentId); await refreshWorkspace(); return created },
     editCategory: async (id:string,name:string) => { await renameCategory(id,name); await refreshWorkspace() },
     editCategoryAppearance: async (id:string,iconName:string,color:string) => { await updateCategoryAppearance(id,iconName,color); await refreshWorkspace() },
-    pinCategory: async (id:string,isPinned:boolean) => { await setCategoryPinned(id,isPinned); await refreshWorkspace() },
     removeCategory: async (id:string) => { await deleteCategory(id); await Promise.all([refreshWorkspace(),refreshNotes()]) },
-    addTag: async (name:string) => { const created=await createTag(name); await refreshWorkspace(); return created },
-    removeTag: async (id:string) => { await deleteTag(id); await Promise.all([refreshWorkspace(),refreshNotes()]) },
     importContent: async (content:string,format:'markdown'|'html'|'json') => { await importNotes(content,format,categoryId); await Promise.all([refreshNotes(),refreshWorkspace()]) },
     updateLibrary: setLibrary, retry: loadLibrary, refresh: refreshNotes,
   }
