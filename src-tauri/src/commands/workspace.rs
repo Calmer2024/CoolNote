@@ -237,11 +237,17 @@ pub async fn import_notes(
     content: String,
     format: String,
     category_id: Option<String>,
+    title: Option<String>,
+    document_json: Option<serde_json::Value>,
 ) -> Result<Vec<Note>, CommandError> {
     run(state, move |services| {
-        services
-            .workspace
-            .import_notes(&content, &format, category_id.as_deref())
+        services.workspace.import_notes(
+            &content,
+            &format,
+            category_id.as_deref(),
+            title.as_deref(),
+            document_json,
+        )
     })
     .await
 }

@@ -18,6 +18,7 @@ export const SUPPORTED_TOP_LEVEL_NODES = new Set([
   'table',
   'blockMath',
   'mermaid',
+  'horizontalRule',
 ])
 
 const SUPPORTED_NODES = new Set([
@@ -34,9 +35,10 @@ const SUPPORTED_NODES = new Set([
   'blockMath',
   'inlineMath',
   'mermaid',
+  'horizontalRule',
 ])
 
-const SUPPORTED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link'])
+const SUPPORTED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link', 'highlight'])
 
 const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   paragraph: new Set(['text', 'hardBreak', 'inlineMath', 'image']),
@@ -82,6 +84,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   blockMath: new Set(),
   inlineMath: new Set(),
   mermaid: new Set(),
+  horizontalRule: new Set(),
 }
 
 function validateNode(node: DocumentNode) {
@@ -113,9 +116,9 @@ function normalizeTopLevelNode(node: DocumentNode): DocumentNode {
   if (
     node.type === 'heading' &&
     (!Number.isInteger(node.attrs?.level) ||
-      ![1, 2, 3].includes(node.attrs?.level as number))
+      ![1, 2, 3, 4, 5].includes(node.attrs?.level as number))
   ) {
-    throw new Error('标题级别必须为 1、2 或 3')
+    throw new Error('标题级别必须为 1 到 5')
   }
 
   const blockId = node.attrs?.blockId

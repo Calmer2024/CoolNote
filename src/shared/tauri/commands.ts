@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import * as web from './webStore'
+import { parseMarkdownDocument } from '../../features/editor/markdown'
 
 const native = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 const call = <T>(command: string, args?: Record<string, unknown>, fallback?: () => T) => native ? invoke<T>(command, args) : Promise.resolve(fallback ? fallback() : (() => { throw new Error(`Web 版暂不支持命令：${command}`) })())
@@ -68,7 +69,10 @@ export const saveAttachment = (noteId: string, fileName: string, mediaType: stri
 export const listAttachments = (noteId: string) => call<AttachmentDto[]>('list_attachments', { noteId }, () => web.webListAttachments(noteId))
 export const deleteAttachment = (attachmentId: string) => call<void>('delete_attachment', { attachmentId }, () => web.webDeleteAttachment(attachmentId))
 export const exportNotes = (noteIds: string[], format: 'markdown' | 'html' | 'json') => call<string>('export_notes', { noteIds, format }, () => web.webExport(noteIds, format))
-export const importNotes = (content: string, format: 'markdown' | 'html' | 'json', categoryId?: string | null) => call<NoteDto[]>('import_notes', { content, format, categoryId: categoryId ?? null }, () => web.webImport(content, format, categoryId))
+export const importNotes = (content: string, format: 'markdown' | 'html' | 'json', categoryId?: string | null) => {
+  const parsed = format === 'markdown' ? parseMarkdownDocument(content) : null
+  return call<NoteDto[]>('import_notes', { content, format, categoryId: categoryId ?? null, title: parsed?.title ?? null, documentJson: parsed?.document ?? null }, () => web.webImport(content, format, categoryId, parsed ?? undefined))
+}
 export const updateCategoryAppearance = (categoryId:string,iconName:string,color:string) => call<void>('update_category_appearance',{categoryId,iconName,color},()=>web.webUpdateCategoryAppearance(categoryId,iconName,color))
 export const setCategoryPinned = (categoryId:string,isPinned:boolean) => call<void>('set_category_pinned',{categoryId,isPinned},()=>web.webSetCategoryPinned(categoryId,isPinned))
 export const getJottingSnapshot = () => call<JottingSnapshotDto>('get_jotting_snapshot',undefined,web.webJottingSnapshot)

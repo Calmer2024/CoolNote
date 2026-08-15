@@ -508,6 +508,8 @@ impl WorkspaceService {
         content: &str,
         format: &str,
         category_id: Option<&str>,
+        parsed_title: Option<&str>,
+        parsed_document: Option<serde_json::Value>,
     ) -> Result<Vec<Note>, AppError> {
         if format == "json" {
             let values: Vec<TransferNote> = serde_json::from_str(content)?;
@@ -521,6 +523,20 @@ impl WorkspaceService {
                     )
                 })
                 .collect();
+        }
+        if format == "markdown" {
+            if let Some(value) = parsed_document {
+                let document = validate_document(&value)?;
+                let title = parsed_title
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .unwrap_or("导入笔记");
+                return Ok(vec![self.create_note(
+                    category_id,
+                    title,
+                    Some(document),
+                )?]);
+            }
         }
         let sections = if format == "markdown" {
             content.split("\n---\n").collect::<Vec<_>>()

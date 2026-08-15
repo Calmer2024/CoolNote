@@ -20,6 +20,7 @@ const ALLOWED_TOP_LEVEL_NODES: &[&str] = &[
     "table",
     "blockMath",
     "mermaid",
+    "horizontalRule",
 ];
 
 const ALLOWED_NESTED_NODES: &[&str] = &[
@@ -42,9 +43,18 @@ const ALLOWED_NESTED_NODES: &[&str] = &[
     "blockMath",
     "inlineMath",
     "mermaid",
+    "horizontalRule",
 ];
 
-const ALLOWED_MARKS: &[&str] = &["bold", "italic", "strike", "code", "underline", "link"];
+const ALLOWED_MARKS: &[&str] = &[
+    "bold",
+    "italic",
+    "strike",
+    "code",
+    "underline",
+    "link",
+    "highlight",
+];
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -127,9 +137,9 @@ pub fn validate_document(value: &serde_json::Value) -> Result<Document, AppError
         if !ALLOWED_TOP_LEVEL_NODES.contains(&node.node_type.as_str()) {
             return Err(AppError::UnsupportedNode(node.node_type.clone()));
         }
-        if node.node_type == "heading" && !matches!(node.attrs.level, Some(1..=3)) {
+        if node.node_type == "heading" && !matches!(node.attrs.level, Some(1..=5)) {
             return Err(AppError::InvalidDocument(format!(
-                "heading at index {index} must use level 1, 2, or 3"
+                "heading at index {index} must use a level from 1 to 5"
             )));
         }
         let block_id = node
@@ -213,7 +223,8 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "blockquote"
                 | "codeBlock"
         ),
-        "text" | "hardBreak" | "image" | "blockMath" | "inlineMath" | "mermaid" => false,
+        "text" | "hardBreak" | "image" | "blockMath" | "inlineMath" | "mermaid"
+        | "horizontalRule" => false,
         _ => false,
     }
 }
@@ -339,5 +350,21 @@ mod tests {
         });
         let document = validate_document(&value).expect("mermaid document should validate");
         assert_eq!(derive_plain_text(&document), "graph TD\nA-->B");
+    }
+
+    #[test]
+    fn markdown_import_nodes_and_highlight_marks_validate() {
+        let value = serde_json::json!({
+            "schemaVersion": 1,
+            "type": "doc",
+            "content": [
+                {"type":"paragraph","attrs":{"blockId":Uuid::new_v4().to_string()},"content":[{"type":"text","text":"重点","marks":[{"type":"highlight"}]}]},
+                {"type":"taskList","attrs":{"blockId":Uuid::new_v4().to_string()},"content":[{"type":"taskItem","attrs":{"checked":true},"content":[{"type":"paragraph","content":[{"type":"text","text":"完成"}]}]}]},
+                {"type":"horizontalRule","attrs":{"blockId":Uuid::new_v4().to_string()}}
+            ]
+        });
+        let document =
+            validate_document(&value).expect("imported Markdown document should validate");
+        assert_eq!(derive_plain_text(&document), "重点\n完成");
     }
 }
