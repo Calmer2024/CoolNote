@@ -1057,19 +1057,19 @@ a {
 }
 
 .note-editor-content h1 {
-  margin: 52px 0 24px;
+  margin: 44px 0 18px;
   font-size: clamp(27px, 2.1vw, 36px);
   letter-spacing: -0.75px;
 }
 
 .note-editor-content h2 {
-  margin: 44px 0 20px;
+  margin: 36px 0 16px;
   font-size: clamp(23px, 1.8vw, 31px);
   letter-spacing: -0.55px;
 }
 
 .note-editor-content h3 {
-  margin: 36px 0 16px;
+  margin: 30px 0 14px;
   font-size: 21px;
 }
 
@@ -1085,12 +1085,12 @@ a {
 }
 
 .note-editor-content h4 {
-  margin: 29px 0 12px;
+  margin: 24px 0 10px;
   font-size: 18px;
 }
 
 .note-editor-content h5 {
-  margin: 24px 0 10px;
+  margin: 20px 0 8px;
   font-size: 16px;
 }
 

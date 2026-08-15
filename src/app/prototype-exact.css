@@ -1406,7 +1406,7 @@
         border: 1px solid var(--border);
         border-radius: 14px;
         background: var(--surface);
-        box-shadow: 0 14px 36px rgba(35, 45, 55, 0.07);
+        box-shadow: none;
       }
       .jotting-cover {
         position: relative;
@@ -1489,12 +1489,22 @@
         object-fit: cover;
       }
       .jotting-markdown {
-        padding: clamp(38px, 6vw, 76px) clamp(38px, 7vw, 92px) 90px;
+        padding: clamp(38px, 6vw, 76px) clamp(38px, 7vw, 92px) 36px;
         color: #3c3b38;
         font-family: "Noto Serif SC Local", "Noto Serif SC", serif;
         font-size: 17px;
         font-weight: 420;
         line-height: 2;
+      }
+      .jotting-date-signature {
+        display: block;
+        padding: 0 clamp(38px, 7vw, 92px) 54px;
+        color: #938b82;
+        font-family: "Noto Serif SC Local", "Noto Serif SC", serif;
+        font-size: 15px;
+        font-style: normal;
+        letter-spacing: 0.04em;
+        text-align: right;
       }
       .jotting-markdown h1,
       .jotting-markdown h2,

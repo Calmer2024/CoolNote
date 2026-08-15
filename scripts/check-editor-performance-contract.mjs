@@ -17,6 +17,13 @@ const requirements=[
   ['切换笔记时延迟重排',/handleSelect=.*flushBeforeLeaving\(\).*notes\.refresh\(\).*notes\.select\(id\)/.test(app)],
   ['全局搜索时重新应用列表排序',app.includes('Promise.all([globalSearch(searchQuery),notes.refresh()])')],
   ['保存携带独立 Markdown 快照',editor.includes('markdownSnapshot:noteToMarkdown')&&app.includes('markdownSnapshot})')],
+  ['正文图片点击后进入明确选中态',editor.includes('NodeSelection.create')&&editor.includes('selectImage()')],
+  ['正文图片本体可直接拖动',editor.includes('dom.draggable=true')&&editor.includes('application/x-coolnote-image-pos')],
+  ['正文图片支持退格键和删除键删除',editor.includes('addKeyboardShortcuts()')&&editor.includes('Backspace:remove,Delete:remove')],
+  ['正文图片不显示冗余操作按钮',!editor.includes("className='editor-image-select'")&&!editor.includes("className='editor-image-delete'")&&!editor.includes("className='editor-image-drag'")],
+  ['并排图片完整保留原始比例',css.includes('.editor-image[data-layout="gallery"] img { width:100%!important; height:auto!important; max-height:none; aspect-ratio:auto!important; object-fit:contain;')&&!css.includes('aspect-ratio:4/3; object-fit:cover;')],
+  ['正文图片选中态具有可见边框',css.includes('.editor-image.is-selected')],
+  ['同尺寸并排图片具有完全一致的内容宽度',css.includes('.editor-image[data-layout="gallery"] { width:100%; margin:5px 0; padding:0 5px;')&&!css.includes('.editor-image[data-layout="gallery"][data-gallery-index="0"] { grid-column-start:1; padding-left:0;')&&!css.includes('{ padding-right:0; }')],
 ]
 const failed=requirements.filter(([,passed])=>!passed)
 if(failed.length){for(const [name] of failed)console.error(`Editor performance contract failed: ${name}`);process.exit(1)}

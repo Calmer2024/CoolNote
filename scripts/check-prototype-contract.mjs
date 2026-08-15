@@ -31,6 +31,7 @@ const appSource=readFileSync(new URL('../src/app/App.tsx',import.meta.url),'utf8
 const jottingSource=readFileSync(new URL('../src/features/jottings/JottingsWorkspace.tsx',import.meta.url),'utf8')
 const uxSource=readFileSync(new URL('../src/app/ux-fixes.css',import.meta.url),'utf8')
 const appCss=readFileSync(new URL('../src/app/app.css',import.meta.url),'utf8')
+const prototypeCss=readFileSync(new URL('../src/app/prototype-exact.css',import.meta.url),'utf8')
 const tauriSource=readFileSync(new URL('../src-tauri/tauri.conf.json',import.meta.url),'utf8')
 const noteEditorSource=readFileSync(new URL('../src/features/editor/NoteEditor.tsx',import.meta.url),'utf8')
 const phycatCodeSource=readFileSync(new URL('../src/features/editor/phycatCode.ts',import.meta.url),'utf8')
@@ -53,6 +54,14 @@ const designRules=[
   [appCss.includes('.icon:last-child:not(:first-child)'),'菜单只允许末尾箭头自动靠右，主语义图标必须左对齐'],
   [overlaySource.includes('export function GlobalTooltip()')&&appSource.includes('<GlobalTooltip/>')&&guidelineSource.includes('### 3.1 Tooltip'),'按钮 Tooltip 必须由全局锚点系统实现并写入设计规范'],
   [noteEditorSource.includes('className="slash-menu-items"')&&uxSource.includes('.slash-menu-items')&&uxSource.includes('overflow-y:auto')&&uxSource.includes('@keyframes slash-menu-fade'),'斜杠菜单必须将搜索头与独立滚动列表分离，且进入动画不得产生位置抖动'],
+  [noteEditorSource.includes("pinyin:'zhengwen zw'")&&noteEditorSource.includes('item.pinyin'),'斜杠菜单必须支持中文命令的全拼与首字母搜索'],
+  [noteEditorSource.includes("name:'imageGalleryLayout'")&&noteEditorSource.includes('offset+=5')&&noteEditorSource.includes('gallerySize:gallery?chunk.length:1')&&noteEditorSource.includes("setAttribute('data-drag-handle','')")&&noteEditorSource.includes('posAtCoords')&&noteEditorSource.includes('animateImageLayout')&&uxSource.includes('[data-gallery-size="5"]'),'笔记图片必须支持拖到相邻图片右侧后自动按最多 5 张等宽成组并播放过渡动画'],
+  [noteEditorSource.includes('Backspace:remove,Delete:remove')&&!noteEditorSource.includes('saveDataUrl'),'笔记图片必须使用直接拖动和键盘删除，不得显示冗余操作按钮'],
+  [jottingSource.includes('const saveCurrent=async')&&jottingSource.includes('onErrorRef'),'小记切换前必须保存，初始化不得因回调引用变化而重跑'],
+  [!jottingSource.includes('未命名小记.md')&&jottingSource.includes("useState('未命名小记')"),'小记名称不得自动附加 .md 后缀'],
+  [jottingSource.includes('jotting-date-signature')&&jottingSource.includes('formatJottingDate')&&prototypeCss.includes('font-size: 15px')&&prototypeCss.includes('font-style: normal'),'小记末尾必须以适当增大的正体字显示更新日期落款'],
+  [uxSource.includes('.editor-word-count { position:fixed')&&uxSource.includes('right:calc(var(--outline-current-width) + 14px)')&&uxSource.includes('transition:right 180ms ease'),'笔记字数统计必须位于正文滚动条左侧并随大纲宽度移动'],
+  [uxSource.includes('.jotting-markdown.ProseMirror-focused')&&uxSource.includes('box-shadow: none')&&prototypeCss.includes('box-shadow: none'),'小记纸张及编辑区聚焦时不得重新出现上下阴影矩形'],
   [noteEditorSource.includes('aria-label="搜索代码语言"')&&noteEditorSource.includes("language||'auto'")&&noteEditorSource.includes('CodeLanguageIcon')&&noteEditorSource.includes('codeSuggestionsOpen')&&phycatCodeSource.includes("name:'search'")&&phycatCodeSource.includes("line.className='phycat-code-line-number'")&&uxSource.includes('.code-language-icon::before')&&uxSource.includes('margin-left:0!important')&&uxSource.includes('overflow:hidden'),'Phycat 代码块必须提供逐行编号、真实 Logo、auto 图标与可搜索语言浮层，且多层 Logo 不得重复负偏移或溢出'],
   [uxSource.includes('overflow-x:hidden')&&uxSource.includes('white-space:pre-wrap')&&uxSource.includes('overflow-wrap:anywhere')&&!uxSource.includes('overflow-x:auto; overflow-y:hidden; border-radius:0 0 5px 5px'),'Phycat 代码块必须禁用横向滚动并对超长逻辑行进行软换行'],
   [phycatCodeSource.includes("lineMeasure.className='phycat-code-line-measure'")&&phycatCodeSource.includes('syncLogicalLineHeights')&&phycatCodeSource.includes('visualLines*lineHeight'),'代码块行号高度必须跟随逻辑行的软换行高度，视觉续行不得生成额外编号'],
