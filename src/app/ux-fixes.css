@@ -176,17 +176,20 @@
   animation: sort-list-enter 220ms ease both;
 }
 
-.workspace > section,
-.workspace > aside {
-  animation: tab-view-enter 200ms ease both;
-}
+.workspace[data-view-transition="even"] > section { animation:tab-view-enter-even 200ms ease both; }
+.workspace[data-view-transition="odd"] > section { animation:tab-view-enter-odd 200ms ease both; }
 
 @keyframes sort-list-enter {
   from { opacity: .25; transform: translateY(5px); }
   to { opacity: 1; transform: none; }
 }
 
-@keyframes tab-view-enter {
+@keyframes tab-view-enter-even {
+  from { opacity: .25; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes tab-view-enter-odd {
   from { opacity: .25; transform: translateY(3px); }
   to { opacity: 1; transform: none; }
 }
@@ -218,8 +221,6 @@
 .primary-nav, .section-label { flex:0 0 auto; }
 .category-nav { min-height:0; flex:1 1 auto; align-content:start; grid-auto-rows:43px; gap:4px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 
-.note-create-menu-trigger { color:var(--text-muted); background:transparent; box-shadow:none; }
-.note-create-menu-trigger .icon { width:18px; height:18px; }
 .note-create-dropdown { width:224px; }
 .empty-trash-button { color:#b84545; }
 .note-category-token { display:inline-flex; max-width:110px; height:20px; align-items:center; padding:0 8px; overflow:hidden; border:0; border-radius:999px; color:#0874cf; background:#e8f4ff; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
@@ -294,8 +295,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .workspace > section,
-  .workspace > aside,
+  .workspace[data-view-transition] > section,
   .notes-list[data-sort-direction] .note-card-row {
     animation: none;
   }

@@ -144,8 +144,10 @@ type DialogProps = {
 
 export function ProductDialog({ state, busy = false, onClose }: DialogProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [submitting, setSubmitting] = useState(false)
   useEffect(() => {
     if (!state) return
+    setSubmitting(false)
     const timer = window.setTimeout(() => inputRef.current?.select(), 30)
     const close = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     document.addEventListener('keydown', close)
@@ -154,24 +156,41 @@ export function ProductDialog({ state, busy = false, onClose }: DialogProps) {
   if (!state) return null
   let currentValue = state.value ?? ''
   return <div className="product-dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <form className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title" onSubmit={(event) => { event.preventDefault(); void state.onConfirm(currentValue) }}>
+    <form className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title" onSubmit={(event) => { event.preventDefault(); if(submitting||busy)return; setSubmitting(true); void (async()=>{try{await state.onConfirm(currentValue);onClose()}finally{setSubmitting(false)}})() }}>
       <div className="dialog-icon"><Icon name={state.danger ? 'triangle-alert' : 'sparkles'} /></div>
       <h2 id="product-dialog-title">{state.title}</h2>
       {state.description && <p>{state.description}</p>}
       {state.label && <label>{state.label}<input ref={inputRef} defaultValue={state.value} onChange={(event) => { currentValue = event.target.value }} /></label>}
-      <div className="dialog-actions"><button type="button" onClick={onClose}>取消</button><button type="submit" className={state.danger ? 'danger primary' : 'primary'} disabled={busy}>{busy ? '处理中…' : state.confirmLabel ?? '确认'}</button></div>
+      <div className="dialog-actions"><button type="button" onClick={onClose} disabled={submitting||busy}>取消</button><button type="submit" className={state.danger ? 'danger primary' : 'primary'} disabled={submitting||busy}>{submitting||busy ? '处理中…' : state.confirmLabel ?? '确认'}</button></div>
     </form>
   </div>
 }
 
-export type ToastState = { id: number; message: string; undo?: () => void | Promise<void> }
+export type ToastState = { id: number; message: string; undo?: () => void | Promise<void>; tone?: 'success' | 'error' | 'info' }
 
 export function ProductToast({ toast, onClose }: { toast: ToastState | null; onClose: () => void }) {
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  const timeoutMs = toast?.undo ? 8000 : 3000
   useEffect(() => {
     if (!toast) return
-    const timer = window.setTimeout(onClose, toast.undo ? 6000 : 3000)
+    const timer = window.setTimeout(() => closeRef.current(), timeoutMs)
     return () => window.clearTimeout(timer)
-  }, [onClose, toast])
+  }, [toast?.id, timeoutMs])
   if (!toast) return null
-  return <div className="product-toast" role="status"><Icon name="check-square" /><span>{toast.message}</span>{toast.undo && <button onClick={() => { void toast.undo?.(); onClose() }}>撤销</button>}<button className="toast-close" aria-label="关闭" onClick={onClose}><Icon name="x" /></button></div>
+  return <div className={`product-toast ${toast.tone??'success'}`} role={toast.tone==='error'?'alert':'status'}><Icon name={toast.tone==='error'?'message-square':'check-square'} /><span>{toast.message}</span>{toast.undo && <button onClick={() => { void toast.undo?.(); onClose() }}>撤销</button>}<button className="toast-close" aria-label="关闭" onClick={onClose}><Icon name="x" /></button></div>
+}
+
+export type ProgressToastState = { id: number; title: string; current: number; total: number; detail: string; active: boolean; actionLabel?: string; onAction?: () => void }
+
+export function ProductProgressToast({ toast, onClose }: { toast: ProgressToastState | null; onClose: () => void }) {
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  useEffect(() => {
+    if (!toast || toast.active) return
+    const timer = window.setTimeout(() => closeRef.current(), 3000)
+    return () => window.clearTimeout(timer)
+  }, [toast?.active, toast?.id])
+  if (!toast) return null
+  return <div className="product-toast product-progress-toast info" role="status"><Icon name={toast.active?'image-up':'check-square'} /><div className="progress-toast-content"><div><strong>{toast.title}</strong><span>{toast.current} / {toast.total}</span></div><progress value={toast.current} max={Math.max(1,toast.total)}/><small>{toast.detail}</small></div>{toast.active&&toast.onAction&&<button onClick={toast.onAction}>{toast.actionLabel??'取消'}</button>}<button className="toast-close" aria-label="关闭" onClick={onClose}><Icon name="x" /></button></div>
 }

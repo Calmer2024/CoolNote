@@ -56,7 +56,7 @@ export function useNotes() {
   const [library, setLibrary] = useState<LibraryDto | null>(null)
   const [notes, setNotes] = useState<NoteSummaryDto[]>([])
   const [categories, setCategories] = useState<CategoryDto[]>([])
-  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0})
+  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0,galleries:0})
   const [total, setTotal] = useState(0)
   const [selectedNote, setSelectedNote] = useState<NoteDto | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)

@@ -72,6 +72,12 @@ export type JottingFolderDto = { id: string; parentId: string | null; name: stri
 export type JottingDto = { id: string; folderId: string | null; name: string; content: string; cover: string | null; isFavorite: boolean; sortOrder: number; revision: number; createdAt: string; updatedAt: string }
 export type JottingSnapshotDto = { folders: JottingFolderDto[]; jottings: JottingDto[] }
 
+export type GallerySummaryDto = { id:string; name:string; introduction:string; cover:string|null; sortOrder:number; revision:number; itemCount:number; createdAt:string; updatedAt:string }
+export type GalleryItemDto = { id:string; galleryId:string; assetId:string; originalFileName:string; mediaType:string; sizeBytes:number; width:number; height:number; sortOrder:number; thumbnailDataUrl:string|null; isAnimated:boolean; createdAt:string }
+export type GalleryAssetDataDto = { fileName:string; mediaType:string; dataUrl:string }
+export type GalleryImportResultDto = { status:'added'|'skipped'; item:GalleryItemDto|null; fileName:string; message:string }
+export type GalleryTransferResultDto = { changed:number; skipped:number }
+
 export type AttachmentDto = {
   id: string
   noteId: string
@@ -82,9 +88,9 @@ export type AttachmentDto = {
   dataUrl: string
   createdAt: string
 }
-export type SystemCountsDto = { all:number; favorites:number; archived:number; trash:number; jottings:number }
+export type SystemCountsDto = { all:number; favorites:number; archived:number; trash:number; jottings:number; galleries:number }
 export type WorkspaceSnapshotDto = { categories: CategoryDto[]; systemCounts:SystemCountsDto }
-export type SearchResultDto = { id:string; kind:'note'|'jotting'; title:string; excerpt:string; updatedAt:string }
+export type SearchResultDto = { id:string; kind:'note'|'jotting'|'gallery'; title:string; excerpt:string; updatedAt:string }
 export type NoteView = 'all' | 'favorites' | 'archived' | 'trash'
 export type NoteSort = 'updatedAt' | 'createdAt' | 'title'
 export type NoteQuery = {

@@ -24,6 +24,11 @@ import type {
   JottingDto,
   JottingFolderDto,
   JottingSnapshotDto,
+  GallerySummaryDto,
+  GalleryItemDto,
+  GalleryAssetDataDto,
+  GalleryImportResultDto,
+  GalleryTransferResultDto,
 } from './contracts'
 
 export const initializeLibrary = () => call<LibraryDto>('initialize_library', undefined, web.webInitialize)
@@ -80,3 +85,16 @@ export const updateJotting = (id:string,baseRevision:number,name:string,content:
 export const moveJotting = (id:string,folderId?:string|null) => call<JottingDto>('move_jotting',{id,folderId:folderId??null},()=>web.webMoveJotting(id,folderId))
 export const deleteJotting = (id:string) => call<void>('delete_jotting',{id},()=>web.webDeleteJotting(id))
 export const deleteJottingFolder = (id:string) => call<void>('delete_jotting_folder',{id},()=>web.webDeleteJottingFolder(id))
+export const listGalleries = () => call<GallerySummaryDto[]>('list_galleries',undefined,web.webListGalleries)
+export const createGallery = (name:string) => call<GallerySummaryDto>('create_gallery',{name},()=>web.webCreateGallery(name))
+export const updateGallery = (id:string,baseRevision:number,name:string,introduction:string,cover:string|null) => call<GallerySummaryDto>('update_gallery',{id,baseRevision,name,introduction,cover},()=>web.webUpdateGallery(id,baseRevision,name,introduction,cover))
+export const reorderGallery = (id:string,beforeId?:string|null) => call<void>('reorder_gallery',{id,beforeId:beforeId??null},()=>web.webReorderGallery(id,beforeId))
+export const listGalleryItems = (galleryId:string,offset=0,limit=60) => call<Page<GalleryItemDto>>('list_gallery_items',{galleryId,offset,limit},()=>web.webListGalleryItems(galleryId,offset,limit))
+export const importGalleryPath = (galleryId:string,path:string) => call<GalleryImportResultDto>('import_gallery_path',{galleryId,path})
+export const importGalleryData = (galleryId:string,fileName:string,dataUrl:string) => call<GalleryImportResultDto>('import_gallery_data',{galleryId,fileName,dataUrl})
+export const reorderGalleryItem = (galleryId:string,itemId:string,beforeId?:string|null) => call<void>('reorder_gallery_item',{galleryId,itemId,beforeId:beforeId??null},()=>web.webReorderGalleryItem(galleryId,itemId,beforeId))
+export const deleteGallery = (id:string) => call<string>('delete_gallery',{id},()=>web.webDeleteGallery(id))
+export const deleteGalleryItems = (itemIds:string[]) => call<string>('delete_gallery_items',{itemIds},()=>web.webDeleteGalleryItems(itemIds))
+export const undoGalleryDelete = (token:string) => call<boolean>('undo_gallery_delete',{token},()=>web.webUndoGalleryDelete(token))
+export const transferGalleryItems = (itemIds:string[],targetGalleryId:string,moveItems:boolean) => call<GalleryTransferResultDto>('transfer_gallery_items',{itemIds,targetGalleryId,moveItems},()=>web.webTransferGalleryItems(itemIds,targetGalleryId,moveItems))
+export const getGalleryAssetData = (itemId:string) => call<GalleryAssetDataDto>('get_gallery_asset_data',{itemId},()=>web.webGetGalleryAssetData(itemId))

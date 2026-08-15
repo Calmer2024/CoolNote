@@ -1027,6 +1027,22 @@
       .system-view[data-view="favorites"].active > span:not(.nav-count) {
         color: #d69a00;
       }
+      .system-view[data-view="gallery"].active,
+      .system-view[data-view="gallery"].active .icon,
+      .system-view[data-view="gallery"].active > span:not(.nav-count) {
+        color: #e97722;
+      }
+      .system-view[data-view="gallery"].active {
+        background: #fff1e7;
+      }
+      :root[data-theme="dark"] .system-view[data-view="favorites"].active {
+        color: #f0c14b !important;
+        background: #413718;
+      }
+      :root[data-theme="dark"] .system-view[data-view="gallery"].active {
+        color: #f29a57;
+        background: #472b1d;
+      }
       .prototype-menu .icon {
         flex: 0 0 16px;
         width: 16px;
