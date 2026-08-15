@@ -12,6 +12,10 @@ const requirements=[
   ['大粘贴支持取消与回滚',editor.includes('pasteAbortRef')&&editor.includes('replaceWith(0,view.state.doc.content.size,originalDoc.content)')],
   ['离屏内容块跳过布局绘制',css.includes('content-visibility:auto')&&css.includes('contain-intrinsic-block-size')],
   ['切换笔记前刷新编辑器快照',app.includes('flushPendingChanges()')&&app.indexOf('flushPendingChanges()')<app.indexOf('coordinator.flush()')],
+  ['无脏内容时不提交保存',editor.includes('dirtyRef.current')&&editor.includes('if(!dirtyRef.current)return')],
+  ['正文与标题变更会标记脏状态',editor.includes('dirtyRef.current=true;scheduleSerialization(current.state.doc)')&&editor.includes('latestTitle.current=event.target.value;dirtyRef.current=true')],
+  ['切换笔记时延迟重排',/handleSelect=.*flushBeforeLeaving\(\).*notes\.refresh\(\).*notes\.select\(id\)/.test(app)],
+  ['全局搜索时重新应用列表排序',app.includes('Promise.all([globalSearch(searchQuery),notes.refresh()])')],
   ['保存携带独立 Markdown 快照',editor.includes('markdownSnapshot:noteToMarkdown')&&app.includes('markdownSnapshot})')],
 ]
 const failed=requirements.filter(([,passed])=>!passed)

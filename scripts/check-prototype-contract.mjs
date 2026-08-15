@@ -8,8 +8,8 @@ const contracts={
     'className="prototype-layer icon-picker open"','className="icon-picker-colors"','className="icon-picker-grid"',
   ],
   'src/features/editor/NoteEditor.tsx':[
-    'className="document-heading"','className="document-tags"','id="documentTags"',
-    'className="document-chip add-tag"','id="addTag"','className="inline-tag-editor"',
+    'className="document-heading"','className="document-meta"','id="documentMeta"',
+    'className="mood-trigger"','className="mood-picker product-layer"',
     'className="editor-surface"','className="selection-toolbar product-layer"','className="slash-menu product-layer"',
   ],
   'src/features/jottings/JottingsWorkspace.tsx':[
@@ -40,6 +40,9 @@ const exportSource=readFileSync(new URL('../src/features/export/export.ts',impor
 const guidelineSource=readFileSync(new URL('../docs/design/design-guidelines.md',import.meta.url),'utf8')
 const categoryIconCount=(appSource.match(/const categoryIcons=\[([^\]]+)\]/)?.[1].match(/'[^']+'/g)??[]).length
 const designRules=[
+  [noteEditorSource.includes("const moods=['😀'")&&noteEditorSource.includes("return'今天修改'")&&uxSource.includes('grid-template-columns:repeat(6,minmax(0,1fr))')&&uxSource.includes('overflow:hidden'),'心情元信息必须使用相对日期、30 个 Emoji 的 6×5 网格且不得横向溢出'],
+  [!appCss.includes('translateX(-50%)')&&noteEditorSource.includes('left:slash.left,top:slash.top')&&noteEditorSource.includes('placement="bottom-start"'),'公式输入浮层必须位于触发点正下方并保持左对齐'],
+  [!appSource.includes("id:'pinned'")&&!appSource.includes('置顶')&&!notesPanelSource.includes('置顶'),'笔记与分类不得保留置顶入口或侧边栏视图'],
   [!/<strong>新建(?:笔记|小记|文件夹|分类)<\/strong>/.test(appSource+jottingSource),'新建菜单不得使用粗体标签'],
   [!appSource.includes('创建当前分类的子分类'),'分类菜单不得提供子分类入口'],
   [uxSource.includes('.note-editor-content .ProseMirror-selectednode')&&uxSource.includes('border-color:transparent!important'),'文本块选中态不得出现边框'],
@@ -66,7 +69,7 @@ const designRules=[
   [notesPanelSource.indexOf('className="icon-button note-create-menu-trigger"')<notesPanelSource.indexOf('className="icon-button sort-button"')&&notesPanelSource.includes('className="product-menu note-create-dropdown"')&&notesPanelSource.includes('新建笔记</span>')&&notesPanelSource.includes('导入笔记</span>'),'新建纯图标按钮必须位于排序左侧并打开标准双操作菜单'],
   [!appSource.includes('compact-document-menu')&&guidelineSource.includes('### 3.2 下拉菜单与上下文菜单')&&uxSource.includes('width: 224px')&&uxSource.includes('min-height: 35px'),'所有动作菜单必须遵循笔记条目菜单统一几何规范'],
   [categoryIconCount===24,'分类图标库必须提供 24 个已注册语义图标'],
-  [appCss.includes('margin-block: 24px')&&appCss.includes('background: #e3e7eb')&&guidelineSource.includes('### 4.1 滚动条'),'滚动条必须使用缩短轨道与淡色规范'],
+  [appCss.includes('margin-block: 24px')&&appCss.includes('background: #e3e7eb')&&guidelineSource.includes('### 4.2 滚动条'),'滚动条必须使用缩短轨道与淡色规范'],
   [notesPanelSource.includes('className="select-all-action"')&&appSource.includes('onSelectAll={notes.selectAll}'),'笔记多选栏必须接通全选与取消全选操作'],
 ]
 for(const [passed,message] of designRules){if(!passed){failed=true;console.error(`Design contract failed: ${message}`)}}

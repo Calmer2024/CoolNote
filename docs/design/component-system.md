@@ -64,9 +64,9 @@
 | 组件              | 组成                                       | 行为                           |
 | ----------------- | ------------------------------------------ | ------------------------------ |
 | `NoteRow`         | Checkbox、标题、摘要、元信息、HoverActions | 默认精简；Hover/选择时显示操作 |
-| `NoteContextMenu` | 置顶、收藏、移动、归档、删除               | 与单篇笔记绑定                 |
-| `SelectionBar`    | 数量、全选、收藏、置顶、移动、归档、更多、取消 | 取代列表标题栏；全选作用于当前已加载列表，不进入编辑器 |
-| `TreeItem`        | 展开、图标、名称、数量、HoverActions       | 分类树与标签列表复用           |
+| `NoteContextMenu` | 收藏、移动、归档、删除                     | 与单篇笔记绑定                 |
+| `SelectionBar`    | 数量、全选、收藏、移动、归档、更多、取消   | 取代列表标题栏；全选作用于当前已加载列表，不进入编辑器 |
+| `TreeItem`        | 展开、图标、名称、数量、HoverActions       | 分类树复用                     |
 | `FilterPopover`   | 条件、已选项、清除                         | 显示活跃条件数量               |
 | `SortMenu`        | 字段、方向                                 | 菜单单选项，不使用裸 Select    |
 | `JottingTree`     | 文件夹、Markdown 文件、原地输入、折叠控制 | 复现文件资源管理树基础行为     |
@@ -78,7 +78,7 @@
 - 受控状态优先：`open/onOpenChange`、`value/onValueChange`。
 - 组件只发出语义事件，例如 `onArchive`，不暴露 DOM 细节。
 - 异步动作统一接受 `pending/error`，禁止组件内部静默吞错。
-- Menu/Dialog 统一管理焦点恢复、`Esc`、点击外部和滚动锁定。
+- Menu/Popover/Combobox/CommandMenu 统一管理锚点定位、焦点恢复、`Esc` 与点击外部关闭；Dialog 统一管理焦点锁定与遮罩关闭策略。
 - 危险动作必须显式标记 `danger`，不可只靠颜色区分。
 
 ## 8. 动效规范
