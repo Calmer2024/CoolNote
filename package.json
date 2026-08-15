@@ -1,7 +1,7 @@
 {
   "name": "coolnote",
   "private": true,
-  "version": "0.1.9",
+  "version": "0.1.14",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173",
@@ -14,7 +14,11 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "@tauri-apps/plugin-fs": "^2.5.1",
     "@tiptap/core": "^3.30.0",
+    "@tiptap/extension-code-block-lowlight": "^3.30.0",
+    "@tiptap/extension-highlight": "^3.30.0",
     "@tiptap/extension-image": "^3.30.0",
     "@tiptap/extension-link": "^3.30.0",
     "@tiptap/extension-mathematics": "^3.30.0",
@@ -29,7 +33,11 @@
     "@tiptap/pm": "^3.30.0",
     "@tiptap/react": "^3.30.0",
     "@tiptap/starter-kit": "^3.30.0",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^3.0.4",
     "katex": "^0.18.4",
+    "lowlight": "^3.3.0",
+    "marked": "^18.0.9",
     "mermaid": "^11.16.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
