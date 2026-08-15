@@ -1,0 +1,7 @@
+The language picker reproduces Typora's locally installed `ty-file` icon font
+and CSS vocabulary from:
+
+  D:\soft\Typora\resources\style\typora-file-icon
+
+The original generated font identifies itself as an IcoMoon icon font. This
+notice records the implementation source used for visual compatibility.

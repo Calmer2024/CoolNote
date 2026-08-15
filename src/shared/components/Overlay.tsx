@@ -9,6 +9,7 @@ type TooltipState = { target: HTMLElement; label: string }
 export function GlobalTooltip() {
   const tooltipRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<number | null>(null)
+  const suppressUntilRef = useRef(0)
   const [active, setActive] = useState<TooltipState | null>(null)
   const [position, setPosition] = useState<CSSProperties>({ visibility:'hidden' })
   const update = useCallback(() => {
@@ -25,15 +26,17 @@ export function GlobalTooltip() {
   useEffect(()=>{
     const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tooltip],button[aria-label],button[title],[role="button"][aria-label]'):null
     const label=(target:HTMLElement)=>target.dataset.tooltip||target.getAttribute('aria-label')||target.getAttribute('title')||''
-    const show=(target:HTMLElement,immediate=false)=>{const value=label(target).trim();if(!value)return;if(timerRef.current!==null)window.clearTimeout(timerRef.current);const nativeTitle=target.getAttribute('title');if(nativeTitle){target.dataset.nativeTooltip=nativeTitle;target.removeAttribute('title')}timerRef.current=window.setTimeout(()=>setActive({target,label:value}),immediate?0:360)}
-    const hide=(target:HTMLElement|null)=>{if(timerRef.current!==null){window.clearTimeout(timerRef.current);timerRef.current=null}setActive(current=>current?.target===target?null:current);if(target?.dataset.nativeTooltip){target.setAttribute('title',target.dataset.nativeTooltip);delete target.dataset.nativeTooltip}}
+    const show=(target:HTMLElement,immediate=false)=>{if(performance.now()<suppressUntilRef.current)return;const value=label(target).trim();if(!value)return;if(timerRef.current!==null)window.clearTimeout(timerRef.current);const nativeTitle=target.getAttribute('title');if(nativeTitle){target.dataset.nativeTooltip=nativeTitle;target.removeAttribute('title')}timerRef.current=window.setTimeout(()=>setActive({target,label:value}),immediate?0:360)}
+    const restore=(target:HTMLElement|null)=>{if(target?.dataset.nativeTooltip){target.setAttribute('title',target.dataset.nativeTooltip);delete target.dataset.nativeTooltip}}
+    const hide=(target:HTMLElement|null)=>{if(timerRef.current!==null){window.clearTimeout(timerRef.current);timerRef.current=null}setActive(current=>{if(!target||current?.target===target){restore(current?.target??target);return null}return current});restore(target)}
     const over=(event:PointerEvent)=>{const target=find(event.target);if(!target||event.relatedTarget instanceof Node&&target.contains(event.relatedTarget))return;show(target)}
     const out=(event:PointerEvent)=>{const target=find(event.target);if(!target||event.relatedTarget instanceof Node&&target.contains(event.relatedTarget))return;hide(target)}
     const focus=(event:FocusEvent)=>{const target=find(event.target);if(target)show(target,true)}
     const blur=(event:FocusEvent)=>{const target=find(event.target);if(target)hide(target)}
+    const dismiss=()=>{suppressUntilRef.current=performance.now()+180;hide(null)}
     const reposition=()=>update()
-    document.addEventListener('pointerover',over,true);document.addEventListener('pointerout',out,true);document.addEventListener('focusin',focus,true);document.addEventListener('focusout',blur,true);window.addEventListener('resize',reposition);window.addEventListener('scroll',reposition,true)
-    return()=>{if(timerRef.current!==null)window.clearTimeout(timerRef.current);document.removeEventListener('pointerover',over,true);document.removeEventListener('pointerout',out,true);document.removeEventListener('focusin',focus,true);document.removeEventListener('focusout',blur,true);window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true)}
+    document.addEventListener('pointerover',over,true);document.addEventListener('pointerout',out,true);document.addEventListener('pointerdown',dismiss,true);document.addEventListener('keydown',dismiss,true);document.addEventListener('focusin',focus,true);document.addEventListener('focusout',blur,true);window.addEventListener('resize',reposition);window.addEventListener('scroll',reposition,true)
+    return()=>{if(timerRef.current!==null)window.clearTimeout(timerRef.current);document.removeEventListener('pointerover',over,true);document.removeEventListener('pointerout',out,true);document.removeEventListener('pointerdown',dismiss,true);document.removeEventListener('keydown',dismiss,true);document.removeEventListener('focusin',focus,true);document.removeEventListener('focusout',blur,true);window.removeEventListener('resize',reposition);window.removeEventListener('scroll',reposition,true)}
   },[update])
   if(!active)return null
   return createPortal(<div ref={tooltipRef} className="global-tooltip" role="tooltip" style={position}>{active.label}</div>,document.body)
@@ -42,6 +45,7 @@ export function GlobalTooltip() {
 type FloatingLayerProps = {
   open: boolean
   anchor?: RefObject<HTMLElement | null>
+  boundary?: RefObject<HTMLElement | null>
   point?: { left: number; top: number }
   placement?: 'bottom-start' | 'bottom-end' | 'top-start' | 'top-end'
   className: string
@@ -53,7 +57,7 @@ type FloatingLayerProps = {
 }
 
 /** Shared light-dismiss and viewport-aware layer used by every non-modal popover. */
-export function FloatingLayer({ open, anchor, point, placement = 'bottom-start', className, children, onDismiss, role, gap = 6, style }: FloatingLayerProps) {
+export function FloatingLayer({ open, anchor, boundary, point, placement = 'bottom-start', className, children, onDismiss, role, gap = 6, style }: FloatingLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<CSSProperties>({ visibility: 'hidden' })
   const update = useCallback(() => {
@@ -63,24 +67,34 @@ export function FloatingLayer({ open, anchor, point, placement = 'bottom-start',
     const minimumHeight = 80
     const box = layer.getBoundingClientRect()
     const anchorBox = anchor?.current?.getBoundingClientRect()
-    const originLeft = point?.left ?? anchorBox?.left ?? margin
-    const originTop = point?.top ?? anchorBox?.bottom ?? margin
+    const boundaryBox = boundary?.current?.getBoundingClientRect()
+    const bounds = {
+      left: Math.max(margin, boundaryBox?.left ?? margin),
+      top: Math.max(margin, boundaryBox?.top ?? margin),
+      right: Math.min(window.innerWidth - margin, boundaryBox?.right ?? window.innerWidth - margin),
+      bottom: Math.min(window.innerHeight - margin, boundaryBox?.bottom ?? window.innerHeight - margin),
+    }
+    const originLeft = point?.left ?? anchorBox?.left ?? bounds.left
+    const originTop = point?.top ?? anchorBox?.bottom ?? bounds.top
     let left = placement.endsWith('end') ? (anchorBox?.right ?? originLeft) - box.width : originLeft
     let top = placement.startsWith('top') ? (anchorBox?.top ?? originTop) - box.height - gap : originTop + (point ? 0 : gap)
-    let maxHeight = Math.max(minimumHeight, window.innerHeight - top - margin)
+    let maxHeight = Math.max(minimumHeight, bounds.bottom - top)
     if(anchorBox){
-      const above=Math.max(0,anchorBox.top-margin-gap);const below=Math.max(0,window.innerHeight-margin-anchorBox.bottom-gap)
+      const above=Math.max(0,anchorBox.top-bounds.top-gap);const below=Math.max(0,bounds.bottom-anchorBox.bottom-gap)
       const preferAbove=placement.startsWith('top');const useAbove=preferAbove?above>=minimumHeight||above>=below:box.height>below&&above>below
       maxHeight=Math.max(minimumHeight,useAbove?above:below)
       const visibleHeight=Math.min(box.height,maxHeight)
       top=useAbove?anchorBox.top-visibleHeight-gap:anchorBox.bottom+gap
     }
-    left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin))
-    top = Math.max(margin, Math.min(top, window.innerHeight - box.height - margin))
-    if(anchorBox)top=Math.max(margin,Math.min(top,window.innerHeight-Math.min(box.height,maxHeight)-margin))
-    setPosition({ left, top, visibility: 'visible', maxHeight })
-  }, [anchor, gap, open, placement, point?.left, point?.top])
-  useLayoutEffect(update, [children, update])
+    const boundaryHeight=Math.max(0,bounds.bottom-bounds.top)
+    maxHeight=Math.min(maxHeight,boundaryHeight)
+    const visibleHeight=Math.min(box.height,maxHeight)
+    left = Math.max(Math.ceil(bounds.left), Math.min(left, Math.floor(bounds.right - box.width)))
+    top = Math.max(Math.ceil(bounds.top), Math.min(top, Math.floor(bounds.bottom - visibleHeight)))
+    const next={ left:Math.round(left), top:Math.round(top), visibility:'visible' as const, maxHeight:Math.floor(maxHeight) }
+    setPosition(current=>current.left===next.left&&current.top===next.top&&current.visibility===next.visibility&&current.maxHeight===next.maxHeight?current:next)
+  }, [anchor, boundary, gap, open, placement, point?.left, point?.top])
+  useLayoutEffect(update, [update])
   useEffect(() => {
     if (!open) return
     const dismiss = (event: PointerEvent) => {
@@ -88,13 +102,17 @@ export function FloatingLayer({ open, anchor, point, placement = 'bottom-start',
       if (!layerRef.current?.contains(target) && !anchor?.current?.contains(target)) onDismiss()
     }
     const escape = (event: KeyboardEvent) => event.key === 'Escape' && onDismiss()
-    const reposition = () => update()
+    const reposition = (event?: Event) => {
+      if (event?.type === 'scroll' && event.target instanceof Node && layerRef.current?.contains(event.target)) return
+      update()
+    }
     document.addEventListener('pointerdown', dismiss, true)
     document.addEventListener('keydown', escape, true)
     window.addEventListener('resize', reposition)
     window.addEventListener('scroll', reposition, true)
-    const observer = new ResizeObserver(reposition)
+    const observer = new ResizeObserver(() => reposition())
     if (anchor?.current) observer.observe(anchor.current)
+    if (boundary?.current) observer.observe(boundary.current)
     if (layerRef.current) observer.observe(layerRef.current)
     return () => {
       document.removeEventListener('pointerdown', dismiss, true)
@@ -103,7 +121,7 @@ export function FloatingLayer({ open, anchor, point, placement = 'bottom-start',
       window.removeEventListener('scroll', reposition, true)
       observer.disconnect()
     }
-  }, [anchor, onDismiss, open, update])
+  }, [anchor, boundary, onDismiss, open, update])
   if (!open) return null
   return createPortal(<div ref={layerRef} className={className} role={role} style={{ ...style, ...position }}>{children}</div>, document.body)
 }
