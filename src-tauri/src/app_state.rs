@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use crate::application::gallery_service::GalleryService;
 use crate::application::library_service::{LibraryService, LibrarySettingsService};
 use crate::application::note_service::NoteService;
 use crate::application::save_service::SaveService;
@@ -16,6 +17,7 @@ pub struct AppServices {
     pub notes: NoteService,
     pub saves: SaveService,
     pub recovery: RecoveryStore,
+    pub galleries: GalleryService,
     pub workspace: WorkspaceService,
 }
 
@@ -56,12 +58,17 @@ impl AppState {
             context.database.clone(),
             self.inner.library_root.join("attachments"),
         );
+        let galleries = GalleryService::new(
+            context.database.clone(),
+            self.inner.library_root.join("attachments"),
+        );
         let services = AppServices {
             library: context.library.clone(),
             settings: context.settings,
             notes: NoteService::new(context.database.clone()),
             saves: SaveService::new(context.library.id, context.database, recovery.clone()),
             recovery,
+            galleries,
             workspace,
         };
         *slot = Some(services.clone());

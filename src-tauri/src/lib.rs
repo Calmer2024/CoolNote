@@ -11,6 +11,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let library_root = app.path().app_data_dir()?.join("library");
             app.manage(app_state::AppState::new(library_root));
@@ -50,6 +52,19 @@ pub fn run() {
             commands::workspace::move_jotting,
             commands::workspace::delete_jotting,
             commands::workspace::delete_jotting_folder,
+            commands::gallery::list_galleries,
+            commands::gallery::create_gallery,
+            commands::gallery::update_gallery,
+            commands::gallery::reorder_gallery,
+            commands::gallery::list_gallery_items,
+            commands::gallery::import_gallery_path,
+            commands::gallery::import_gallery_data,
+            commands::gallery::reorder_gallery_item,
+            commands::gallery::delete_gallery,
+            commands::gallery::delete_gallery_items,
+            commands::gallery::undo_gallery_delete,
+            commands::gallery::transfer_gallery_items,
+            commands::gallery::get_gallery_asset_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,3 +1,4 @@
+pub mod gallery_service;
 pub mod library_service;
 pub mod note_service;
 pub mod recovery_service;

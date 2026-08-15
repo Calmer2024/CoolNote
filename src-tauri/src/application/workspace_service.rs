@@ -12,7 +12,10 @@ use crate::domain::document::{
     derive_plain_text, empty_document, hash_document, validate_document, Document,
 };
 use crate::domain::error::AppError;
-use crate::domain::note::{Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, SearchResult, UNCATEGORIZED_ID};
+use crate::domain::note::{
+    Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, SearchResult,
+    UNCATEGORIZED_ID,
+};
 use crate::infrastructure::database::Database;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -54,6 +57,7 @@ pub struct SystemCounts {
     pub archived: i64,
     pub trash: i64,
     pub jottings: i64,
+    pub galleries: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,6 +98,7 @@ impl WorkspaceService {
                 archived:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=1",[],|r|r.get(0))?,
                 trash:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NOT NULL",[],|r|r.get(0))?,
                 jottings:c.query_row("SELECT COUNT(*) FROM jottings",[],|r|r.get(0))?,
+                galleries:c.query_row("SELECT COUNT(*) FROM galleries WHERE deleted_at IS NULL",[],|r|r.get(0))?,
             }))?,
         })
     }
@@ -336,14 +341,19 @@ impl WorkspaceService {
     pub fn set_note_mood(&self, note_id: &str, mood: Option<&str>) -> Result<(), AppError> {
         let mood = mood.map(str::trim).filter(|value| !value.is_empty());
         self.database.with_write(|tx| {
-            tx.execute("UPDATE notes SET mood=?1 WHERE id=?2", params![mood,note_id])?;
+            tx.execute(
+                "UPDATE notes SET mood=?1 WHERE id=?2",
+                params![mood, note_id],
+            )?;
             Ok(())
         })
     }
 
     pub fn global_search(&self, query: &str, limit: i64) -> Result<Vec<SearchResult>, AppError> {
         let query = query.trim();
-        if query.is_empty() { return Ok(Vec::new()); }
+        if query.is_empty() {
+            return Ok(Vec::new());
+        }
         let like = format!("%{}%", query);
         let limit = limit.clamp(1, 50);
         self.database.with_read(|connection| {
@@ -376,14 +386,31 @@ impl WorkspaceService {
         }
         std::fs::create_dir_all(&self.attachments_root)?;
         let id = Uuid::new_v4().to_string();
-        let content_hash = Sha256::digest(&bytes).iter().map(|byte|format!("{byte:02x}")).collect::<String>();
+        let content_hash = Sha256::digest(&bytes)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
         let extension = Path::new(file_name)
             .extension()
             .and_then(|v| v.to_str())
             .unwrap_or("bin");
-        let relative = self.database.with_read(|connection| connection.query_row("SELECT relative_path FROM attachments WHERE content_hash=?1 LIMIT 1",[&content_hash],|row|row.get::<_,String>(0)).map_err(AppError::from)).ok().unwrap_or_else(||format!("{content_hash}.{extension}"));
+        let relative = self
+            .database
+            .with_read(|connection| {
+                connection
+                    .query_row(
+                        "SELECT relative_path FROM attachments WHERE content_hash=?1 LIMIT 1",
+                        [&content_hash],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .map_err(AppError::from)
+            })
+            .ok()
+            .unwrap_or_else(|| format!("{content_hash}.{extension}"));
         let full_path = self.attachments_root.join(&relative);
-        if !full_path.exists() { std::fs::write(&full_path, &bytes)?; }
+        if !full_path.exists() {
+            std::fs::write(&full_path, &bytes)?;
+        }
         let now = Utc::now().to_rfc3339();
         self.database.with_write(|tx|{tx.execute("INSERT INTO attachments(id,note_id,file_name,media_type,size_bytes,content_hash,relative_path,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",params![id,note_id,file_name,media_type,bytes.len() as i64,content_hash,relative,now])?;Ok(())})?;
         Ok(Attachment {
@@ -411,10 +438,16 @@ impl WorkspaceService {
         })?;
         let remaining = self.database.with_write(|tx| {
             tx.execute("DELETE FROM attachments WHERE id=?1", [id])?;
-            Ok(tx.query_row("SELECT COUNT(*) FROM attachments WHERE relative_path=?1",[&path],|row|row.get::<_,i64>(0))?)
+            Ok(tx.query_row(
+                "SELECT COUNT(*) FROM attachments WHERE relative_path=?1",
+                [&path],
+                |row| row.get::<_, i64>(0),
+            )?)
         })?;
         let full = self.attachments_root.join(path);
-        if remaining == 0 && full.exists() { std::fs::remove_file(full)? }
+        if remaining == 0 && full.exists() {
+            std::fs::remove_file(full)?
+        }
         Ok(())
     }
 
@@ -423,14 +456,16 @@ impl WorkspaceService {
             return self.database.with_read(|connection| {
                 let mut exported = Vec::with_capacity(note_ids.len());
                 for id in note_ids {
-                    let snapshot = connection.query_row(
-                        "SELECT markdown_snapshot FROM notes WHERE id=?1",
-                        [id],
-                        |row| row.get::<_, String>(0),
-                    ).map_err(|error| match error {
-                        rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(id.clone()),
-                        other => AppError::Database(other),
-                    })?;
+                    let snapshot = connection
+                        .query_row(
+                            "SELECT markdown_snapshot FROM notes WHERE id=?1",
+                            [id],
+                            |row| row.get::<_, String>(0),
+                        )
+                        .map_err(|error| match error {
+                            rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(id.clone()),
+                            other => AppError::Database(other),
+                        })?;
                     exported.push(snapshot);
                 }
                 Ok(exported.join("\n\n---\n\n"))
@@ -643,9 +678,13 @@ fn strip_markup(value: &str) -> String {
     let mut output = String::new();
     let mut in_tag = false;
     for ch in value.chars() {
-        if ch == '<' { in_tag = true; }
-        else if ch == '>' { in_tag = false; }
-        else if !in_tag { output.push(ch); }
+        if ch == '<' {
+            in_tag = true;
+        } else if ch == '>' {
+            in_tag = false;
+        } else if !in_tag {
+            output.push(ch);
+        }
     }
     output
 }

@@ -151,7 +151,11 @@ pub async fn global_search(
     limit: i64,
 ) -> Result<Vec<SearchResult>, CommandError> {
     run(state, move |services| {
-        services.workspace.global_search(&query, limit)
+        let mut results = services.workspace.global_search(&query, limit)?;
+        results.extend(services.galleries.search(&query, limit)?);
+        results.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
+        results.truncate(limit.clamp(1, 100) as usize);
+        Ok(results)
     })
     .await
 }
