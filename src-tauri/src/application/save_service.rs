@@ -193,8 +193,10 @@ mod tests {
     #[test]
     fn identical_save_keeps_revision_and_updated_at() {
         let directory = tempfile::tempdir().expect("temporary library");
-        let database = Arc::new(Database::open(&directory.path().join("coolnote.db")).expect("database"));
-        let recovery = RecoveryStore::new(directory.path().join("recovery")).expect("recovery store");
+        let database =
+            Arc::new(Database::open(&directory.path().join("coolnote.db")).expect("database"));
+        let recovery =
+            RecoveryStore::new(directory.path().join("recovery")).expect("recovery store");
         database.with_write(|transaction| {
             transaction.execute(
                 "INSERT INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at)
@@ -203,20 +205,31 @@ mod tests {
             )?;
             Ok(())
         }).expect("uncategorized category");
-        let workspace = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
-        let note = workspace.create_note(None, "未修改笔记", None).expect("note");
+        let workspace =
+            WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        let note = workspace
+            .create_note(None, "未修改笔记", None)
+            .expect("note");
         let service = SaveService::new(Uuid::new_v4().to_string(), database, recovery);
-        let saved = service.save_note(SaveNoteRequest {
-            note_id: note.id.clone(),
-            base_revision: note.revision,
-            client_transaction_id: Uuid::new_v4().to_string(),
-            title: note.title.clone(),
-            document_json: serde_json::to_value(&note.document).expect("document json"),
-            markdown_snapshot: format!("# {}\n\n{}\n", note.title, note.plain_text),
-        }).expect("idempotent save");
+        let saved = service
+            .save_note(SaveNoteRequest {
+                note_id: note.id.clone(),
+                base_revision: note.revision,
+                client_transaction_id: Uuid::new_v4().to_string(),
+                title: note.title.clone(),
+                document_json: serde_json::to_value(&note.document).expect("document json"),
+                markdown_snapshot: format!("# {}\n\n{}\n", note.title, note.plain_text),
+            })
+            .expect("idempotent save");
 
         assert_eq!(saved.revision, note.revision);
         assert_eq!(saved.updated_at, note.updated_at);
-        assert_eq!(workspace.get_note(&note.id).expect("reloaded note").updated_at, note.updated_at);
+        assert_eq!(
+            workspace
+                .get_note(&note.id)
+                .expect("reloaded note")
+                .updated_at,
+            note.updated_at
+        );
     }
 }
