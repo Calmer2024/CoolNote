@@ -246,6 +246,36 @@
 .note-editor-content .ProseMirror-selectednode,
 .note-editor-content *:focus-visible { border-color:transparent!important; outline:0!important; box-shadow:none!important; }
 
+/* Keep large notes responsive by skipping layout and paint for off-screen blocks. */
+.note-editor-content > [data-block-id] {
+  content-visibility:auto;
+  contain-intrinsic-block-size:auto 32px;
+}
+
+.large-paste-progress {
+  position:sticky;
+  z-index:8;
+  bottom:18px;
+  display:grid;
+  grid-template-columns:minmax(180px,1fr) minmax(160px,280px) auto;
+  gap:14px;
+  align-items:center;
+  width:min(720px,calc(100% - 32px));
+  margin:18px auto 0;
+  padding:12px 14px;
+  border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));
+  border-radius:10px;
+  background:color-mix(in srgb,var(--surface) 96%,var(--accent-soft));
+  box-shadow:0 10px 32px rgba(25,45,65,.15);
+}
+.large-paste-progress > div { display:flex; min-width:0; flex-direction:column; gap:2px; }
+.large-paste-progress strong { color:var(--text); font-size:13px; }
+.large-paste-progress span { overflow:hidden; color:var(--text-muted); font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.large-paste-progress progress { width:100%; accent-color:var(--accent); }
+.large-paste-progress button { min-height:30px; padding:0 12px; border:1px solid var(--border); border-radius:7px; color:var(--text); background:var(--surface); }
+.large-paste-progress.is-failed { border-color:color-mix(in srgb,#d45b5b 48%,var(--border)); }
+@media (max-width:760px) { .large-paste-progress { grid-template-columns:1fr auto; }.large-paste-progress progress { grid-column:1/-1; grid-row:2; } }
+
 .jotting-inline-rename { flex:1; min-width:0; height:27px; padding:0 4px; border:0; border-radius:0; color:var(--text-primary); background:transparent; outline:0; }
 .jotting-tree-row { cursor:default; user-select:none; }
 .jotting-tree-row[data-kind="file"] { cursor:grab; }

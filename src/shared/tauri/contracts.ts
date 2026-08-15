@@ -109,6 +109,7 @@ export type SaveNoteRequest = {
   clientTransactionId: string
   title: string
   documentJson: unknown
+  markdownSnapshot: string
 }
 
 export type SaveNoteResult = {
@@ -127,6 +128,7 @@ export type RecoveryRecordDto = {
   clientTransactionId: string
   title: string
   documentJson: unknown
+  markdownSnapshot: string
   contentHash: string
   createdAt: string
 }
