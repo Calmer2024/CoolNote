@@ -32,6 +32,7 @@ import type {
 } from '../../shared/tauri/contracts'
 import { normalizeDocument } from '../editor/document'
 import { parseMarkdownDocument } from '../editor/markdown'
+import { BUILT_IN_NOTE_ID } from '../../shared/builtin'
 
 type NotesStatus = 'booting' | 'ready' | 'failed'
 const PAGE_SIZE = 80
@@ -56,7 +57,7 @@ export function useNotes() {
   const [library, setLibrary] = useState<LibraryDto | null>(null)
   const [notes, setNotes] = useState<NoteSummaryDto[]>([])
   const [categories, setCategories] = useState<CategoryDto[]>([])
-  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0,galleries:0})
+  const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0,tasks:0,galleries:0})
   const [total, setTotal] = useState(0)
   const [selectedNote, setSelectedNote] = useState<NoteDto | null>(null)
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
@@ -188,13 +189,14 @@ export function useNotes() {
   const toggleSelected = useCallback((id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next }), [])
   const selectAll = useCallback(() => setSelectedIds((current) => current.size === notes.length ? new Set() : new Set(notes.map((note) => note.id))), [notes])
   const performBatch = useCallback(async (action: BatchAction, ids = [...selectedIds]) => {
-    if (!ids.length) return
-    await batchNotes(ids, action)
-    if (ids.includes(selectedNoteId ?? '') && ['archive', 'trash', 'deletePermanently'].includes(action)) { setSelectedNote(null); setSelectedNoteId(null) }
+    const allowed=ids.filter(id=>id!==BUILT_IN_NOTE_ID||!['archive','trash','deletePermanently'].includes(action))
+    if (!allowed.length) return
+    await batchNotes(allowed, action)
+    if (allowed.includes(selectedNoteId ?? '') && ['archive', 'trash', 'deletePermanently'].includes(action)) { setSelectedNote(null); setSelectedNoteId(null) }
     await Promise.all([refreshNotes(), refreshWorkspace()])
   }, [refreshNotes, refreshWorkspace, selectedIds, selectedNoteId])
   const clearTrash = useCallback(async () => { await emptyTrash(); setSelectedNote(null); setSelectedNoteId(null); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace])
-  const moveSelected = useCallback(async (target: string, requestedIds?: string[]) => { const ids=requestedIds??[...selectedIds]; if(!ids.length)return; await moveNotes(ids,target); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace,selectedIds])
+  const moveSelected = useCallback(async (target: string, requestedIds?: string[]) => { const ids=(requestedIds??[...selectedIds]).filter(id=>id!==BUILT_IN_NOTE_ID); if(!ids.length)return; await moveNotes(ids,target); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace,selectedIds])
   const updateMood = useCallback(async (mood:string|null) => { if(!selectedNoteId)return; await setNoteMood(selectedNoteId,mood); setSelectedNote(current=>current?{...current,mood}:current); setNotes(current=>current.map(note=>note.id===selectedNoteId?{...note,mood}:note)) }, [selectedNoteId])
 
   return {

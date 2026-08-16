@@ -29,6 +29,12 @@ import type {
   GalleryAssetDataDto,
   GalleryImportResultDto,
   GalleryTransferResultDto,
+  TaskSnapshotDto,
+  TaskListDto,
+  TaskItemDto,
+  TaskSubtaskDto,
+  TaskDatePrecision,
+  TaskImportance,
 } from './contracts'
 
 export const initializeLibrary = () => call<LibraryDto>('initialize_library', undefined, web.webInitialize)
@@ -72,6 +78,7 @@ export const globalSearch = (query:string,limit=16) => call<SearchResultDto[]>('
 export const saveAttachment = (noteId: string, fileName: string, mediaType: string, dataBase64: string) => call<AttachmentDto>('save_attachment', { noteId, fileName, mediaType, dataBase64 }, () => web.webSaveAttachment(noteId,fileName,mediaType,dataBase64))
 export const listAttachments = (noteId: string) => call<AttachmentDto[]>('list_attachments', { noteId }, () => web.webListAttachments(noteId))
 export const deleteAttachment = (attachmentId: string) => call<void>('delete_attachment', { attachmentId }, () => web.webDeleteAttachment(attachmentId))
+export const revealAttachment = (attachmentId: string) => call<boolean>('reveal_attachment', { attachmentId }, () => false)
 export const exportNotes = (noteIds: string[], format: 'markdown' | 'html' | 'json') => call<string>('export_notes', { noteIds, format }, () => web.webExport(noteIds, format))
 export const importNotes = (content: string, format: 'markdown' | 'html' | 'json', categoryId?: string | null) => {
   const parsed = format === 'markdown' ? parseMarkdownDocument(content) : null
@@ -98,3 +105,20 @@ export const deleteGalleryItems = (itemIds:string[]) => call<string>('delete_gal
 export const undoGalleryDelete = (token:string) => call<boolean>('undo_gallery_delete',{token},()=>web.webUndoGalleryDelete(token))
 export const transferGalleryItems = (itemIds:string[],targetGalleryId:string,moveItems:boolean) => call<GalleryTransferResultDto>('transfer_gallery_items',{itemIds,targetGalleryId,moveItems},()=>web.webTransferGalleryItems(itemIds,targetGalleryId,moveItems))
 export const getGalleryAssetData = (itemId:string) => call<GalleryAssetDataDto>('get_gallery_asset_data',{itemId},()=>web.webGetGalleryAssetData(itemId))
+export const getTaskSnapshot=()=>call<TaskSnapshotDto>('get_task_snapshot',undefined,web.webTaskSnapshot)
+export const createTaskList=(name:string,iconName='list-todo')=>call<TaskListDto>('create_task_list',{name,iconName},()=>web.webCreateTaskList(name,iconName))
+export const updateTaskList=(id:string,baseRevision:number,name:string,iconName:string,notes:string)=>call<TaskListDto>('update_task_list',{id,baseRevision,name,iconName,notes},()=>web.webUpdateTaskList(id,baseRevision,name,iconName,notes))
+export const reorderTaskList=(id:string,beforeId?:string|null)=>call<void>('reorder_task_list',{id,beforeId:beforeId??null},()=>web.webReorderTaskList(id,beforeId))
+export const createTaskItem=(title:string,taskListId?:string|null)=>call<TaskItemDto>('create_task_item',{title,taskListId:taskListId??null},()=>web.webCreateTaskItem(title,taskListId))
+export const updateTaskItem=(item:TaskItemDto)=>call<TaskItemDto>('update_task_item',{id:item.id,baseRevision:item.revision,title:item.title,notes:item.notes,startValue:item.startValue,startPrecision:item.startPrecision,dueValue:item.dueValue,duePrecision:item.duePrecision,importance:item.importance,taskListId:item.taskListId},()=>web.webUpdateTaskItem(item))
+export const setTaskCompleted=(id:string,completed:boolean)=>call<TaskItemDto>('set_task_completed',{id,completed},()=>web.webSetTaskCompleted(id,completed))
+export const reorderTaskItem=(id:string,beforeId?:string|null)=>call<void>('reorder_task_item',{id,beforeId:beforeId??null},()=>web.webReorderTaskItem(id,beforeId))
+export const createTaskSubtask=(taskId:string,title:string)=>call<TaskSubtaskDto>('create_task_subtask',{taskId,title},()=>web.webCreateTaskSubtask(taskId,title))
+export const updateTaskSubtask=(id:string,baseRevision:number,title:string)=>call<TaskSubtaskDto>('update_task_subtask',{id,baseRevision,title},()=>web.webUpdateTaskSubtask(id,baseRevision,title))
+export const setTaskSubtaskCompleted=(id:string,completed:boolean)=>call<TaskSubtaskDto>('set_task_subtask_completed',{id,completed},()=>web.webSetTaskSubtaskCompleted(id,completed))
+export const reorderTaskSubtask=(taskId:string,id:string,beforeId?:string|null)=>call<void>('reorder_task_subtask',{taskId,id,beforeId:beforeId??null},()=>web.webReorderTaskSubtask(taskId,id,beforeId))
+export const deleteTaskItem=(id:string)=>call<string>('delete_task_item',{id},()=>web.webDeleteTaskItem(id))
+export const deleteTaskSubtask=(id:string)=>call<string>('delete_task_subtask',{id},()=>web.webDeleteTaskSubtask(id))
+export const deleteTaskList=(id:string)=>call<string>('delete_task_list',{id},()=>web.webDeleteTaskList(id))
+export const undoTaskDelete=(token:string)=>call<boolean>('undo_task_delete',{token},()=>web.webUndoTaskDelete(token))
+export type {TaskDatePrecision,TaskImportance}

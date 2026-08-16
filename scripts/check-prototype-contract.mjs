@@ -39,6 +39,12 @@ const notesPanelSource=readFileSync(new URL('../src/features/notes/NotesPanel.ts
 const overlaySource=readFileSync(new URL('../src/shared/components/Overlay.tsx',import.meta.url),'utf8')
 const exportSource=readFileSync(new URL('../src/features/export/export.ts',import.meta.url),'utf8')
 const guidelineSource=readFileSync(new URL('../docs/design/design-guidelines.md',import.meta.url),'utf8')
+const skeletonSource=readFileSync(new URL('../src/shared/components/Skeleton.tsx',import.meta.url),'utf8')
+const markdownShortcutSource=readFileSync(new URL('../src/features/editor/markdownShortcuts.ts',import.meta.url),'utf8')
+const builtinMigrationSource=readFileSync(new URL('../src-tauri/migrations/0014_builtin_product_guide.sql',import.meta.url),'utf8')
+const productGuideMigrationSource=readFileSync(new URL('../src-tauri/migrations/0015_product_guide_v2.sql',import.meta.url),'utf8')
+const productGuideSource=readFileSync(new URL('../src/shared/product-guide.md',import.meta.url),'utf8')
+const workspaceCommandsSource=readFileSync(new URL('../src-tauri/src/commands/workspace.rs',import.meta.url),'utf8')
 const categoryIconCount=(appSource.match(/const categoryIcons=\[([^\]]+)\]/)?.[1].match(/'[^']+'/g)??[]).length
 const designRules=[
   [noteEditorSource.includes("const moods=['😀'")&&noteEditorSource.includes("return'今天修改'")&&uxSource.includes('grid-template-columns:repeat(6,minmax(0,1fr))')&&uxSource.includes('overflow:hidden'),'心情元信息必须使用相对日期、30 个 Emoji 的 6×5 网格且不得横向溢出'],
@@ -77,9 +83,15 @@ const designRules=[
   [noteEditorSource.includes("key==='i'")&&noteEditorSource.includes("key==='u'")&&noteEditorSource.includes("key==='t'")&&noteEditorSource.includes("key==='f'||key==='h'")&&appSource.includes("event.code==='Slash'"),'编辑器与大纲快捷键必须保持接通'],
   [notesPanelSource.indexOf('className="icon-button note-create-menu-trigger"')<notesPanelSource.indexOf('className="icon-button sort-button"')&&notesPanelSource.includes('className="product-menu note-create-dropdown"')&&notesPanelSource.includes('新建笔记</span>')&&notesPanelSource.includes('导入笔记</span>'),'新建纯图标按钮必须位于排序左侧并打开标准双操作菜单'],
   [!appSource.includes('compact-document-menu')&&guidelineSource.includes('### 3.2 下拉菜单与上下文菜单')&&uxSource.includes('width: 224px')&&uxSource.includes('min-height: 35px'),'所有动作菜单必须遵循笔记条目菜单统一几何规范'],
-  [categoryIconCount===24,'分类图标库必须提供 24 个已注册语义图标'],
+  [categoryIconCount===30&&prototypeCss.includes('grid-template-columns: repeat(5, 38px)'),'分类图标库必须提供 30 个已注册语义图标，按五列展示完整六排'],
   [appCss.includes('margin-block: 24px')&&appCss.includes('background: #e3e7eb')&&guidelineSource.includes('### 4.2 滚动条'),'滚动条必须使用缩短轨道与淡色规范'],
   [notesPanelSource.includes('className="select-all-action"')&&appSource.includes('onSelectAll={notes.selectAll}'),'笔记多选栏必须接通全选与取消全选操作'],
+  [prototypeCss.includes('.jotting-cover:hover .jotting-cover-actions')&&prototypeCss.includes('opacity: 0'),'小记封面操作必须与画廊一致，仅在 Hover 或聚焦时显示'],
+  [jottingSource.includes('handleDrop:')&&jottingSource.includes("file.type.startsWith('image/')")&&jottingSource.includes('jotting-selection-toolbar'),'小记必须支持图片拖拽/粘贴并提供选中文本样式菜单'],
+  [noteEditorSource.includes('editor-resource-preview')&&noteEditorSource.includes("mediaType:'text/uri-list'")&&noteEditorSource.includes('在资源管理器中显示')&&workspaceCommandsSource.includes('explorer.exe'),'附件必须支持网页/HTML 内嵌预览、外部跳转与资源管理器定位'],
+  [builtinMigrationSource.includes('欢迎使用 CoolNote')&&builtinMigrationSource.includes('我的文件')&&productGuideMigrationSource.includes('coolnote_product_guide_target')&&productGuideMigrationSource.includes("name='我的文件'")&&productGuideSource.includes('## 快捷键速查')&&productGuideSource.includes('## 任务')&&productGuideSource.includes('## 画廊')&&notesPanelSource.includes('built-in-note'),'既有“我的文件”分类必须承载不可删除且包含完整功能与快捷键说明的内置产品介绍笔记'],
+  [markdownShortcutSource.includes("kind:'bold'")&&markdownShortcutSource.includes('blockMath')&&markdownShortcutSource.includes('inlineMath'),'Markdown 快捷样式必须覆盖粗体、行内公式和块公式的粘贴及输入法提交场景'],
+  [skeletonSource.includes('skeleton-sidebar')&&skeletonSource.includes('skeleton-content')&&uxSource.includes('@keyframes coolnote-shimmer')&&uxSource.includes('prefers-reduced-motion:reduce'),'侧边栏与内容区加载态必须使用统一 Shimmer 骨架并尊重减少动态效果设置'],
 ]
 for(const [passed,message] of designRules){if(!passed){failed=true;console.error(`Design contract failed: ${message}`)}}
 if(failed)process.exit(1)

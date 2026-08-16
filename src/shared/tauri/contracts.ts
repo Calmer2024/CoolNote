@@ -78,6 +78,13 @@ export type GalleryAssetDataDto = { fileName:string; mediaType:string; dataUrl:s
 export type GalleryImportResultDto = { status:'added'|'skipped'; item:GalleryItemDto|null; fileName:string; message:string }
 export type GalleryTransferResultDto = { changed:number; skipped:number }
 
+export type TaskImportance = 'urgent'|'important'|'normal'|'low'
+export type TaskDatePrecision = 'date'|'datetime'
+export type TaskListDto = { id:string; name:string; iconName:string; notes:string; sortOrder:number; revision:number; createdAt:string; updatedAt:string }
+export type TaskItemDto = { id:string; taskListId:string|null; title:string; notes:string; startValue:string|null; startPrecision:TaskDatePrecision|null; dueValue:string|null; duePrecision:TaskDatePrecision|null; importance:TaskImportance; isCompleted:boolean; completedAt:string|null; sortOrder:number; revision:number; createdAt:string; updatedAt:string }
+export type TaskSubtaskDto = { id:string; taskId:string; title:string; isCompleted:boolean; completedAt:string|null; sortOrder:number; revision:number; createdAt:string; updatedAt:string }
+export type TaskSnapshotDto = { lists:TaskListDto[]; tasks:TaskItemDto[]; subtasks:TaskSubtaskDto[] }
+
 export type AttachmentDto = {
   id: string
   noteId: string
@@ -88,9 +95,9 @@ export type AttachmentDto = {
   dataUrl: string
   createdAt: string
 }
-export type SystemCountsDto = { all:number; favorites:number; archived:number; trash:number; jottings:number; galleries:number }
+export type SystemCountsDto = { all:number; favorites:number; archived:number; trash:number; jottings:number; tasks:number; galleries:number }
 export type WorkspaceSnapshotDto = { categories: CategoryDto[]; systemCounts:SystemCountsDto }
-export type SearchResultDto = { id:string; kind:'note'|'jotting'|'gallery'; title:string; excerpt:string; updatedAt:string }
+export type SearchResultDto = { id:string; kind:'note'|'jotting'|'task'|'gallery'; title:string; excerpt:string; updatedAt:string }
 export type NoteView = 'all' | 'favorites' | 'archived' | 'trash'
 export type NoteSort = 'updatedAt' | 'createdAt' | 'title'
 export type NoteQuery = {

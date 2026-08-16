@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const app = read('src/app/App.tsx')
@@ -14,6 +14,9 @@ const migration = read('src-tauri/migrations/0011_galleries.sql')
 const coverMigration = read('src-tauri/migrations/0012_gallery_covers.sql')
 const config = read('src-tauri/tauri.conf.json')
 const guidelines = read('docs/design/design-guidelines.md')
+const covers = read('src/shared/covers.ts')
+const jottingWorkspace = read('src/features/jottings/JottingsWorkspace.tsx')
+const coverFiles = readdirSync(new URL('../public/assets/covers/', import.meta.url)).filter(name => /\.png$/i.test(name))
 
 const required = [
   [app, "id:'gallery',label:'画廊'", '侧边栏缺少画廊一级入口'],
@@ -33,6 +36,11 @@ const required = [
   [workspace, 'name="book-image"', '画廊列表条目必须使用画册图标'],
   [iconRegistry, "'book-image'", '统一图标库缺少画册图标'],
   [workspace, '内置图片', '画廊封面按钮文案未按参考图调整'],
+  [workspace, 'BUILT_IN_COVERS.map', '画廊未接入共享内置封面库'],
+  [jottingWorkspace, 'BUILT_IN_COVERS.map', '小记未接入共享内置封面库'],
+  [covers, 'coolnote-cover-', '共享封面库未引用打包图片'],
+  [uxCss, 'grid-template-columns: repeat(4, 84px)', '小记封面库必须以四列展示六排容量'],
+  [uxCss, 'grid-template-columns: repeat(4, minmax(0, 1fr))', '画廊封面库必须以四列展示六排容量'],
   [galleryCss, '.gallery-list-actions{position:absolute;right:3px;display:flex;gap:0;opacity:0;border-radius:6px;background:transparent', '画廊条目 Hover 操作不得有灰色外层容器'],
   [galleryCss, '.gallery-list-row:not(.renaming):hover .gallery-list-main small', '画廊条目 Hover 显示操作时必须隐藏数量'],
   [workspace, "renamingId!==gallery.id&&<span className=\"gallery-list-actions\">", '画廊重命名时必须隐藏操作图标'],
@@ -72,5 +80,7 @@ for (const [source, marker, message] of required) {
   if (message && !source.includes(marker)) throw new Error(message)
 }
 if (!config.includes('"dragDropEnabled": false')) throw new Error('Tauri 窗口不得拦截小记 HTML 拖拽')
+if (coverFiles.length !== 24) throw new Error(`应打包完整的 24 张内置封面，实际为 ${coverFiles.length} 张`)
+if (!covers.includes('[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24]')) throw new Error('共享封面库必须连续注册封面 1 至 24')
 if (!workspace.includes('支持 JPEG、PNG、WebP、GIF，单张最大 100 MB')) throw new Error('画廊导入边界未展示')
 console.log('Gallery contract passed: navigation, persistence, import, undo, lightbox and drag boundary.')

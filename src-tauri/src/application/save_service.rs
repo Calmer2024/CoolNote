@@ -199,7 +199,7 @@ mod tests {
             RecoveryStore::new(directory.path().join("recovery")).expect("recovery store");
         database.with_write(|transaction| {
             transaction.execute(
-                "INSERT INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at)
+                "INSERT OR IGNORE INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at)
                  VALUES(?1,NULL,'未分类','folder','#1687e8',0,'now','now',NULL)",
                 [UNCATEGORIZED_ID],
             )?;

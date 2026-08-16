@@ -1,7 +1,7 @@
 {
   "name": "coolnote",
   "private": true,
-  "version": "0.1.23",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173",
@@ -9,7 +9,10 @@
     "check:prototype": "node scripts/check-prototype-contract.mjs",
     "check:editor-performance": "node scripts/check-editor-performance-contract.mjs",
     "check:gallery": "node scripts/check-gallery-contract.mjs",
-    "build": "npm run check:icons && npm run check:prototype && npm run check:editor-performance && npm run check:gallery && tsc && vite build",
+    "check:tasks": "node scripts/check-task-contract.mjs",
+    "test:tasks": "vitest run src/features/tasks/TaskWorkspace.test.tsx",
+    "test:editor": "vitest run src/features/editor/markdownShortcuts.test.ts",
+    "build": "npm run check:icons && npm run check:prototype && npm run check:editor-performance && npm run check:gallery && npm run check:tasks && npm run test:tasks && npm run test:editor && tsc && vite build",
     "preview": "vite preview",
     "perf:gate": "cargo run --release --manifest-path src-tauri/Cargo.toml --example performance_gate",
     "perf:editor": "cargo run --release --manifest-path src-tauri/Cargo.toml --example editor_performance_gate",
@@ -49,10 +52,14 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "jsdom": "^30.0.1",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^4.1.10"
   }
 }

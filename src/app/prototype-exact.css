@@ -874,7 +874,7 @@
       }
       .icon-picker-grid {
         display: grid;
-        grid-template-columns: repeat(6, 38px);
+        grid-template-columns: repeat(5, 38px);
         gap: 7px;
         padding-top: 12px;
       }
@@ -1194,7 +1194,7 @@
         align-items: center;
         height: 64px;
         padding: 0 18px 0 28px;
-        border-bottom: 1px solid var(--border);
+        border-bottom: 0;
       }
       .jotting-tree-heading {
         display: flex;
@@ -1430,7 +1430,15 @@
         border-radius: 9px;
         background: rgba(255, 255, 255, 0.88);
         box-shadow: 0 7px 20px rgba(30, 42, 52, 0.13);
+        opacity: 0;
+        transform: translateY(-3px);
         backdrop-filter: blur(10px);
+        transition: opacity 150ms ease, transform 150ms ease;
+      }
+      .jotting-cover:hover .jotting-cover-actions,
+      .jotting-cover:focus-within .jotting-cover-actions {
+        opacity: 1;
+        transform: none;
       }
       .jotting-cover-actions button {
         display: inline-flex;

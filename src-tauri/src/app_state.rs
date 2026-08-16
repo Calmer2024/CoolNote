@@ -5,6 +5,7 @@ use crate::application::gallery_service::GalleryService;
 use crate::application::library_service::{LibraryService, LibrarySettingsService};
 use crate::application::note_service::NoteService;
 use crate::application::save_service::SaveService;
+use crate::application::task_service::TaskService;
 use crate::application::workspace_service::WorkspaceService;
 use crate::domain::error::AppError;
 use crate::domain::note::Library;
@@ -18,6 +19,7 @@ pub struct AppServices {
     pub saves: SaveService,
     pub recovery: RecoveryStore,
     pub galleries: GalleryService,
+    pub tasks: TaskService,
     pub workspace: WorkspaceService,
 }
 
@@ -66,9 +68,14 @@ impl AppState {
             library: context.library.clone(),
             settings: context.settings,
             notes: NoteService::new(context.database.clone()),
-            saves: SaveService::new(context.library.id, context.database, recovery.clone()),
+            saves: SaveService::new(
+                context.library.id,
+                context.database.clone(),
+                recovery.clone(),
+            ),
             recovery,
             galleries,
+            tasks: TaskService::new(context.database),
             workspace,
         };
         *slot = Some(services.clone());

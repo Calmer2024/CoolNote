@@ -1,10 +1,10 @@
 export const ICON_NAMES = [
   'align-left','arrow-down','arrow-down-narrow-wide','arrow-up','book-image','book-open','book-open-text',
-  'briefcase-business','calendar-days','camera','check-square','chevron-down','chevron-right',
+  'briefcase-business','calendar-days','camera','check','check-square','chevron-down','chevron-right','chevrons-up','circle',
   'code','code-xml','columns-2','copy','download','ellipsis','feather','file','file-plus',
   'file-text','flask-conical','flower-2','folder','folder-open','folder-plus','gem','graduation-cap',
   'gallery-thumbnails','grip-vertical','highlighter','history','image','images','image-up','lightbulb','link','list',
-  'list-ordered','list-tree','message-square','monitor','moon','music','notebook-tabs',
+  'list-checks','list-ordered','list-tree','list-todo','inbox','message-square','minus','monitor','moon','music','notebook-tabs',
   'palette','panel-left-close','panel-left-open','panel-right-close','panel-right-open',
   'panels-top-left','paperclip','pencil','pin','plus','quote','rotate-ccw','search',
   'share-2','sort-asc','sort-desc','star','sun','table','tag','tags','trash-2','upload','x',

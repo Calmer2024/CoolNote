@@ -153,6 +153,7 @@ pub async fn global_search(
     run(state, move |services| {
         let mut results = services.workspace.global_search(&query, limit)?;
         results.extend(services.galleries.search(&query, limit)?);
+        results.extend(services.tasks.search(&query, limit)?);
         results.sort_by(|left, right| right.updated_at.cmp(&left.updated_at));
         results.truncate(limit.clamp(1, 100) as usize);
         Ok(results)
@@ -194,6 +195,30 @@ pub async fn delete_attachment(
 ) -> Result<(), CommandError> {
     run(state, move |services| {
         services.workspace.delete_attachment(&attachment_id)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn reveal_attachment(
+    state: tauri::State<'_, AppState>,
+    attachment_id: String,
+) -> Result<bool, CommandError> {
+    run(state, move |services| {
+        let path = services.workspace.attachment_path(&attachment_id)?;
+        #[cfg(target_os = "windows")]
+        {
+            std::process::Command::new("explorer.exe")
+                .arg("/select,")
+                .arg(&path)
+                .spawn()?;
+            Ok(true)
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = path;
+            Ok(false)
+        }
     })
     .await
 }

@@ -18,6 +18,9 @@ use crate::domain::note::{
 };
 use crate::infrastructure::database::Database;
 
+const BUILT_IN_CATEGORY_ID: &str = "00000000-0000-4000-8000-000000000001";
+const BUILT_IN_NOTE_ID: &str = "00000000-0000-4000-8000-000000000011";
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NoteQuery {
@@ -57,6 +60,7 @@ pub struct SystemCounts {
     pub archived: i64,
     pub trash: i64,
     pub jottings: i64,
+    pub tasks: i64,
     pub galleries: i64,
 }
 
@@ -98,6 +102,7 @@ impl WorkspaceService {
                 archived:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NULL AND is_archived=1",[],|r|r.get(0))?,
                 trash:c.query_row("SELECT COUNT(*) FROM notes WHERE deleted_at IS NOT NULL",[],|r|r.get(0))?,
                 jottings:c.query_row("SELECT COUNT(*) FROM jottings",[],|r|r.get(0))?,
+                tasks:c.query_row("SELECT COUNT(*) FROM tasks WHERE deleted_at IS NULL AND is_completed=0",[],|r|r.get(0))?,
                 galleries:c.query_row("SELECT COUNT(*) FROM galleries WHERE deleted_at IS NULL",[],|r|r.get(0))?,
             }))?,
         })
@@ -144,7 +149,7 @@ impl WorkspaceService {
                 |row| row.get(0),
             )?;
             let sql = format!(
-                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_archived,n.deleted_at,n.mood,n.updated_at FROM notes n WHERE {where_sql} ORDER BY {order_column} {direction}, n.id ASC LIMIT ?3 OFFSET ?4"
+                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_archived,n.deleted_at,n.mood,n.updated_at FROM notes n WHERE {where_sql} ORDER BY CASE WHEN n.id='{BUILT_IN_NOTE_ID}' THEN 0 ELSE 1 END, {order_column} {direction}, n.id ASC LIMIT ?3 OFFSET ?4"
             );
             let mut statement = connection.prepare(&sql)?;
             let rows = statement.query_map(
@@ -230,6 +235,7 @@ impl WorkspaceService {
             };
             let mut changed = 0;
             for id in note_ids {
+                if id == BUILT_IN_NOTE_ID && matches!(action, BatchAction::Archive | BatchAction::Trash | BatchAction::DeletePermanently) { continue; }
                 changed += if matches!(action, BatchAction::Trash) {
                     tx.execute(sql, params![id, now])?
                 } else {
@@ -241,14 +247,21 @@ impl WorkspaceService {
     }
 
     pub fn empty_trash(&self) -> Result<usize, AppError> {
-        self.database
-            .with_write(|tx| Ok(tx.execute("DELETE FROM notes WHERE deleted_at IS NOT NULL", [])?))
+        self.database.with_write(|tx| {
+            Ok(tx.execute(
+                "DELETE FROM notes WHERE deleted_at IS NOT NULL AND id<>?1",
+                [BUILT_IN_NOTE_ID],
+            )?)
+        })
     }
 
     pub fn move_notes(&self, note_ids: &[String], category_id: &str) -> Result<usize, AppError> {
         self.database.with_write(|tx| {
             let mut changed = 0;
             for id in note_ids {
+                if id == BUILT_IN_NOTE_ID {
+                    continue;
+                }
                 changed += tx.execute(
                     "UPDATE notes SET category_id=?1 WHERE id=?2",
                     params![category_id, id],
@@ -285,6 +298,9 @@ impl WorkspaceService {
     }
 
     pub fn rename_category(&self, id: &str, name: &str) -> Result<(), AppError> {
+        if id == BUILT_IN_CATEGORY_ID {
+            return Err(AppError::InvalidRequest("我的文件是内置分类".into()));
+        }
         let name = name.trim();
         if name.is_empty() {
             return Err(AppError::InvalidRequest("分类名称不能为空".into()));
@@ -314,8 +330,8 @@ impl WorkspaceService {
         })
     }
     pub fn delete_category(&self, id: &str) -> Result<(), AppError> {
-        if id == UNCATEGORIZED_ID {
-            return Err(AppError::InvalidRequest("不能删除未分类".into()));
+        if id == UNCATEGORIZED_ID || id == BUILT_IN_CATEGORY_ID {
+            return Err(AppError::InvalidRequest("不能删除内置分类".into()));
         };
         self.database.with_write(|tx| {
             let parent: Option<String> =
@@ -449,6 +465,19 @@ impl WorkspaceService {
             std::fs::remove_file(full)?
         }
         Ok(())
+    }
+
+    pub fn attachment_path(&self, id: &str) -> Result<PathBuf, AppError> {
+        let relative = self.database.with_read(|connection| {
+            connection
+                .query_row(
+                    "SELECT relative_path FROM attachments WHERE id=?1",
+                    [id],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(AppError::from)
+        })?;
+        Ok(self.attachments_root.join(relative))
     }
 
     pub fn export_notes(&self, note_ids: &[String], format: &str) -> Result<String, AppError> {
