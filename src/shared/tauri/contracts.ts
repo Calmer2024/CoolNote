@@ -92,9 +92,10 @@ export type AttachmentDto = {
   mediaType: string
   sizeBytes: number
   contentHash: string
-  dataUrl: string
+  dataUrl?: string
   createdAt: string
 }
+export type WebMetadataDto = { url:string; title:string; description:string|null; imageUrl:string|null; iconUrl:string|null; siteName:string|null; pageType:string|null }
 export type SystemCountsDto = { all:number; favorites:number; archived:number; trash:number; jottings:number; tasks:number; galleries:number }
 export type WorkspaceSnapshotDto = { categories: CategoryDto[]; systemCounts:SystemCountsDto }
 export type SearchResultDto = { id:string; kind:'note'|'jotting'|'task'|'gallery'; title:string; excerpt:string; updatedAt:string }

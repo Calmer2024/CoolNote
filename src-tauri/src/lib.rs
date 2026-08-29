@@ -4,7 +4,8 @@ pub mod commands;
 pub mod domain;
 pub mod infrastructure;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use std::time::Duration;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -16,6 +17,13 @@ pub fn run() {
         .setup(|app| {
             let library_root = app.path().app_data_dir()?.join("library");
             app.manage(app_state::AppState::new(library_root));
+            if let Some(path) = std::env::args().skip(1).find(|value| !value.starts_with('-')) {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(900)).await;
+                    let _ = handle.emit("coolnote-import-file", path);
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -36,14 +44,23 @@ pub fn run() {
             commands::workspace::move_notes,
             commands::workspace::create_category,
             commands::workspace::rename_category,
+            commands::workspace::reorder_category,
             commands::workspace::update_category_appearance,
             commands::workspace::delete_category,
             commands::workspace::set_note_mood,
             commands::workspace::global_search,
             commands::workspace::save_attachment,
             commands::workspace::list_attachments,
+            commands::workspace::get_attachment_data,
             commands::workspace::delete_attachment,
             commands::workspace::reveal_attachment,
+            commands::workspace::open_attachment,
+            commands::workspace::open_external_resource,
+            commands::workspace::write_jotting_group_image,
+            commands::workspace::save_share_avatar,
+            commands::workspace::read_share_avatar,
+            commands::workspace::delete_share_avatar,
+            commands::workspace::fetch_web_metadata,
             commands::workspace::export_notes,
             commands::workspace::import_notes,
             commands::workspace::get_jotting_snapshot,

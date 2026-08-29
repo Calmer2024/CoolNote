@@ -83,6 +83,7 @@ pub struct Attachment {
     pub media_type: String,
     pub size_bytes: i64,
     pub content_hash: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub data_url: String,
     pub created_at: String,
 }

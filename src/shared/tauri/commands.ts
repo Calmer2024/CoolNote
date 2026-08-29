@@ -35,6 +35,7 @@ import type {
   TaskSubtaskDto,
   TaskDatePrecision,
   TaskImportance,
+  WebMetadataDto,
 } from './contracts'
 
 export const initializeLibrary = () => call<LibraryDto>('initialize_library', undefined, web.webInitialize)
@@ -72,13 +73,23 @@ export const emptyTrash = () => call<number>('empty_trash', undefined, web.webEm
 export const moveNotes = (noteIds: string[], categoryId: string) => call<number>('move_notes', { noteIds, categoryId }, () => web.webMove(noteIds, categoryId))
 export const createCategory = (name: string, parentId?: string | null) => call<CategoryDto>('create_category', { name, parentId: parentId ?? null }, () => web.webCreateCategory(name, parentId))
 export const renameCategory = (categoryId: string, name: string) => call<void>('rename_category', { categoryId, name }, () => web.webRenameCategory(categoryId, name))
+export const reorderCategory = (categoryId: string, beforeId?: string | null) => call<void>('reorder_category', { categoryId, beforeId: beforeId ?? null }, () => web.webReorderCategory(categoryId, beforeId))
 export const deleteCategory = (categoryId: string) => call<void>('delete_category', { categoryId }, () => web.webDeleteCategory(categoryId))
 export const setNoteMood = (noteId:string,mood:string|null) => call<void>('set_note_mood',{noteId,mood},()=>web.webSetMood(noteId,mood))
 export const globalSearch = (query:string,limit=16) => call<SearchResultDto[]>('global_search',{query,limit},()=>web.webGlobalSearch(query,limit))
 export const saveAttachment = (noteId: string, fileName: string, mediaType: string, dataBase64: string) => call<AttachmentDto>('save_attachment', { noteId, fileName, mediaType, dataBase64 }, () => web.webSaveAttachment(noteId,fileName,mediaType,dataBase64))
 export const listAttachments = (noteId: string) => call<AttachmentDto[]>('list_attachments', { noteId }, () => web.webListAttachments(noteId))
+export const getAttachmentData = (attachmentId: string) => call<string>('get_attachment_data', { attachmentId }, () => web.webGetAttachmentData(attachmentId))
 export const deleteAttachment = (attachmentId: string) => call<void>('delete_attachment', { attachmentId }, () => web.webDeleteAttachment(attachmentId))
 export const revealAttachment = (attachmentId: string) => call<boolean>('reveal_attachment', { attachmentId }, () => false)
+export const openAttachment = (attachmentId: string) => call<boolean>('open_attachment', { attachmentId }, () => false)
+export const openExternalResource = (url: string) => call<boolean>('open_external_resource', { url }, () => { window.open(url, '_blank', 'noopener,noreferrer'); return true })
+export const writeJottingGroupImage = (folderName:string,fileName:string,data:Uint8Array) => call<string>('write_jotting_group_image',{folderName,fileName,data:Array.from(data)},()=>{throw new Error('组图导出仅支持桌面版')})
+const webAvatarKey='coolnote-share-avatar'
+export const saveShareAvatar=(data:Uint8Array)=>call<number[]>('save_share_avatar',{data:Array.from(data)},()=>{const bytes=Array.from(data);localStorage.setItem(webAvatarKey,JSON.stringify(bytes));return bytes})
+export const readShareAvatar=()=>call<number[]|null>('read_share_avatar',undefined,()=>{try{const raw=localStorage.getItem(webAvatarKey);return raw?JSON.parse(raw) as number[]:null}catch{return null}})
+export const deleteShareAvatar=()=>call<void>('delete_share_avatar',undefined,()=>{localStorage.removeItem(webAvatarKey)})
+export const fetchWebMetadata = (url:string) => call<WebMetadataDto>('fetch_web_metadata',{url},()=>({url,title:new URL(url).hostname,description:null,imageUrl:null,iconUrl:new URL('/favicon.ico',url).toString(),siteName:null,pageType:null}))
 export const exportNotes = (noteIds: string[], format: 'markdown' | 'html' | 'json') => call<string>('export_notes', { noteIds, format }, () => web.webExport(noteIds, format))
 export const importNotes = (content: string, format: 'markdown' | 'html' | 'json', categoryId?: string | null) => {
   const parsed = format === 'markdown' ? parseMarkdownDocument(content) : null

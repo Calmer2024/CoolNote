@@ -94,7 +94,6 @@ export function ThemeButton({
       className="icon-button theme-button"
       type="button"
       aria-label={label}
-      title={label}
       disabled={!library || saving}
       onClick={() => void cycleTheme()}
     >

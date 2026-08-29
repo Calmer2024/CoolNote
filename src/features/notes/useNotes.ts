@@ -12,6 +12,7 @@ import {
   initializeLibrary,
   moveNotes,
   queryNotes,
+  reorderCategory,
   renameCategory,
   setNoteMood,
   updateCategoryAppearance,
@@ -71,9 +72,17 @@ export function useNotes() {
   const [isCreating, setIsCreating] = useState(false)
   const [isLoadingNote, setIsLoadingNote] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [isLoadingList, setIsLoadingList] = useState(false)
   const selectionToken = useRef(0)
+  const listRequestToken = useRef(0)
+  const libraryReady = useRef(false)
+  const selectedNoteIdRef = useRef<string | null>(null)
+  const selectedNoteRef = useRef<NoteDto | null>(null)
+  const resolvedSelectionRef = useRef<{ id:string; note:NoteDto } | null>(null)
   const queryRef = useRef({ view, categoryId, search, sortBy, sortDirection })
   queryRef.current = { view, categoryId, search, sortBy, sortDirection }
+  selectedNoteIdRef.current = selectedNoteId
+  selectedNoteRef.current = selectedNote
 
   const makeQuery = useCallback((offset = 0): NoteQuery => ({
     ...queryRef.current,
@@ -88,17 +97,30 @@ export function useNotes() {
   }, [])
 
   const refreshNotes = useCallback(async () => {
-    const page = await queryNotes(makeQuery())
-    setNotes(page.items)
-    setTotal(page.total)
-    setSelectedIds(new Set())
-    if (selectedNoteId && !page.items.some((item) => item.id === selectedNoteId)) {
-      setSelectedNoteId(null)
-      setSelectedNote(null)
+    const token = ++listRequestToken.current
+    setIsLoadingList(true)
+    try {
+      const page = await queryNotes(makeQuery())
+      if (listRequestToken.current !== token) return
+      setNotes(page.items)
+      setTotal(page.total)
+      setSelectedIds(new Set())
+      const currentSelectedId = selectedNoteIdRef.current
+      if (currentSelectedId && !page.items.some((item) => item.id === currentSelectedId)) {
+        selectionToken.current += 1
+        selectedNoteIdRef.current = null
+        selectedNoteRef.current = null
+        resolvedSelectionRef.current = null
+        setSelectedNoteId(null)
+        setSelectedNote(null)
+      }
+    } finally {
+      if (listRequestToken.current === token) setIsLoadingList(false)
     }
-  }, [makeQuery, selectedNoteId])
+  }, [makeQuery])
 
   const loadLibrary = useCallback(async () => {
+    libraryReady.current = false
     setStatus('booting')
     setError(null)
     try {
@@ -112,6 +134,7 @@ export function useNotes() {
       setSystemCounts(snapshot.systemCounts)
       setNotes(page.items)
       setTotal(page.total)
+      libraryReady.current = true
       setStatus('ready')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '无法打开本机笔记库')
@@ -121,21 +144,38 @@ export function useNotes() {
 
   useEffect(() => { void loadLibrary() }, [loadLibrary])
   useEffect(() => {
-    if (status !== 'ready') return
+    if (!libraryReady.current) return
     const timer = setTimeout(() => void refreshNotes().catch((cause) => setError(cause instanceof Error ? cause.message : '无法刷新笔记')), 180)
     return () => clearTimeout(timer)
-  }, [view, categoryId, search, sortBy, sortDirection, refreshNotes, status])
+  }, [view, categoryId, search, sortBy, sortDirection, refreshNotes])
 
   const select = useCallback(async (noteId: string) => {
     const token = ++selectionToken.current
+    const fallback = resolvedSelectionRef.current
+    selectedNoteIdRef.current = noteId
+    selectedNoteRef.current = null
     setSelectedNoteId(noteId)
+    setSelectedNote(null)
     setIsLoadingNote(true)
     setError(null)
     try {
       const note = await getWorkspaceNote(noteId)
-      if (selectionToken.current === token) setSelectedNote({ ...note, document: normalizeDocument(note.document) })
+      if (selectionToken.current === token) {
+        const normalized = { ...note, document: normalizeDocument(note.document) }
+        selectedNoteIdRef.current = normalized.id
+        selectedNoteRef.current = normalized
+        resolvedSelectionRef.current = { id:normalized.id, note:normalized }
+        setSelectedNoteId(normalized.id)
+        setSelectedNote(normalized)
+      }
     } catch (cause) {
-      if (selectionToken.current === token) setError(cause instanceof Error ? cause.message : '无法打开这篇笔记')
+      if (selectionToken.current === token) {
+        selectedNoteIdRef.current = fallback?.id ?? null
+        selectedNoteRef.current = fallback?.note ?? null
+        setSelectedNoteId(fallback?.id ?? null)
+        setSelectedNote(fallback?.note ?? null)
+        setError(cause instanceof Error ? cause.message : '无法打开这篇笔记')
+      }
     } finally {
       if (selectionToken.current === token) setIsLoadingNote(false)
     }
@@ -160,6 +200,9 @@ export function useNotes() {
       const normalized = { ...note, document: normalizeDocument(note.document) }
       setNotes((current) => [toSummary(normalized), ...current])
       setTotal((value) => value + 1)
+      selectedNoteIdRef.current = normalized.id
+      selectedNoteRef.current = normalized
+      resolvedSelectionRef.current = { id:normalized.id, note:normalized }
       setSelectedNoteId(normalized.id)
       setSelectedNote(normalized)
       await refreshWorkspace()
@@ -169,12 +212,24 @@ export function useNotes() {
   }, [categoryId, isCreating, refreshWorkspace, status])
 
   const updateDraft = useCallback((noteId: string, title: string, document: VersionedDocument) => {
-    setSelectedNote((current) => current?.id === noteId ? { ...current, title, document } : current)
+    setSelectedNote((current) => {
+      if (current?.id !== noteId) return current
+      const next = { ...current, title, document }
+      selectedNoteRef.current = next
+      resolvedSelectionRef.current = { id:noteId, note:next }
+      return next
+    })
     setNotes((current) => current.map((note) => note.id === noteId ? { ...note, title } : note))
   }, [])
 
   const applySaved = useCallback((saved: SaveNoteResult) => {
-    setSelectedNote((current) => current?.id === saved.noteId ? { ...current, revision: saved.revision, updatedAt: saved.updatedAt, contentHash: saved.contentHash } : current)
+    setSelectedNote((current) => {
+      if (current?.id !== saved.noteId) return current
+      const next = { ...current, revision: saved.revision, updatedAt: saved.updatedAt, contentHash: saved.contentHash }
+      selectedNoteRef.current = next
+      resolvedSelectionRef.current = { id:saved.noteId, note:next }
+      return next
+    })
     setNotes((current) => current.map((note) => note.id === saved.noteId ? { ...note, revision: saved.revision, updatedAt: saved.updatedAt } : note))
   }, [])
 
@@ -183,6 +238,7 @@ export function useNotes() {
     try { document=normalizeDocument(draft.documentJson as VersionedDocument) }
     catch { document=parseMarkdownDocument(draft.markdownSnapshot).document }
     const restored = { ...databaseNote, title: draft.title, document }
+    selectedNoteIdRef.current=restored.id; selectedNoteRef.current=restored; resolvedSelectionRef.current={id:restored.id,note:restored}
     setSelectedNoteId(restored.id); setSelectedNote(restored); setNotes((current) => current.map((note) => note.id === restored.id ? toSummary(restored) : note))
   }, [])
 
@@ -192,24 +248,33 @@ export function useNotes() {
     const allowed=ids.filter(id=>id!==BUILT_IN_NOTE_ID||!['archive','trash','deletePermanently'].includes(action))
     if (!allowed.length) return
     await batchNotes(allowed, action)
-    if (allowed.includes(selectedNoteId ?? '') && ['archive', 'trash', 'deletePermanently'].includes(action)) { setSelectedNote(null); setSelectedNoteId(null) }
+    if (allowed.includes(selectedNoteId ?? '') && ['archive', 'trash', 'deletePermanently'].includes(action)) { selectionToken.current+=1; selectedNoteIdRef.current=null; selectedNoteRef.current=null; resolvedSelectionRef.current=null; setSelectedNote(null); setSelectedNoteId(null) }
     await Promise.all([refreshNotes(), refreshWorkspace()])
   }, [refreshNotes, refreshWorkspace, selectedIds, selectedNoteId])
-  const clearTrash = useCallback(async () => { await emptyTrash(); setSelectedNote(null); setSelectedNoteId(null); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace])
+  const clearTrash = useCallback(async () => { await emptyTrash(); selectionToken.current+=1; selectedNoteIdRef.current=null; selectedNoteRef.current=null; resolvedSelectionRef.current=null; setSelectedNote(null); setSelectedNoteId(null); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace])
   const moveSelected = useCallback(async (target: string, requestedIds?: string[]) => { const ids=(requestedIds??[...selectedIds]).filter(id=>id!==BUILT_IN_NOTE_ID); if(!ids.length)return; await moveNotes(ids,target); await Promise.all([refreshNotes(),refreshWorkspace()]) }, [refreshNotes,refreshWorkspace,selectedIds])
-  const updateMood = useCallback(async (mood:string|null) => { if(!selectedNoteId)return; await setNoteMood(selectedNoteId,mood); setSelectedNote(current=>current?{...current,mood}:current); setNotes(current=>current.map(note=>note.id===selectedNoteId?{...note,mood}:note)) }, [selectedNoteId])
+  const updateMood = useCallback(async (mood:string|null) => { if(!selectedNoteId)return; await setNoteMood(selectedNoteId,mood); setSelectedNote(current=>{if(!current)return current;const next={...current,mood};selectedNoteRef.current=next;resolvedSelectionRef.current={id:next.id,note:next};return next}); setNotes(current=>current.map(note=>note.id===selectedNoteId?{...note,mood}:note)) }, [selectedNoteId])
 
   return {
     status, library, notes, categories, systemCounts, total, selectedNote, selectedNoteId, selectedIds,
-    view, categoryId, search, sortBy, sortDirection, error, isCreating, isLoadingNote, isLoadingMore,
+    view, categoryId, search, sortBy, sortDirection, error, isCreating, isLoadingNote, isLoadingMore, isLoadingList,
     create, select, loadMore, updateDraft, applySaved, applyRecoveredDraft, toggleSelected, selectAll, performBatch, clearTrash, moveSelected, updateMood,
     clearSelection: () => setSelectedIds(new Set()),
-    setView: (next: NoteView) => { setViewState(next); setCategoryIdState(null) },
-    setCategory: (id: string | null) => { setCategoryIdState(id); setViewState('all') },
-    setSearch: setSearchState, setSortBy: setSortByState, setSortDirection: setSortDirectionState,
+    setView: (next: NoteView) => {
+      if (view === next && categoryId === null) return
+      setIsLoadingList(true); setViewState(next); setCategoryIdState(null)
+    },
+    setCategory: (id: string | null) => {
+      if (categoryId === id && view === 'all') return
+      setIsLoadingList(true); setCategoryIdState(id); setViewState('all')
+    },
+    setSearch: (value:string) => { if (value !== search) setIsLoadingList(true); setSearchState(value) },
+    setSortBy: (value:NoteSort) => { if (value !== sortBy) setIsLoadingList(true); setSortByState(value) },
+    setSortDirection: (value:'asc'|'desc') => { if (value !== sortDirection) setIsLoadingList(true); setSortDirectionState(value) },
     addCategory: async (name: string, parentId?: string | null) => { const created=await createCategory(name,parentId); await refreshWorkspace(); return created },
     editCategory: async (id:string,name:string) => { await renameCategory(id,name); await refreshWorkspace() },
     editCategoryAppearance: async (id:string,iconName:string,color:string) => { await updateCategoryAppearance(id,iconName,color); await refreshWorkspace() },
+    moveCategory: async (id:string,beforeId?:string|null) => { await reorderCategory(id,beforeId); await refreshWorkspace() },
     removeCategory: async (id:string) => { await deleteCategory(id); await Promise.all([refreshWorkspace(),refreshNotes()]) },
     importContent: async (content:string,format:'markdown'|'html'|'json') => { await importNotes(content,format,categoryId); await Promise.all([refreshNotes(),refreshWorkspace()]) },
     updateLibrary: setLibrary, retry: loadLibrary, refresh: refreshNotes,

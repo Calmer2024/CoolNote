@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -313,6 +314,33 @@ impl WorkspaceService {
             Ok(())
         })
     }
+    pub fn reorder_category(&self, id: &str, before_id: Option<&str>) -> Result<(), AppError> {
+        self.database.with_write(|tx| {
+            let mut statement = tx.prepare(
+                "SELECT id FROM categories WHERE deleted_at IS NULL ORDER BY sort_order,name",
+            )?;
+            let mut ids = statement
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            let source = ids
+                .iter()
+                .position(|value| value == id)
+                .ok_or_else(|| AppError::NotFound(id.to_owned()))?;
+            let moving = ids.remove(source);
+            let target = before_id
+                .and_then(|value| ids.iter().position(|item| item == value))
+                .unwrap_or(ids.len());
+            ids.insert(target, moving);
+            let now = Utc::now().to_rfc3339();
+            for (index, category_id) in ids.iter().enumerate() {
+                tx.execute(
+                    "UPDATE categories SET sort_order=?1,updated_at=?2 WHERE id=?3",
+                    params![index as i64, now, category_id],
+                )?;
+            }
+            Ok(())
+        })
+    }
     pub fn update_category_appearance(
         &self,
         id: &str,
@@ -402,10 +430,13 @@ impl WorkspaceService {
         }
         std::fs::create_dir_all(&self.attachments_root)?;
         let id = Uuid::new_v4().to_string();
-        let content_hash = Sha256::digest(&bytes)
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>();
+        let content_hash =
+            Sha256::digest(&bytes)
+                .iter()
+                .fold(String::with_capacity(64), |mut output, byte| {
+                    write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+                    output
+                });
         let extension = Path::new(file_name)
             .extension()
             .and_then(|v| v.to_str())
@@ -436,12 +467,41 @@ impl WorkspaceService {
             media_type: media_type.into(),
             size_bytes: bytes.len() as i64,
             content_hash,
-            data_url: format!("data:{media_type};base64,{data_base64}"),
+            data_url: String::new(),
             created_at: now,
         })
     }
     pub fn list_attachments(&self, note_id: &str) -> Result<Vec<Attachment>, AppError> {
-        self.database.with_read(|c|{let mut st=c.prepare("SELECT id,note_id,file_name,media_type,size_bytes,content_hash,relative_path,created_at FROM attachments WHERE note_id=?1 ORDER BY created_at")?;let rows=st.query_map([note_id],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,String>(3)?,r.get::<_,i64>(4)?,r.get::<_,String>(5)?,r.get::<_,String>(6)?,r.get::<_,String>(7)?)))?;let mut out=Vec::new();for row in rows{let v=row?;let bytes=std::fs::read(self.attachments_root.join(&v.6))?;out.push(Attachment{id:v.0,note_id:v.1,file_name:v.2,media_type:v.3.clone(),size_bytes:v.4,content_hash:v.5,data_url:format!("data:{};base64,{}",v.3,base64::engine::general_purpose::STANDARD.encode(bytes)),created_at:v.7})}Ok(out)})
+        self.database.with_read(|connection| {
+            let mut statement = connection.prepare("SELECT id,note_id,file_name,media_type,size_bytes,content_hash,created_at FROM attachments WHERE note_id=?1 ORDER BY created_at")?;
+            let rows = statement.query_map([note_id], |row| Ok(Attachment {
+                id: row.get(0)?,
+                note_id: row.get(1)?,
+                file_name: row.get(2)?,
+                media_type: row.get(3)?,
+                size_bytes: row.get(4)?,
+                content_hash: row.get(5)?,
+                data_url: String::new(),
+                created_at: row.get(6)?,
+            }))?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(AppError::from)
+        })
+    }
+    pub fn attachment_data(&self, id: &str) -> Result<String, AppError> {
+        let (media_type, relative) = self.database.with_read(|connection| {
+            connection
+                .query_row(
+                    "SELECT media_type,relative_path FROM attachments WHERE id=?1",
+                    [id],
+                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+                )
+                .map_err(AppError::from)
+        })?;
+        let bytes = std::fs::read(self.attachments_root.join(relative))?;
+        Ok(format!(
+            "data:{media_type};base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(bytes)
+        ))
     }
     pub fn delete_attachment(&self, id: &str) -> Result<(), AppError> {
         let path = self.database.with_read(|c| {

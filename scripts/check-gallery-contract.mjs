@@ -61,6 +61,8 @@ const required = [
   [workspace, 'className={`gallery-check${selected.has(item.id)', '每张图片必须提供独立选中态入口'],
   [workspace, 'draggable={false}', '图片本身必须禁用原生拖拽，避免排序时出现异常拖拽预览线'],
   [workspace, "void dragItem(id,null)", '图片墙末尾必须可作为排序落点'],
+  [workspace, 'handleGalleryCardDrop(event,item.id', '图片卡片不得吞掉外部文件拖放事件'],
+  [workspace, "window.addEventListener('drop',clearDropState,true)", '画廊拖放遮罩必须在窗口级 drop 时兜底清理'],
   [galleryCss, '.gallery-card.selected .gallery-card-actions', '选中图片必须持续显示移动与删除操作'],
   [galleryCss, 'aspect-ratio:auto;object-fit:contain', '图片排列必须完整保留原始比例，不得裁剪'],
   [galleryCss, 'line-height:0', '图片容器必须消除基线缝隙和横线'],

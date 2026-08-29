@@ -1,6 +1,6 @@
 [package]
 name = "coolnote"
-version = "1.0.0"
+version = "1.0.17"
 description = "Production-grade local-first notes for Windows"
 authors = ["Calmer2024"]
 edition = "2021"
@@ -31,5 +31,7 @@ chrono = "0.4.45"
 tempfile = "3"
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tokio = { version = "1", features = ["time"] }

@@ -2,6 +2,7 @@ import type {
   DocumentNode,
   VersionedDocument,
 } from '../../shared/tauri/contracts'
+import { compactAttachmentSources } from './attachmentResources'
 
 export const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -20,6 +21,7 @@ export const SUPPORTED_TOP_LEVEL_NODES = new Set([
   'mermaid',
   'media',
   'horizontalRule',
+  'highlightBlock',
 ])
 
 const SUPPORTED_NODES = new Set([
@@ -38,6 +40,7 @@ const SUPPORTED_NODES = new Set([
   'mermaid',
   'media',
   'horizontalRule',
+  'highlightBlock',
 ])
 
 const SUPPORTED_MARKS = new Set(['bold', 'italic', 'strike', 'code', 'underline', 'link', 'highlight'])
@@ -72,6 +75,15 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
     'codeBlock',
   ]),
   blockquote: new Set([
+    'paragraph',
+    'heading',
+    'bulletList',
+    'orderedList',
+    'taskList',
+    'blockquote',
+    'codeBlock',
+  ]),
+  highlightBlock: new Set([
     'paragraph',
     'heading',
     'bulletList',
@@ -147,11 +159,22 @@ export function normalizeDocument(document: VersionedDocument): VersionedDocumen
     throw new Error('不支持的文档版本')
   }
 
-  return {
+  const blockIds = new Set<string>()
+  const content = document.content.map((node) => {
+    const normalized = normalizeTopLevelNode(node)
+    const current = normalized.attrs?.blockId
+    if (typeof current === 'string' && blockIds.has(current)) {
+      normalized.attrs = { ...normalized.attrs, blockId: crypto.randomUUID() }
+    }
+    const next = normalized.attrs?.blockId
+    if (typeof next === 'string') blockIds.add(next)
+    return normalized
+  })
+  return compactAttachmentSources({
     schemaVersion: 1,
     type: 'doc',
-    content: document.content.map(normalizeTopLevelNode),
-  }
+    content,
+  })
 }
 
 export function toTiptapDocument(document: VersionedDocument) {

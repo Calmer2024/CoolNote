@@ -89,7 +89,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         Ok(())
     })?;
-    let exported = workspace.export_notes(&[block_note.id.clone()], "markdown")?;
+    let exported = workspace.export_notes(std::slice::from_ref(&block_note.id), "markdown")?;
     assert_eq!(exported, block_markdown);
     assert!(workspace.get_note(&block_note.id).is_err());
     let version_count = database.query_i64("SELECT COUNT(*) FROM note_versions")?;

@@ -18,6 +18,8 @@ jobs:
           node-version: lts/*
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+      - name: Isolate Cargo release target
+        run: echo "CARGO_TARGET_DIR=${{ github.workspace }}\src-tauri\.target\release" >> $env:GITHUB_ENV
       - run: npm ci
       - uses: tauri-apps/tauri-action@v1
         env:

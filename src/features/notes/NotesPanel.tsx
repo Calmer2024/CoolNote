@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { BatchAction, CategoryDto, NoteSummaryDto, NoteView } from '../../shared/tauri/contracts'
 import { Icon } from '../../shared/components/Icon'
 import { FloatingLayer } from '../../shared/components/Overlay'
-import { SidebarSkeleton } from '../../shared/components/Skeleton'
+import { NoteListSkeleton } from '../../shared/components/Skeleton'
 import { isBuiltInNote } from '../../shared/builtin'
 
 type Props = {
@@ -24,39 +24,40 @@ type MenuState = { note: NoteSummaryDto; x: number; y: number; mode: 'note' | 'm
 
 export function NotesPanel(props: Props) {
   const { notes, total, selectedNoteId, selectedIds } = props
-  const selectedIndex = notes.findIndex((note) => note.id === selectedNoteId)
+  const orderedNotes = [...notes].sort((a,b) => Number(isBuiltInNote(b.id)) - Number(isBuiltInNote(a.id)))
+  const selectedIndex = orderedNotes.findIndex((note) => note.id === selectedNoteId)
   const [activeIndex, setActiveIndex] = useState(selectedIndex >= 0 ? selectedIndex : notes.length ? 0 : -1)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [createMenu, setCreateMenu] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => setActiveIndex(notes.length ? Math.max(0, selectedIndex) : -1), [notes.length, selectedIndex])
+  useEffect(() => setActiveIndex(orderedNotes.length ? Math.max(0, selectedIndex) : -1), [orderedNotes.length, selectedIndex])
   const keydown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!notes.length) return
-    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((value) => Math.min(notes.length - 1, value + 1)) }
+    if (!orderedNotes.length) return
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((value) => Math.min(orderedNotes.length - 1, value + 1)) }
     if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((value) => Math.max(0, value - 1)) }
-    if (event.key === 'Enter' && activeIndex >= 0) { event.preventDefault(); props.onSelect(notes[activeIndex].id) }
+    if (event.key === 'Enter' && activeIndex >= 0) { event.preventDefault(); props.onSelect(orderedNotes[activeIndex].id) }
   }
   const act = (note: NoteSummaryDto, action: BatchAction) => { setMenu(null); props.onAction([note.id], action) }
   const selected = [...selectedIds]
   return <section ref={panelRef} className="notes-panel" aria-label="笔记列表" data-collapsed={props.collapsed} data-selecting={selectedIds.size > 0}>
     <div className="notes-header">
       {selectedIds.size ? <div className="selection-bar"><strong>已选择 {selectedIds.size} 项</strong>
-        <button className="select-all-action" title={selectedIds.size===notes.length?'取消全选':'全选'} aria-label={selectedIds.size===notes.length?'取消全选':'全选'} onClick={props.onSelectAll}><Icon name="check-square" /></button>
-        {props.view!=='trash'&&<button title="收藏" aria-label="收藏" onClick={() => props.onAction(selected, 'favorite')}><Icon name="star" /></button>}
-        <button title="移动" aria-label="移动" onClick={(event) => { const rect=event.currentTarget.getBoundingClientRect(); const note=notes.find(n=>selectedIds.has(n.id)); if(note)setMenu({note,x:rect.left-160,y:rect.bottom+5,mode:'move'}) }}><Icon name="folder" /></button>
-        <button title="归档" aria-label="归档" onClick={() => props.onAction(selected, props.view === 'archived' ? 'unarchive' : 'archive')}><Icon name="book-open" /></button>
-        <button className="danger" title={props.view === 'trash' ? '永久删除' : '移到回收站'} aria-label={props.view === 'trash' ? '永久删除' : '移到回收站'} onClick={() => props.onAction(selected, props.view === 'trash' ? 'deletePermanently' : 'trash')}><Icon name="trash-2" /></button>
-        {props.view === 'trash' && <button title="恢复" onClick={() => props.onAction(selected, 'restore')}><Icon name="rotate-ccw" /></button>}
-        <button title="取消选择" aria-label="取消选择" onClick={props.onClearSelection}><Icon name="x" /></button>
-      </div> : <><div className="notes-heading" data-view={props.view} style={{'--heading-icon-color':props.titleIconColor} as React.CSSProperties}><Icon name={props.titleIcon}/><strong>{props.title}</strong><span className="notes-count">{total}</span></div><div className="notes-header-actions">{props.view==='trash'&&<button className="icon-button empty-trash-button" aria-label="清空回收站" title="一键清空回收站" onClick={props.onEmptyTrash}><Icon name="trash-2"/></button>}{props.showCreate&&<button ref={createButtonRef} className="icon-button note-create-menu-trigger" aria-label="新建或导入笔记" aria-expanded={createMenu} onClick={()=>setCreateMenu(value=>!value)}><Icon name="plus"/></button>}<button className="icon-button" aria-label="刷新笔记列表" onClick={props.onRefresh}><Icon name="rotate-ccw"/></button><button className="icon-button sort-button" data-direction={props.sortDirection} aria-label={`更新时间${props.sortDirection === 'desc' ? '降序' : '升序'}`} title="切换更新时间排序" onClick={() => props.onDirection(props.sortDirection === 'desc' ? 'asc' : 'desc')}><Icon name={props.sortDirection === 'desc' ? 'sort-desc' : 'sort-asc'} /></button></div></>}
+        <button className="select-all-action" aria-label={selectedIds.size===notes.length?'取消全选':'全选'} onClick={props.onSelectAll}><Icon name="check-square" /></button>
+        {props.view!=='trash'&&<button aria-label="收藏" onClick={() => props.onAction(selected, 'favorite')}><Icon name="star" /></button>}
+        <button aria-label="移动" onClick={(event) => { const rect=event.currentTarget.getBoundingClientRect(); const note=notes.find(n=>selectedIds.has(n.id)); if(note)setMenu({note,x:rect.left-160,y:rect.bottom+5,mode:'move'}) }}><Icon name="folder" /></button>
+        <button aria-label="归档" onClick={() => props.onAction(selected, props.view === 'archived' ? 'unarchive' : 'archive')}><Icon name="book-open" /></button>
+        <button className="danger" aria-label={props.view === 'trash' ? '永久删除' : '移到回收站'} onClick={() => props.onAction(selected, props.view === 'trash' ? 'deletePermanently' : 'trash')}><Icon name="trash-2" /></button>
+        {props.view === 'trash' && <button aria-label="恢复" onClick={() => props.onAction(selected, 'restore')}><Icon name="rotate-ccw" /></button>}
+        <button aria-label="取消选择" onClick={props.onClearSelection}><Icon name="x" /></button>
+      </div> : <><div className="notes-heading" data-view={props.view} style={{'--heading-icon-color':props.titleIconColor} as React.CSSProperties}><Icon name={props.titleIcon}/><strong>{props.title}</strong><span className="notes-count">{total}</span></div><div className="notes-header-actions">{props.view==='trash'&&<button className="icon-button empty-trash-button" aria-label="一键清空回收站" onClick={props.onEmptyTrash}><Icon name="trash-2"/></button>}{props.showCreate&&<button ref={createButtonRef} className="icon-button note-create-menu-trigger" aria-label="新建或导入笔记" aria-expanded={createMenu} onClick={()=>setCreateMenu(value=>!value)}><Icon name="plus"/></button>}<button className="icon-button" aria-label="刷新笔记列表" onClick={props.onRefresh}><Icon name="rotate-ccw"/></button><button className="icon-button sort-button" data-direction={props.sortDirection} aria-label={`切换更新时间排序，当前${props.sortDirection === 'desc' ? '降序' : '升序'}`} onClick={() => props.onDirection(props.sortDirection === 'desc' ? 'asc' : 'desc')}><Icon name={props.sortDirection === 'desc' ? 'sort-desc' : 'sort-asc'} /></button></div></>}
     </div>
     <FloatingLayer open={createMenu&&props.showCreate} anchor={createButtonRef} placement="bottom-start" className="product-menu note-create-dropdown" role="menu" onDismiss={()=>setCreateMenu(false)}><button onClick={()=>{setCreateMenu(false);props.onCreate()}}><Icon name="file-plus"/><span>新建笔记</span></button><button onClick={()=>{setCreateMenu(false);props.onImport()}}><Icon name="upload"/><span>导入笔记</span></button></FloatingLayer>
-    {props.loading ? <div className="notes-list"><SidebarSkeleton rows={8}/></div> : notes.length ?
+    {props.loading ? <div className="notes-list"><NoteListSkeleton rows={7}/></div> : notes.length ?
       <div className="notes-list" data-sort-direction={props.sortDirection} role="listbox" tabIndex={0} onKeyDown={keydown}>
-        {notes.map((note, index) => <div className={`note-card-row prototype-note-row${note.id === selectedNoteId ? ' selected' : ''}${isBuiltInNote(note.id)?' built-in-note':''}`} key={note.id} onContextMenu={(event) => { if(isBuiltInNote(note.id))return;event.preventDefault(); setMenu({note,x:event.clientX,y:event.clientY,mode:'note'}) }}>
-          {isBuiltInNote(note.id)?<span className="built-in-pin" title="内置产品介绍"><Icon name="pin"/></span>:<input type="checkbox" aria-label={`选择${noteTitle(note.title)}`} checked={selectedIds.has(note.id)} onChange={() => props.onToggleSelected(note.id)} />}
+          {orderedNotes.map((note, index) => <div className={`note-card-row prototype-note-row${note.id === selectedNoteId ? ' selected' : ''}${isBuiltInNote(note.id)?' built-in-note':''}`} key={note.id} onContextMenu={(event) => { if(isBuiltInNote(note.id))return;event.preventDefault(); setMenu({note,x:event.clientX,y:event.clientY,mode:'note'}) }}>
+          {isBuiltInNote(note.id)?<span className="built-in-pin" data-tooltip="内置产品介绍"><Icon name="pin"/></span>:<input type="checkbox" aria-label={`选择${noteTitle(note.title)}`} checked={selectedIds.has(note.id)} onChange={() => props.onToggleSelected(note.id)} />}
           <button className="note-card" type="button" aria-current={index === activeIndex ? 'true' : undefined} onClick={() => { setActiveIndex(index); props.onSelect(note.id) }}>
             <h2>{noteTitle(note.title)}</h2><p>{noteExcerpt(note.excerpt)}</p>
             <div className="note-meta"><time>{updatedLabel(note.updatedAt)}</time>{note.mood&&<span className="note-mood" aria-label={`心情 ${note.mood}`}>{note.mood}</span>}{props.categories.find(category=>category.id===note.categoryId)&&<span className="note-category-token">{props.categories.find(category=>category.id===note.categoryId)!.name}</span>}<span className="note-flags">{note.isFavorite && <Icon name="star" />}</span></div>

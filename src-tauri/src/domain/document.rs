@@ -22,6 +22,7 @@ const ALLOWED_TOP_LEVEL_NODES: &[&str] = &[
     "mermaid",
     "media",
     "horizontalRule",
+    "highlightBlock",
 ];
 
 const ALLOWED_NESTED_NODES: &[&str] = &[
@@ -46,6 +47,7 @@ const ALLOWED_NESTED_NODES: &[&str] = &[
     "mermaid",
     "media",
     "horizontalRule",
+    "highlightBlock",
 ];
 
 const ALLOWED_MARKS: &[&str] = &[
@@ -215,7 +217,7 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "image"
                 | "blockMath"
         ),
-        "listItem" | "taskItem" | "blockquote" => matches!(
+        "listItem" | "taskItem" | "blockquote" | "highlightBlock" => matches!(
             child,
             "paragraph"
                 | "heading"
@@ -368,5 +370,23 @@ mod tests {
         let document =
             validate_document(&value).expect("imported Markdown document should validate");
         assert_eq!(derive_plain_text(&document), "重点\n完成");
+    }
+
+    #[test]
+    fn highlight_blocks_validate_and_contribute_search_text() {
+        let value = serde_json::json!({
+            "schemaVersion": 1,
+            "type": "doc",
+            "content": [{
+                "type":"highlightBlock",
+                "attrs":{"blockId":Uuid::new_v4().to_string(),"emoji":"🔎"},
+                "content":[
+                    {"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"可靠性目标"}]},
+                    {"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"正常保存"}]}]}]}
+                ]
+            }]
+        });
+        let document = validate_document(&value).expect("highlight block should validate");
+        assert_eq!(derive_plain_text(&document), "可靠性目标正常保存");
     }
 }

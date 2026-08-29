@@ -11,6 +11,11 @@ export type OutlineItem = {
 }
 
 const highlightTimers = new WeakMap<HTMLElement, number>()
+let activeNavigator: ((blockId: string) => HTMLElement | null) | null = null
+
+export function registerOutlineNavigator(navigator: ((blockId: string) => HTMLElement | null) | null) {
+  activeNavigator = navigator
+}
 
 function nodeText(node: DocumentNode): string {
   if (typeof node.text === 'string') return node.text
@@ -18,25 +23,32 @@ function nodeText(node: DocumentNode): string {
 }
 
 export function deriveOutline(document: VersionedDocument): OutlineItem[] {
+  const seen = new Set<string>()
   return document.content.flatMap((node) => {
     if (node.type !== 'heading') return []
     const blockId = node.attrs?.blockId
     const level = node.attrs?.level
     const text = nodeText(node).trim()
-    if (typeof blockId !== 'string' || typeof level !== 'number' || !text) {
+    if (typeof blockId !== 'string' || typeof level !== 'number' || !text || seen.has(blockId)) {
       return []
     }
+    seen.add(blockId)
     return [{ blockId, level, text }]
   })
 }
 
-function navigateToBlock(blockId: string) {
-  const block = globalThis.document.querySelector<HTMLElement>(
-    `[data-block-id="${blockId}"]`,
-  )
-  if (!block) return
-
-  block.scrollIntoView({ behavior: 'smooth', block: 'center' })
+function highlightBlock(block: HTMLElement) {
+  const scroller = block.closest<HTMLElement>('.document-body')
+  if (scroller) {
+    const scrollerRect = scroller.getBoundingClientRect()
+    const blockRect = block.getBoundingClientRect()
+    const targetTop = scroller.scrollTop + blockRect.top - scrollerRect.top -
+      (scroller.clientHeight - blockRect.height) / 2
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+    scroller.scrollTo({ top: Math.max(0, Math.min(maxTop, targetTop)), behavior: 'auto' })
+  } else {
+    block.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' })
+  }
   block.focus({ preventScroll: true })
   block.dataset.outlineHighlight = 'true'
   const previousTimer = highlightTimers.get(block)
@@ -54,9 +66,10 @@ type OutlineProps = {
   items: OutlineItem[]
   collapsed?: boolean
   onToggle?: () => void
+  onNavigate?: (blockId: string) => HTMLElement | null
 }
 
-export function Outline({ items, collapsed = false, onToggle }: OutlineProps) {
+export function Outline({ items, collapsed = false, onToggle, onNavigate }: OutlineProps) {
   return (
     <aside
       className="outline"
@@ -81,7 +94,10 @@ export function Outline({ items, collapsed = false, onToggle }: OutlineProps) {
             type="button"
             key={item.blockId}
             style={{ paddingLeft: `${5 + (item.level - 1) * 12}px` }}
-            onClick={() => navigateToBlock(item.blockId)}
+            onClick={() => {
+              const block = (onNavigate ?? activeNavigator)?.(item.blockId) ?? null
+              if (block) highlightBlock(block)
+            }}
           >
             {item.text}
           </button>

@@ -24,11 +24,10 @@ export function GlobalTooltip() {
   },[active])
   useLayoutEffect(update,[update])
   useEffect(()=>{
-    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tooltip],button[aria-label],button[title],[role="button"][aria-label]'):null
-    const label=(target:HTMLElement)=>target.dataset.tooltip||target.getAttribute('aria-label')||target.getAttribute('title')||''
-    const show=(target:HTMLElement,immediate=false)=>{if(performance.now()<suppressUntilRef.current)return;const value=label(target).trim();if(!value)return;if(timerRef.current!==null)window.clearTimeout(timerRef.current);const nativeTitle=target.getAttribute('title');if(nativeTitle){target.dataset.nativeTooltip=nativeTitle;target.removeAttribute('title')}timerRef.current=window.setTimeout(()=>setActive({target,label:value}),immediate?0:360)}
-    const restore=(target:HTMLElement|null)=>{if(target?.dataset.nativeTooltip){target.setAttribute('title',target.dataset.nativeTooltip);delete target.dataset.nativeTooltip}}
-    const hide=(target:HTMLElement|null)=>{if(timerRef.current!==null){window.clearTimeout(timerRef.current);timerRef.current=null}setActive(current=>{if(!target||current?.target===target){restore(current?.target??target);return null}return current});restore(target)}
+    const find=(node:EventTarget|null)=>node instanceof Element?node.closest<HTMLElement>('[data-tooltip],button[aria-label],[role="button"][aria-label],.selection-toolbar button'):null
+    const label=(target:HTMLElement)=>{const explicit=target.dataset.tooltip||target.getAttribute('aria-label');if(explicit)return explicit;const text=target.textContent?.trim()??'';if(/^H[1-6]$/.test(text))return `${text.slice(1)} 级标题`;if(target.querySelector('strong'))return '粗体';if(target.querySelector('i'))return '斜体';if(target.querySelector('u'))return '下划线';if(target.querySelector('s'))return '删除线';const icon=target.querySelector<HTMLElement>('[data-icon]')?.dataset.icon;if(icon==='code')return '行内代码';if(icon==='highlighter')return '文字高亮';if(icon==='link')return '添加链接';return text}
+    const show=(target:HTMLElement,immediate=false)=>{if(performance.now()<suppressUntilRef.current)return;const value=label(target).trim();if(!value)return;if(timerRef.current!==null)window.clearTimeout(timerRef.current);timerRef.current=window.setTimeout(()=>setActive({target,label:value}),immediate?0:360)}
+    const hide=(target:HTMLElement|null)=>{if(timerRef.current!==null){window.clearTimeout(timerRef.current);timerRef.current=null}setActive(current=>!target||current?.target===target?null:current)}
     const over=(event:PointerEvent)=>{const target=find(event.target);if(!target||event.relatedTarget instanceof Node&&target.contains(event.relatedTarget))return;show(target)}
     const out=(event:PointerEvent)=>{const target=find(event.target);if(!target||event.relatedTarget instanceof Node&&target.contains(event.relatedTarget))return;hide(target)}
     const focus=(event:FocusEvent)=>{const target=find(event.target);if(target)show(target,true)}

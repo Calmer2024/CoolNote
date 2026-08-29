@@ -8,6 +8,7 @@ const ALLOWED_LIBRARY_ENTRIES: &[&str] = &[
     "coolnote.db-wal",
     "recovery",
     "attachments",
+    "profile",
     "library.json",
 ];
 

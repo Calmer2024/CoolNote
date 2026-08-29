@@ -1,7 +1,7 @@
 {
   "name": "coolnote",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.17",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173",
@@ -11,11 +11,18 @@
     "check:gallery": "node scripts/check-gallery-contract.mjs",
     "check:tasks": "node scripts/check-task-contract.mjs",
     "test:tasks": "vitest run src/features/tasks/TaskWorkspace.test.tsx",
-    "test:editor": "vitest run src/features/editor/markdownShortcuts.test.ts",
-    "build": "npm run check:icons && npm run check:prototype && npm run check:editor-performance && npm run check:gallery && npm run check:tasks && npm run test:tasks && npm run test:editor && tsc && vite build",
+    "test:gallery": "vitest run src/features/gallery/galleryDragDrop.test.ts",
+    "test:editor": "vitest run src/features/editor/markdownShortcuts.test.ts src/features/editor/editorShortcuts.test.ts src/features/editor/mermaidNode.test.ts src/features/editor/imageLayout.test.ts src/features/editor/editorSizing.test.ts src/features/editor/stableBlockIds.test.ts src/features/editor/highlightBlock.test.ts src/features/editor/attachmentResources.test.ts src/features/editor/linkPolicy.test.ts src/features/editor/webResource.test.ts src/features/editor/document.test.ts src/features/outline/Outline.test.ts src/features/export/export.test.ts src/features/jottings/shareTemplate.test.ts src/app/navigationShortcuts.test.ts src/features/notes/useNotes.test.tsx",
+    "build": "npm run check:icons && npm run check:prototype && npm run check:editor-performance && npm run check:gallery && npm run check:tasks && npm run test:tasks && npm run test:gallery && npm run test:editor && tsc && vite build",
     "preview": "vite preview",
-    "perf:gate": "cargo run --release --manifest-path src-tauri/Cargo.toml --example performance_gate",
-    "perf:editor": "cargo run --release --manifest-path src-tauri/Cargo.toml --example editor_performance_gate",
+    "perf:gate": "node scripts/rust-build.mjs perf-gate",
+    "perf:editor": "node scripts/rust-build.mjs perf-editor",
+    "perf:attachments:backend": "node scripts/rust-build.mjs perf-attachments",
+    "rust:test": "node scripts/rust-build.mjs test",
+    "rust:clippy": "node scripts/rust-build.mjs clippy",
+    "rust:clean": "node scripts/rust-build.mjs clean",
+    "perf:attachments:frontend": "vitest run src/features/editor/attachmentEditorPerformance.test.ts --reporter=verbose",
+    "perf:attachments": "npm run perf:attachments:frontend && npm run perf:attachments:backend",
     "tauri": "tauri"
   },
   "dependencies": {

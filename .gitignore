@@ -13,6 +13,7 @@ test-results/
 # Rust / Tauri build output
 target/
 src-tauri/target/
+src-tauri/.target/
 *.pdb
 
 # IDE and editor files

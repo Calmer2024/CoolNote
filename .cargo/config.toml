@@ -1,0 +1,23 @@
+# Keep Cargo's defaults conservative. Workflows that need isolation set
+# CARGO_TARGET_DIR explicitly (see scripts/rust-build.mjs).
+
+[build]
+target-dir = "src-tauri/.target/dev"
+
+[profile.dev]
+debug = 1
+incremental = true
+
+[profile.test]
+debug = 1
+incremental = false
+
+[profile.release]
+debug = 0
+strip = "symbols"
+incremental = false
+
+[profile.bench]
+debug = 0
+strip = "symbols"
+incremental = false
