@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="产品 Logo 占位图标">
+  <rect width="256" height="256" rx="48" fill="#e8f3ff"/>
+  <path d="m128 38 78 45v90l-78 45-78-45V83l78-45Z" fill="#1687e8" opacity=".16"/>
+  <path d="m128 54 64 37v74l-64 37-64-37V91l64-37Zm0 22L84 101v50l44 25 44-25v-50l-44-25Z" fill="#1687e8"/>
+  <path d="m73 96 55 32 55-32M128 128v63" fill="none" stroke="#1687e8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

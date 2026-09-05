@@ -652,6 +652,93 @@ pub async fn delete_share_avatar(
     .await
 }
 
+#[tauri::command]
+pub async fn save_product_logo(
+    state: tauri::State<'_, AppState>,
+    data: Vec<u8>,
+) -> Result<Vec<u8>, CommandError> {
+    if data.is_empty() || data.len() > 10 * 1024 * 1024 {
+        return Err(crate::domain::error::AppError::InvalidRequest(
+            "产品 Logo 文件应小于 10 MB".into(),
+        )
+        .into());
+    }
+    run(state, move |services| {
+        use image::GenericImageView;
+        use std::io::Cursor;
+
+        let format = image::guess_format(&data).map_err(|_| {
+            crate::domain::error::AppError::InvalidRequest("无法识别产品 Logo 格式".into())
+        })?;
+        if !matches!(
+            format,
+            image::ImageFormat::Png | image::ImageFormat::Jpeg | image::ImageFormat::WebP
+        ) {
+            return Err(crate::domain::error::AppError::InvalidRequest(
+                "产品 Logo 仅支持 PNG、JPEG 和 WebP".into(),
+            ));
+        }
+        let decoded = image::load_from_memory_with_format(&data, format).map_err(|_| {
+            crate::domain::error::AppError::InvalidRequest("无法读取产品 Logo 图片".into())
+        })?;
+        let (width, height) = decoded.dimensions();
+        if width == 0 || height == 0 {
+            return Err(crate::domain::error::AppError::InvalidRequest(
+                "产品 Logo 图片尺寸无效".into(),
+            ));
+        }
+        let resized = if width.max(height) > 2048 {
+            decoded.resize(2048, 2048, image::imageops::FilterType::Lanczos3)
+        } else {
+            decoded
+        };
+        let mut encoded = Cursor::new(Vec::new());
+        resized
+            .write_to(&mut encoded, image::ImageFormat::Png)
+            .map_err(|_| {
+                crate::domain::error::AppError::InvalidRequest("无法处理产品 Logo 图片".into())
+            })?;
+        let bytes = encoded.into_inner();
+        let root = std::path::PathBuf::from(&services.library.root_path).join("profile");
+        std::fs::create_dir_all(&root)?;
+        std::fs::write(root.join("product-logo.png"), &bytes)?;
+        Ok(bytes)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn read_product_logo(
+    state: tauri::State<'_, AppState>,
+) -> Result<Option<Vec<u8>>, CommandError> {
+    run(state, |services| {
+        let path = std::path::PathBuf::from(&services.library.root_path)
+            .join("profile")
+            .join("product-logo.png");
+        if !path.exists() {
+            return Ok(None);
+        }
+        Ok(Some(std::fs::read(path)?))
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn delete_product_logo(
+    state: tauri::State<'_, AppState>,
+) -> Result<(), CommandError> {
+    run(state, |services| {
+        let path = std::path::PathBuf::from(&services.library.root_path)
+            .join("profile")
+            .join("product-logo.png");
+        if path.exists() {
+            std::fs::remove_file(path)?;
+        }
+        Ok(())
+    })
+    .await
+}
+
 fn safe_export_segment(value: &str) -> bool {
     !value.is_empty()
         && value != "."

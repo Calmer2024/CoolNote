@@ -89,6 +89,10 @@ const webAvatarKey='coolnote-share-avatar'
 export const saveShareAvatar=(data:Uint8Array)=>call<number[]>('save_share_avatar',{data:Array.from(data)},()=>{const bytes=Array.from(data);localStorage.setItem(webAvatarKey,JSON.stringify(bytes));return bytes})
 export const readShareAvatar=()=>call<number[]|null>('read_share_avatar',undefined,()=>{try{const raw=localStorage.getItem(webAvatarKey);return raw?JSON.parse(raw) as number[]:null}catch{return null}})
 export const deleteShareAvatar=()=>call<void>('delete_share_avatar',undefined,()=>{localStorage.removeItem(webAvatarKey)})
+const webProductLogoKey='coolnote-product-logo'
+export const saveProductLogo=(data:Uint8Array)=>call<number[]>('save_product_logo',{data:Array.from(data)},()=>{const bytes=Array.from(data);localStorage.setItem(webProductLogoKey,JSON.stringify(bytes));return bytes})
+export const readProductLogo=()=>call<number[]|null>('read_product_logo',undefined,()=>{try{const raw=localStorage.getItem(webProductLogoKey);return raw?JSON.parse(raw) as number[]:null}catch{return null}})
+export const deleteProductLogo=()=>call<void>('delete_product_logo',undefined,()=>{localStorage.removeItem(webProductLogoKey)})
 export const fetchWebMetadata = (url:string) => call<WebMetadataDto>('fetch_web_metadata',{url},()=>({url,title:new URL(url).hostname,description:null,imageUrl:null,iconUrl:new URL('/favicon.ico',url).toString(),siteName:null,pageType:null}))
 export const exportNotes = (noteIds: string[], format: 'markdown' | 'html' | 'json') => call<string>('export_notes', { noteIds, format }, () => web.webExport(noteIds, format))
 export const importNotes = (content: string, format: 'markdown' | 'html' | 'json', categoryId?: string | null) => {

@@ -1,11 +1,12 @@
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
+import '@fontsource-variable/google-sans-flex'
 import { toCanvas } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 import type { DocumentNode, VersionedDocument } from '../../shared/tauri/contracts'
 import { writeJottingGroupImage } from '../../shared/tauri/commands'
-import type { JottingGroupTemplate, ShareAuthor } from '../jottings/shareTemplate'
+import type { JottingGroupTemplate, ProductProfile, ShareAuthor } from '../jottings/shareTemplate'
 
 const escapeHtml=(value:string)=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!))
 const escapeMarkdown=(value:string)=>value.replace(/([\\`*_[\]<>])/g,'\\$1')
@@ -131,28 +132,30 @@ const GROUP_EXPORT_STYLE=`
   .coolnote-group-export-body hr{width:100%;height:1px;margin:46px 0;background:#d9d1c6;}
 `
 const SHARE_BLUE='#1687e8'
+const SHARE_TEXT_COLOR='#5f6368'
+const SHARE_FONT_FAMILY='"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif'
 const SHARE_PAGE_PADDING_X=64
-const SHARE_BODY_HEIGHT=984
+const SHARE_BODY_HEIGHT=960
 const SHARE_EXPORT_STYLE=`
   .coolnote-share-export-page *{box-sizing:border-box;}
-  .coolnote-share-export-body{width:100%!important;max-width:none!important;margin-right:0!important;margin-left:0!important;padding:0!important;color:#171a1f;font-family:"Noto Sans SC Local","Noto Sans SC",system-ui,sans-serif;font-size:24px;font-weight:400;line-height:1.82;overflow-wrap:anywhere;word-break:break-word;}
+  .coolnote-share-export-body{width:100%!important;max-width:none!important;margin-right:0!important;margin-left:0!important;padding:0!important;color:${SHARE_TEXT_COLOR};font-family:${SHARE_FONT_FAMILY};font-size:32px;font-weight:400;line-height:1.72;letter-spacing:0;overflow-wrap:anywhere;word-break:break-word;}
   .coolnote-share-export-body h1,.coolnote-share-export-body h2,.coolnote-share-export-body h3,.coolnote-share-export-body h4,.coolnote-share-export-body h5{color:#11151a;font-family:inherit;break-after:avoid;}
-  .coolnote-share-export-body h1{position:relative;margin:0 0 38px;padding:38px 0 0;font-size:45px;font-weight:760;line-height:1.28;letter-spacing:-1.2px;}
-  .coolnote-share-export-body h1::before{position:absolute;top:0;left:0;padding:3px 10px;color:#fff;background:${SHARE_BLUE};font:700 13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;content:'SHARE / 01';}
-  .coolnote-share-export-body h1::after{display:block;width:58px;height:5px;margin-top:18px;background:${SHARE_BLUE};content:'';}
-  .coolnote-share-export-body h2{margin:40px 0 18px;font-size:33px;font-weight:720;line-height:1.42;}
-  .coolnote-share-export-body h3{margin:34px 0 16px;font-size:29px;font-weight:700;line-height:1.48;}
-  .coolnote-share-export-body h4,.coolnote-share-export-body h5{margin:28px 0 14px;font-size:26px;font-weight:680;line-height:1.5;}
-  .coolnote-share-export-body p{margin:0 0 26px;}
+  .coolnote-share-export-body h1{position:relative;margin:0 0 44px;padding:48px 0 0;font-size:54px;font-weight:760;line-height:1.25;letter-spacing:-1.2px;}
+  .coolnote-share-export-body h1::before{position:absolute;top:0;left:0;padding:5px 13px;color:#fff;background:${SHARE_BLUE};font:700 16px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;content:'SHARE / 01';}
+  .coolnote-share-export-body h1::after{display:block;width:72px;height:6px;margin-top:22px;background:${SHARE_BLUE};content:'';}
+  .coolnote-share-export-body h2{margin:46px 0 22px;font-size:42px;font-weight:720;line-height:1.38;}
+  .coolnote-share-export-body h3{margin:40px 0 20px;font-size:37px;font-weight:700;line-height:1.42;}
+  .coolnote-share-export-body h4,.coolnote-share-export-body h5{margin:34px 0 18px;font-size:34px;font-weight:680;line-height:1.45;}
+  .coolnote-share-export-body p{margin:0 0 32px;}
   .coolnote-share-export-body strong,.coolnote-share-export-body b{font-weight:760;}
   .coolnote-share-export-body u{text-decoration-thickness:2px;text-underline-offset:5px;}
   .coolnote-share-export-body a{color:${SHARE_BLUE};text-decoration-color:color-mix(in srgb,${SHARE_BLUE} 58%,transparent);text-underline-offset:4px;}
   .coolnote-share-export-body mark{padding:0 3px;color:inherit;background:#dceeff;box-decoration-break:clone;}
   .coolnote-share-export-body img{display:block;width:100%;max-width:100%;height:auto;margin:30px auto 34px;border-radius:16px;object-fit:contain;}
-  .coolnote-share-export-body blockquote{margin:28px 0;padding:2px 0 2px 22px;border-left:5px solid ${SHARE_BLUE};color:#4f5965;}
+  .coolnote-share-export-body blockquote{margin:34px 0;padding:2px 0 2px 26px;border-left:6px solid ${SHARE_BLUE};color:#555b62;}
   .coolnote-share-export-body blockquote p:last-child{margin-bottom:0;}
-  .coolnote-share-export-body ul,.coolnote-share-export-body ol{margin:18px 0 28px;padding-left:38px;}
-  .coolnote-share-export-body li{margin:8px 0;}
+  .coolnote-share-export-body ul,.coolnote-share-export-body ol{margin:22px 0 34px;padding-left:46px;}
+  .coolnote-share-export-body li{margin:10px 0;}
   .coolnote-share-export-body ul[data-type="taskList"]{padding-left:0;list-style:none;}
   .coolnote-share-export-body ul[data-type="taskList"] li{display:flex;gap:12px;align-items:flex-start;}
   .coolnote-share-export-body pre{margin:28px 0;padding:22px 24px;overflow:hidden;border-radius:0;color:#eaf2f8;background:#20262d;font:18px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;}
@@ -165,9 +168,10 @@ const SHARE_EXPORT_STYLE=`
   .coolnote-share-export-body .editor-highlight-emoji,.coolnote-share-export-body .highlight-emoji{font-size:26px;}
 `
 
-export type JottingGroupExportOptions={template?:JottingGroupTemplate;author?:ShareAuthor;onProgress?:(current:number,total:number)=>void;onPage?:(dataUrl:string,index:number,total:number)=>void;write?:boolean}
+export type JottingGroupExportOptions={template?:JottingGroupTemplate;author?:ShareAuthor;product?:ProductProfile;onProgress?:(current:number,total:number)=>void;onPage?:(dataUrl:string,index:number,total:number)=>void;write?:boolean}
 
 export const DEFAULT_SHARE_AVATAR_SRC='./assets/share-default-avatar.png'
+export const DEFAULT_PRODUCT_LOGO_SRC='./assets/product-default-logo.svg'
 
 export const paginateJottingBlocks=(blocks:Array<{height:number}>,availableHeight=GROUP_CONTENT_HEIGHT)=>{
   const pages:Array<number[]>=[[]]
@@ -243,16 +247,16 @@ const isAtomicShareBlock=(block:HTMLElement)=>!!block.querySelector('img,video,a
 const isHeading=(block:Element)=>/^H[1-5]$/.test(block.tagName)
 
 const createSharePage=(stage:HTMLElement,author:ShareAuthor)=>{
-  const page=document.createElement('article');page.className='coolnote-group-export-page coolnote-share-export-page';page.style.cssText=`box-sizing:border-box;width:${GROUP_PAGE_WIDTH}px;height:${GROUP_PAGE_HEIGHT}px;padding:46px ${SHARE_PAGE_PADDING_X}px 52px;background:#fff;color:#171a1f;overflow:hidden;border-radius:0;`
+  const page=document.createElement('article');page.className='coolnote-group-export-page coolnote-share-export-page';page.style.cssText=`box-sizing:border-box;width:${GROUP_PAGE_WIDTH}px;height:${GROUP_PAGE_HEIGHT}px;padding:46px ${SHARE_PAGE_PADDING_X}px 52px;background:#fff;color:${SHARE_TEXT_COLOR};font-family:${SHARE_FONT_FAMILY};overflow:hidden;border-radius:0;`
   const style=document.createElement('style');style.textContent=SHARE_EXPORT_STYLE;page.append(style)
-  const header=document.createElement('header');header.className='coolnote-share-export-header';header.style.cssText='height:94px;display:flex;align-items:center;gap:18px;'
-  const avatar=document.createElement('img');avatar.src=author.avatarDataUrl||DEFAULT_SHARE_AVATAR_SRC;avatar.alt='';avatar.style.cssText='display:block;width:70px;height:70px;flex:0 0 70px;border-radius:50%;object-fit:cover;background:#eaf5fe;'
-  const identity=document.createElement('div');identity.style.cssText='min-width:0;align-self:center;font-family:"Noto Sans SC Local","Noto Sans SC",system-ui,sans-serif;'
-  const name=document.createElement('strong');name.textContent=author.name||'CoolNote 创作者';name.style.cssText=`display:block;overflow:hidden;color:${SHARE_BLUE};font-size:24px;font-weight:740;line-height:1.35;text-overflow:ellipsis;white-space:nowrap;`
-  identity.append(name);if(author.bio.trim()){const bio=document.createElement('span');bio.textContent=author.bio;bio.style.cssText='display:block;max-width:540px;margin-top:5px;overflow:hidden;color:#7a838d;font-size:17px;font-weight:400;line-height:1.35;text-overflow:ellipsis;white-space:nowrap;';identity.append(bio)}
-  const number=document.createElement('span');number.className='coolnote-share-page-number';number.style.cssText='margin-left:auto;align-self:center;color:#7f8790;font:600 18px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;font-variant-numeric:tabular-nums;white-space:nowrap;'
+  const header=document.createElement('header');header.className='coolnote-share-export-header';header.style.cssText='height:112px;display:flex;align-items:center;gap:22px;'
+  const avatar=document.createElement('img');avatar.src=author.avatarDataUrl||DEFAULT_SHARE_AVATAR_SRC;avatar.alt='';avatar.style.cssText='display:block;width:88px;height:88px;flex:0 0 88px;border-radius:50%;object-fit:cover;background:#eaf5fe;'
+  const identity=document.createElement('div');identity.style.cssText=`min-width:0;align-self:center;font-family:${SHARE_FONT_FAMILY};`
+  const name=document.createElement('strong');name.textContent=author.name||'CoolNote 创作者';name.style.cssText=`display:block;overflow:hidden;color:${SHARE_BLUE};font-size:30px;font-weight:700;line-height:1.3;text-overflow:ellipsis;white-space:nowrap;`
+  identity.append(name);if(author.bio.trim()){const bio=document.createElement('span');bio.textContent=author.bio;bio.style.cssText=`display:block;max-width:520px;margin-top:7px;overflow:hidden;color:${SHARE_TEXT_COLOR};font-size:21px;font-weight:400;line-height:1.35;text-overflow:ellipsis;white-space:nowrap;`;identity.append(bio)}
+  const number=document.createElement('span');number.className='coolnote-share-page-number';number.style.cssText='margin-left:auto;align-self:center;color:#747a82;font:600 22px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;font-variant-numeric:tabular-nums;white-space:nowrap;'
   header.append(avatar,identity,number);page.append(header)
-  const body=document.createElement('div');body.className='coolnote-share-export-body';body.style.cssText=`box-sizing:border-box;width:100%;max-width:none;height:${SHARE_BODY_HEIGHT}px;margin:24px 0 0;padding:0;overflow:hidden;`;page.append(body);stage.append(page)
+  const body=document.createElement('div');body.className='coolnote-share-export-body';body.style.cssText=`box-sizing:border-box;width:100%;max-width:none;height:${SHARE_BODY_HEIGHT}px;margin:28px 0 0;padding:0;overflow:hidden;`;page.append(body);stage.append(page)
   return{page,body,number}
 }
 
@@ -275,13 +279,110 @@ const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuth
   const total=pages.length;pages.forEach((item,index)=>item.number.textContent=formatGroupPageNumber(index,total));return pages.map(item=>item.page)
 }
 
+const PRODUCT_FONT_FAMILY='"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif'
+const PRODUCT_TEXT_COLOR='#5f6368'
+const PRODUCT_MASCOT_SRC='/assets/product-mascot.png'
+const PRODUCT_STYLE=`
+  .coolnote-product-export-page *{box-sizing:border-box;}
+  .coolnote-product-export-page{position:relative;background-color:#f8fafb;background-image:linear-gradient(#dfe5e8 1px,transparent 1px),linear-gradient(90deg,#dfe5e8 1px,transparent 1px);background-size:72px 72px;color:#111416;font-family:${PRODUCT_FONT_FAMILY};overflow:hidden;}
+  .coolnote-product-deco{position:absolute;display:block;pointer-events:none;}
+  .coolnote-product-deco-a{width:180px;height:180px;top:-78px;right:-34px;border:22px solid var(--product-brand);border-radius:38px;transform:rotate(23deg);opacity:.86;}
+  .coolnote-product-deco-b{width:126px;height:126px;top:28px;right:94px;border-radius:28px;background:color-mix(in srgb,var(--product-brand) 28%,#fff);transform:rotate(-13deg);}
+  .coolnote-product-deco-c{width:92px;height:92px;bottom:42px;left:-31px;border-radius:50%;background:var(--product-brand);opacity:.9;}
+  .coolnote-product-deco-d{width:42px;height:42px;bottom:64px;left:76px;border:12px solid var(--product-brand);border-radius:50%;}
+  .coolnote-product-body{position:absolute;inset:142px 72px 86px;color:${PRODUCT_TEXT_COLOR};font-family:${PRODUCT_FONT_FAMILY};font-size:26px;font-weight:400;line-height:1.78;letter-spacing:0;overflow:hidden;overflow-wrap:anywhere;word-break:break-word;}
+  .coolnote-product-body h1,.coolnote-product-body h2,.coolnote-product-body h3,.coolnote-product-body h4,.coolnote-product-body h5{color:#111416;font-family:inherit;break-after:avoid;}
+  .coolnote-product-body h1{margin:0 0 38px;text-align:center;font-size:42px;font-weight:720;line-height:1.35;}
+  .coolnote-product-body h1::after{display:block;width:64px;height:5px;margin:18px auto 0;background:var(--product-brand);content:'';}
+  .coolnote-product-body h2{margin:38px 0 18px;font-size:34px;font-weight:700;line-height:1.42;}
+  .coolnote-product-body h3{margin:32px 0 16px;font-size:30px;font-weight:680;line-height:1.46;}
+  .coolnote-product-body h4,.coolnote-product-body h5{margin:28px 0 14px;font-size:27px;font-weight:650;line-height:1.5;}
+  .coolnote-product-body p{margin:0 0 28px;}
+  .coolnote-product-body strong,.coolnote-product-body b{color:#24282c;font-weight:700;}
+  .coolnote-product-body a{color:var(--product-brand);text-decoration-color:color-mix(in srgb,var(--product-brand) 62%,transparent);text-underline-offset:4px;}
+  .coolnote-product-body mark{padding:0 3px;color:inherit;background:color-mix(in srgb,var(--product-brand) 18%,#fff);box-decoration-break:clone;}
+  .coolnote-product-body blockquote{margin:28px 0;padding:2px 0 2px 22px;border-left:5px solid var(--product-brand);color:#555b62;}
+  .coolnote-product-body blockquote p:last-child{margin-bottom:0;}
+  .coolnote-product-body ul,.coolnote-product-body ol{margin:18px 0 28px;padding-left:38px;}
+  .coolnote-product-body li{margin:8px 0;}
+  .coolnote-product-body img{display:block;width:100%;max-width:100%;height:auto;margin:28px auto;border:1px solid #dce1e5;border-radius:8px;box-shadow:0 8px 24px rgba(25,31,36,.08);object-fit:contain;}
+  .coolnote-product-body pre{margin:28px 0;padding:20px 22px;overflow:hidden;border-radius:6px;color:#f4f6f7;background:#171a1d;font:17px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;}
+  .coolnote-product-body code:not(pre code){padding:2px 5px;color:#20252a;background:#eef1f3;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.86em;}
+  .coolnote-product-body table{width:100%;margin:26px 0;border-collapse:collapse;font-size:18px;line-height:1.55;}
+  .coolnote-product-body th,.coolnote-product-body td{padding:9px 11px;border:1px solid #d7dce0;text-align:left;vertical-align:top;}
+  .coolnote-product-body th{color:#171a1d;background:#f0f2f4;font-weight:700;}
+  .coolnote-product-body hr{width:100%;height:2px;margin:34px 0;border:0;background:#d9dee2;}
+  .coolnote-product-body .editor-highlight-block,.coolnote-product-body .highlight-block{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;margin:28px 0;padding:18px;border:1px solid color-mix(in srgb,var(--product-brand) 32%,#d9dee2);border-radius:8px;background:color-mix(in srgb,var(--product-brand) 7%,#fff);}
+`
+
+export const compactProductUrl=(value:string)=>{if(!value)return'';try{const parsed=new URL(value);const display=`${parsed.host}${parsed.pathname==='/'?'':parsed.pathname}`.replace(/\/$/,'');return display.length>52?`${display.slice(0,49)}…`:display}catch{return value}}
+
+const addProductBackdrop=(page:HTMLElement,brandColor:string)=>{
+  page.style.setProperty('--product-brand',brandColor)
+  const style=document.createElement('style');style.textContent=PRODUCT_STYLE;page.append(style)
+  for(const suffix of ['a','b','c','d']){const deco=document.createElement('span');deco.className=`coolnote-product-deco coolnote-product-deco-${suffix}`;page.append(deco)}
+}
+
+export const createProductCover=(stage:HTMLElement,product:ProductProfile)=>{
+  const page=document.createElement('article');page.className='coolnote-group-export-page coolnote-product-export-page coolnote-product-cover';page.style.cssText=`box-sizing:border-box;width:${GROUP_PAGE_WIDTH}px;height:${GROUP_PAGE_HEIGHT}px;`;addProductBackdrop(page,product.brandColor)
+  const badge=document.createElement('div');badge.textContent='OPEN SOURCE PRODUCT';badge.style.cssText='position:absolute;top:58px;left:58px;padding:8px 18px;border-radius:999px;color:#fff;background:#111416;font:700 17px/1.25 "Google Sans Flex","Google Sans",Arial,sans-serif;letter-spacing:.08em;';page.append(badge)
+  const main=document.createElement('main');main.style.cssText='position:absolute;inset:190px 84px 245px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;'
+  const logo=document.createElement('img');logo.src=product.logoDataUrl||DEFAULT_PRODUCT_LOGO_SRC;logo.alt='';logo.style.cssText='display:block;width:180px;height:180px;object-fit:contain;'
+  const name=document.createElement('h1');name.textContent=product.name;const nameSize=product.name.length>20?48:product.name.length>12?56:64;name.style.cssText=`max-width:720px;margin:28px 0 0;color:#101315;font-size:${nameSize}px;font-weight:800;line-height:1.12;letter-spacing:-1.5px;overflow-wrap:anywhere;`
+  const intro=document.createElement('p');intro.textContent=product.intro;intro.style.cssText='display:-webkit-box;max-width:670px;margin:26px 0 0;overflow:hidden;color:#5f6368;font-size:26px;font-weight:400;line-height:1.62;-webkit-box-orient:vertical;-webkit-line-clamp:3;'
+  main.append(logo,name,intro);page.append(main)
+  const panel=document.createElement('section');panel.className='coolnote-product-terminal';panel.style.cssText='position:absolute;left:58px;right:58px;bottom:70px;height:154px;padding:51px 250px 20px 28px;border-radius:22px;color:#fff;background:#111416;box-shadow:0 18px 38px rgba(17,20,22,.14);overflow:visible;'
+  const lights=document.createElement('div');lights.setAttribute('aria-hidden','true');lights.style.cssText='position:absolute;top:20px;left:28px;width:11px;height:11px;border-radius:50%;background:#ff5f57;box-shadow:20px 0 0 #febc2e,40px 0 0 #8b5cf6;'
+  const copy=document.createElement('div');copy.innerHTML='<strong style="display:block;font-size:23px;line-height:1.25">探索产品 / VIEW PROJECT</strong>'
+  if(product.url){const link=document.createElement('span');link.textContent=product.url;link.style.cssText=`display:-webkit-box;max-width:510px;margin-top:9px;overflow:hidden;color:${product.brandColor};font:650 15px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;word-break:break-all;-webkit-box-orient:vertical;-webkit-line-clamp:2;`;copy.append(link)}
+  const mascot=document.createElement('img');mascot.className='coolnote-product-mascot';mascot.src=PRODUCT_MASCOT_SRC;mascot.alt='';mascot.style.cssText='position:absolute;right:24px;bottom:0;width:226px;height:226px;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 8px 12px rgba(0,0,0,.16));'
+  panel.append(lights,copy,mascot);page.append(panel)
+  stage.append(page);return page
+}
+
+const createProductBodyPage=(stage:HTMLElement,product:ProductProfile)=>{
+  const page=document.createElement('article');page.className='coolnote-group-export-page coolnote-product-export-page coolnote-product-content-page';page.style.cssText=`box-sizing:border-box;width:${GROUP_PAGE_WIDTH}px;height:${GROUP_PAGE_HEIGHT}px;`;addProductBackdrop(page,product.brandColor)
+  const header=document.createElement('header');header.style.cssText='position:absolute;z-index:3;top:46px;left:60px;right:60px;height:68px;display:flex;align-items:center;gap:16px;'
+  const logo=document.createElement('img');logo.src=product.logoDataUrl||DEFAULT_PRODUCT_LOGO_SRC;logo.alt='';logo.style.cssText='display:block;width:56px;height:56px;flex:0 0 56px;object-fit:contain;'
+  const name=document.createElement('strong');name.textContent=product.name;name.style.cssText='max-width:560px;overflow:hidden;color:#111416;font-size:26px;font-weight:720;line-height:1.3;text-overflow:ellipsis;white-space:nowrap;'
+  const number=document.createElement('span');number.style.cssText='margin-left:auto;padding-right:9px;color:#fff;font:700 18px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.1em;text-shadow:0 1px 2px rgba(0,0,0,.22);white-space:nowrap;';header.append(logo,name,number);page.append(header)
+  const paper=document.createElement('section');paper.style.cssText='position:absolute;z-index:1;top:148px;right:60px;bottom:104px;left:60px;background:#fff;box-shadow:0 16px 44px rgba(29,35,40,.1);overflow:visible;'
+  const holes=document.createElement('div');holes.style.cssText='position:absolute;top:44px;left:72px;right:72px;height:18px;background:radial-gradient(circle,#d9dcdf 0 9px,transparent 10px) 0 0/72px 18px repeat-x;'
+  const clip=document.createElement('div');clip.className='coolnote-product-paperclip';clip.style.cssText='position:absolute;z-index:5;top:-28px;right:48px;width:39px;height:112px;border:4px solid #858c93;border-radius:22px;transform:rotate(17deg);box-shadow:inset 0 0 0 6px #fff,0 2px 5px rgba(28,33,38,.12);'
+  const watermark=document.createElement('img');watermark.src=product.logoDataUrl||DEFAULT_PRODUCT_LOGO_SRC;watermark.alt='';watermark.style.cssText='position:absolute;right:28px;bottom:24px;width:190px;height:190px;object-fit:contain;opacity:.045;filter:grayscale(1);'
+  const body=document.createElement('div');body.className='coolnote-product-body';paper.append(holes,clip,watermark,body);page.append(paper)
+  const footer=document.createElement('footer');footer.style.cssText='position:absolute;right:60px;bottom:38px;left:60px;display:flex;align-items:center;gap:22px;color:#353a3f;font:600 16px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.04em;'
+  const footerName=document.createElement('span');footerName.textContent=product.name;footerName.style.cssText='max-width:370px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';footer.append(footerName);if(product.url){const link=document.createElement('span');link.textContent=compactProductUrl(product.url);link.style.cssText='max-width:360px;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';footer.append(link)}page.append(footer);stage.append(page)
+  return{page,body,number}
+}
+
+const buildProductPages=async(stage:HTMLElement,clone:HTMLElement,product:ProductProfile)=>{
+  const editor=clone.querySelector('.jotting-markdown');if(!editor)throw new Error('无法读取小记正文')
+  const cover=createProductCover(stage,product)
+  const queue=Array.from(editor.children).filter(hasVisibleBlockContent).map(cloneGroupNode)
+  if(!queue.length)return[cover]
+  const pages:Array<ReturnType<typeof createProductBodyPage>>=[]
+  const nextPage=()=>{const created=createProductBodyPage(stage,product);pages.push(created);return created}
+  let current=nextPage()
+  while(queue.length){const block=queue.shift()!;if(block.querySelector('img'))await waitForImages(block)
+    if(isHeading(block)&&current.body.children.length&&queue.length){const following=cloneGroupNode(queue[0]);current.body.append(block,following);const fit=current.body.scrollHeight<=current.body.clientHeight+1;following.remove();block.remove();if(!fit)current=nextPage()}
+    current.body.append(block)
+    if(current.body.scrollHeight<=current.body.clientHeight+1)continue
+    block.remove()
+    if(current.body.children.length){if(!isAtomicShareBlock(block)){const split=splitBlockToFit(block,current.body);if(split){current.body.append(split.before);current=nextPage();queue.unshift(split.after);continue}}current=nextPage();queue.unshift(block);continue}
+    current.body.append(block)
+    if(isAtomicShareBlock(block)){const image=block.matches('img')?block as HTMLImageElement:block.querySelector<HTMLImageElement>('img');if(image){image.style.maxHeight=`${Math.max(120,current.body.clientHeight-58)}px`;image.style.width='auto'}const table=block.matches('table')?block as HTMLElement:block.querySelector<HTMLElement>('table');if(table&&current.body.scrollHeight>current.body.clientHeight)table.style.fontSize='14px'}
+  }
+  const total=pages.length;pages.forEach((item,index)=>item.number.textContent=formatGroupPageNumber(index,total));return[cover,...pages.map(item=>item.page)]
+}
+
 export const formatGroupPageNumber=(index:number,total:number)=>`${String(index+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`
 
 export async function exportJottingImageGroup(element:HTMLElement,title:string,options:JottingGroupExportOptions={}){
-  const {template='emotion',author={name:'CoolNote 创作者',bio:'',avatarDataUrl:null},onProgress,onPage,write=true}=options
+  const {template='emotion',author={name:'CoolNote 创作者',bio:'',avatarDataUrl:null},product={name:'我的开源产品',intro:'用一句话介绍你的产品亮点与价值。',url:'',brandColor:'#1687e8',logoDataUrl:null},onProgress,onPage,write=true}=options
   const {stage,clone}=await createExportClone(element,GROUP_PAGE_WIDTH)
   try{
-    const pages=template==='share'?await buildSharePages(stage,clone,author):buildEmotionPages(stage,clone)
+    const pages=template==='share'?await buildSharePages(stage,clone,author):template==='product'?await buildProductPages(stage,clone,product):buildEmotionPages(stage,clone)
     const folderName=groupDirectoryName(title)
     onProgress?.(0,pages.length)
     for(let pageIndex=0;pageIndex<pages.length;pageIndex++){
@@ -300,7 +401,7 @@ export async function exportJottingImageGroup(element:HTMLElement,title:string,o
 
 const jottingPreviewCache=new Map<string,string[]>()
 export async function renderJottingImageGroupPreview(element:HTMLElement,options:Omit<JottingGroupExportOptions,'write'>={}){
-  const key=element.innerHTML+'|'+(element.querySelector<HTMLImageElement>('.jotting-cover img')?.src??'')+'|'+JSON.stringify({template:options.template,author:options.author})
+  const key=element.innerHTML+'|'+(element.querySelector<HTMLImageElement>('.jotting-cover img')?.src??'')+'|'+JSON.stringify({template:options.template,author:options.author,product:options.product})
   const cached=jottingPreviewCache.get(key)
   if(cached){cached.forEach((page,index)=>options.onPage?.(page,index,cached.length));return {count:cached.length,cached:true}}
   const pages:string[]=[]
