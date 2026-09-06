@@ -9,7 +9,7 @@ export type AppUpdateState = {
 const INITIAL_CHECK_DELAY_MS = 8_000
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1_000
 const CHECK_TIMEOUT_MS = 15_000
-const DOWNLOAD_TIMEOUT_MS = 120_000
+const DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1_000
 const hiddenState:AppUpdateState={status:'hidden',version:null,progress:null}
 
 let state = hiddenState
