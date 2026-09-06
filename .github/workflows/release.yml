@@ -29,7 +29,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: CoolNote v__VERSION__
-          releaseBody: 下载 Windows 安装包；已安装版本会在下次启动后静默更新。
+          releaseBody: 下载 Windows 安装包；已安装版本会在检测到新版本后显示应用内下载按钮。
           releaseDraft: false
           prerelease: false
           generateReleaseNotes: true

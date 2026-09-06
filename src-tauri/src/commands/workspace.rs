@@ -559,10 +559,9 @@ pub async fn write_jotting_group_image(
     data: Vec<u8>,
 ) -> Result<String, CommandError> {
     if !safe_export_segment(&folder_name) || !safe_export_segment(&file_name) {
-        return Err(crate::domain::error::AppError::InvalidRequest(
-            "组图导出文件名无效".into(),
-        )
-        .into());
+        return Err(
+            crate::domain::error::AppError::InvalidRequest("组图导出文件名无效".into()).into(),
+        );
     }
     #[cfg(target_os = "windows")]
     {
@@ -576,10 +575,10 @@ pub async fn write_jotting_group_image(
     #[cfg(not(target_os = "windows"))]
     {
         let _ = (folder_name, file_name, data);
-        Err(crate::domain::error::AppError::InvalidRequest(
-            "组图导出仅支持 Windows 桌面版".into(),
+        Err(
+            crate::domain::error::AppError::InvalidRequest("组图导出仅支持 Windows 桌面版".into())
+                .into(),
         )
-        .into())
     }
 }
 
@@ -589,10 +588,9 @@ pub async fn save_share_avatar(
     data: Vec<u8>,
 ) -> Result<Vec<u8>, CommandError> {
     if data.is_empty() || data.len() > 8 * 1024 * 1024 {
-        return Err(crate::domain::error::AppError::InvalidRequest(
-            "头像文件应小于 8 MB".into(),
-        )
-        .into());
+        return Err(
+            crate::domain::error::AppError::InvalidRequest("头像文件应小于 8 MB".into()).into(),
+        );
     }
     run(state, move |services| {
         use image::GenericImageView;
@@ -637,9 +635,7 @@ pub async fn read_share_avatar(
 }
 
 #[tauri::command]
-pub async fn delete_share_avatar(
-    state: tauri::State<'_, AppState>,
-) -> Result<(), CommandError> {
+pub async fn delete_share_avatar(state: tauri::State<'_, AppState>) -> Result<(), CommandError> {
     run(state, |services| {
         let path = std::path::PathBuf::from(&services.library.root_path)
             .join("profile")
@@ -724,9 +720,7 @@ pub async fn read_product_logo(
 }
 
 #[tauri::command]
-pub async fn delete_product_logo(
-    state: tauri::State<'_, AppState>,
-) -> Result<(), CommandError> {
+pub async fn delete_product_logo(state: tauri::State<'_, AppState>) -> Result<(), CommandError> {
     run(state, |services| {
         let path = std::path::PathBuf::from(&services.library.root_path)
             .join("profile")
@@ -818,6 +812,32 @@ pub async fn create_jotting_folder(
         services
             .workspace
             .create_jotting_folder(&name, parent_id.as_deref())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn rename_jotting_folder(
+    state: tauri::State<'_, AppState>,
+    folder_id: String,
+    name: String,
+) -> Result<JottingFolder, CommandError> {
+    run(state, move |services| {
+        services.workspace.rename_jotting_folder(&folder_id, &name)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn reorder_jotting_folder(
+    state: tauri::State<'_, AppState>,
+    folder_id: String,
+    before_id: Option<String>,
+) -> Result<(), CommandError> {
+    run(state, move |services| {
+        services
+            .workspace
+            .reorder_jotting_folder(&folder_id, before_id.as_deref())
     })
     .await
 }

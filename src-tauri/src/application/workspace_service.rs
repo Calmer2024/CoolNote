@@ -681,6 +681,60 @@ impl WorkspaceService {
             .ok_or(AppError::NotFound(id))
     }
 
+    pub fn rename_jotting_folder(&self, id: &str, name: &str) -> Result<JottingFolder, AppError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(AppError::InvalidRequest("文件夹名称不能为空".into()));
+        }
+        let updated_at = Utc::now().to_rfc3339();
+        self.database.with_write(|tx| {
+            let changed = tx.execute(
+                "UPDATE jotting_folders SET name=?1,updated_at=?2 WHERE id=?3",
+                params![name, updated_at, id],
+            )?;
+            if changed == 0 {
+                return Err(AppError::NotFound(id.into()));
+            }
+            Ok(())
+        })?;
+        self.jotting_snapshot()?
+            .folders
+            .into_iter()
+            .find(|item| item.id == id)
+            .ok_or_else(|| AppError::NotFound(id.into()))
+    }
+
+    pub fn reorder_jotting_folder(
+        &self,
+        id: &str,
+        before_id: Option<&str>,
+    ) -> Result<(), AppError> {
+        self.database.with_write(|tx| {
+            let mut statement =
+                tx.prepare("SELECT id FROM jotting_folders ORDER BY sort_order,name")?;
+            let mut ids = statement
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            let source = ids
+                .iter()
+                .position(|value| value == id)
+                .ok_or_else(|| AppError::NotFound(id.to_owned()))?;
+            let moving = ids.remove(source);
+            let target = before_id
+                .and_then(|value| ids.iter().position(|item| item == value))
+                .unwrap_or(ids.len());
+            ids.insert(target, moving);
+            let now = Utc::now().to_rfc3339();
+            for (index, folder_id) in ids.iter().enumerate() {
+                tx.execute(
+                    "UPDATE jotting_folders SET sort_order=?1,updated_at=?2 WHERE id=?3",
+                    params![index as i64, now, folder_id],
+                )?;
+            }
+            Ok(())
+        })
+    }
+
     pub fn create_jotting(&self, name: &str, folder_id: Option<&str>) -> Result<Jotting, AppError> {
         let name = if name.trim().is_empty() {
             "未命名小记.md"

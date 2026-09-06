@@ -5,6 +5,7 @@ export const MermaidNode=TiptapNode.create({
   addAttributes(){return{
     source:{default:'graph TD\n  A[开始] --> B[完成]',parseHTML:element=>element.getAttribute('data-source')??'',renderHTML:attrs=>({'data-source':attrs.source})},
     width:{default:100,parseHTML:element=>Number(element.getAttribute('data-width')??100),renderHTML:attrs=>({'data-width':attrs.width})},
+    focusSource:{default:false,rendered:false},
   }},
   parseHTML(){return[{tag:'div[data-type="mermaid"]'}]},
   renderHTML({HTMLAttributes}){return['div',mergeAttributes(HTMLAttributes,{'data-type':'mermaid',class:'mermaid-diagram'})]},
@@ -27,7 +28,8 @@ export const MermaidNode=TiptapNode.create({
     source.addEventListener('input',()=>{const pos=typeof getPos==='function'?getPos():null;if(typeof pos!=='number')return;editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...current.attrs,source:source.value}));scheduleRender()})
     source.addEventListener('blur',()=>{if(renderTimer!==null){window.clearTimeout(renderTimer);renderTimer=null;void render()}})
     resize.addEventListener('pointerdown',event=>{event.preventDefault();event.stopPropagation();const parentWidth=dom.parentElement?.getBoundingClientRect().width??dom.getBoundingClientRect().width;const startX=event.clientX,startWidth=Math.max(35,Math.min(100,Number(current.attrs.width)||100));let next=startWidth;const move=(pointer:PointerEvent)=>{next=Math.max(35,Math.min(100,startWidth+(pointer.clientX-startX)/Math.max(1,parentWidth)*100));dom.style.width=`${next}%`};const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);const pos=typeof getPos==='function'?getPos():null;if(typeof pos==='number')editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...current.attrs,width:Math.round(next)}))};window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish,{once:true})})
-    void render()
+    applyView();void render()
+    if(current.attrs.focusSource)window.requestAnimationFrame(()=>{source.focus();const pos=typeof getPos==='function'?getPos():null;if(typeof pos==='number')editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...current.attrs,focusSource:false}))})
     return{dom,update:next=>{if(next.type.name!=='mermaid')return false;const sourceChanged=next.attrs.source!==current.attrs.source;current=next;dom.style.width=`${Math.max(35,Math.min(100,Number(current.attrs.width)||100))}%`;applyView();if(sourceChanged)scheduleRender();return true},stopEvent:event=>source.contains(event.target as globalThis.Node)||toolbar.contains(event.target as globalThis.Node)||resize.contains(event.target as globalThis.Node),ignoreMutation:()=>true,destroy:()=>{renderToken+=1;if(renderTimer!==null)window.clearTimeout(renderTimer)}}
   }}
 })

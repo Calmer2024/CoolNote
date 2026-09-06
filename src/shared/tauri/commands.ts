@@ -102,6 +102,8 @@ export const importNotes = (content: string, format: 'markdown' | 'html' | 'json
 export const updateCategoryAppearance = (categoryId:string,iconName:string,color:string) => call<void>('update_category_appearance',{categoryId,iconName,color},()=>web.webUpdateCategoryAppearance(categoryId,iconName,color))
 export const getJottingSnapshot = () => call<JottingSnapshotDto>('get_jotting_snapshot',undefined,web.webJottingSnapshot)
 export const createJottingFolder = (name:string,parentId?:string|null) => call<JottingFolderDto>('create_jotting_folder',{name,parentId:parentId??null},()=>web.webCreateJottingFolder(name,parentId))
+export const renameJottingFolder = (folderId:string,name:string) => call<JottingFolderDto>('rename_jotting_folder',{folderId,name},()=>web.webRenameJottingFolder(folderId,name))
+export const reorderJottingFolder = (folderId:string,beforeId?:string|null) => call<void>('reorder_jotting_folder',{folderId,beforeId:beforeId??null},()=>web.webReorderJottingFolder(folderId,beforeId))
 export const createJotting = (name:string,folderId?:string|null) => call<JottingDto>('create_jotting',{name,folderId:folderId??null},()=>web.webCreateJotting(name,folderId))
 export const updateJotting = (id:string,baseRevision:number,name:string,content:string,cover:string|null,isFavorite:boolean) => call<JottingDto>('update_jotting',{id,baseRevision,name,content,cover,isFavorite},()=>web.webUpdateJotting(id,baseRevision,name,content,cover,isFavorite))
 export const moveJotting = (id:string,folderId?:string|null) => call<JottingDto>('move_jotting',{id,folderId:folderId??null},()=>web.webMoveJotting(id,folderId))

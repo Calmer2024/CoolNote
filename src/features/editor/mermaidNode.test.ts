@@ -20,4 +20,14 @@ describe('MermaidNode',()=>{
     expect(editor.getJSON().content?.[0].attrs?.source).toBe('graph LR\nStart-->Finish')
     await vi.waitFor(()=>expect(element.querySelector('svg[data-rendered="true"]')).not.toBeNull(),{timeout:1000})
   })
+
+  it('mounts its source editor in the full-width document flow',()=>{
+    const element=document.createElement('div');document.body.append(element)
+    editor=new Editor({element,extensions:[StarterKit,MermaidNode],content:{type:'doc',content:[{type:'mermaid',attrs:{source:'graph TD\nA-->B',width:100}}]}})
+    const diagram=element.querySelector<HTMLElement>('.mermaid-diagram')!
+    const source=diagram.querySelector<HTMLTextAreaElement>('.mermaid-source')!
+    expect(diagram.parentElement).toBe(element.querySelector('.tiptap'))
+    expect(diagram.style.width).toBe('100%')
+    expect(source.hidden).toBe(false)
+  })
 })

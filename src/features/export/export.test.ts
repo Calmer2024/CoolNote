@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 // @vitest-environment jsdom
 
-import { compactProductUrl, createProductCover, formatGroupPageNumber, groupDirectoryName, jottingBlockFlowHeights, paginateJottingBlocks, safeFileName } from './export'
+import { createProductCover, formatGroupPageNumber, groupDirectoryName, hasVisibleBlockContent, jottingBlockFlowHeights, paginateJottingBlocks, safeFileName } from './export'
 
 describe('jotting group export naming and pagination', () => {
   it('sanitizes slash-containing titles before building Windows paths', () => {
@@ -31,15 +31,17 @@ describe('jotting group export naming and pagination', () => {
     expect(formatGroupPageNumber(8,12)).toBe('09 / 12')
   })
 
-  it('compacts product links for branded cover and footer labels',()=>{
-    expect(compactProductUrl('https://github.com/Calmer2024/CoolNote/')).toBe('github.com/Calmer2024/CoolNote')
-    expect(compactProductUrl('')).toBe('')
-  })
 
   it('keeps the product terminal and mascot visible when the product URL is empty',()=>{
     const stage=document.createElement('div')
     createProductCover(stage,{logoDataUrl:'',name:'Codex Switch',intro:'产品介绍',url:'',brandColor:'#1687e8'})
     expect(stage.querySelector('.coolnote-product-terminal')).not.toBeNull()
     expect(stage.querySelector('.coolnote-product-mascot')).not.toBeNull()
+  })
+
+  it('keeps top-level image blocks when building template pages',()=>{
+    const image=document.createElement('img')
+    image.src='data:image/png;base64,abc'
+    expect(hasVisibleBlockContent(image)).toBe(true)
   })
 })

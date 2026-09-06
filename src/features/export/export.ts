@@ -106,8 +106,14 @@ export async function downloadText(name:string,content:string,_type='text/plain;
   const path=await choosePath(name,'markdown');if(!path)return false;await persist(path,name,new TextEncoder().encode(content),'text/markdown;charset=utf-8');return true
 }
 
-const waitForImages=async(root:HTMLElement)=>{await Promise.all(Array.from(root.querySelectorAll('img')).map(image=>image.complete?Promise.resolve():new Promise<void>(resolve=>{image.addEventListener('load',()=>resolve(),{once:true});image.addEventListener('error',()=>resolve(),{once:true})})))}
-const createExportClone=async(element:HTMLElement,width=1000)=>{const stage=document.createElement('div');stage.className='coolnote-export-stage';stage.style.cssText=`position:fixed;left:-100000px;top:0;width:${width}px;overflow:visible;background:#fff;z-index:-1;`;const clone=element.cloneNode(true) as HTMLElement;clone.classList.add('is-exporting');clone.removeAttribute('contenteditable');clone.querySelectorAll('[contenteditable]').forEach(node=>node.removeAttribute('contenteditable'));clone.querySelectorAll('.jotting-cover-actions,.ProseMirror-gapcursor,.ProseMirror-separator').forEach(node=>node.remove());clone.style.cssText+=`;box-sizing:border-box;width:${width}px;max-width:none;height:auto;min-height:0;margin:0;overflow:visible;transform:none;`;stage.append(clone);document.body.append(stage);await document.fonts.ready;await waitForImages(clone);return{stage,clone}}
+const assetUrl=(path:string)=>new URL(path,document.baseURI).href
+const imageDataUrl=async(image:HTMLImageElement)=>{if(!image.src||image.src.startsWith('data:')||image.src.startsWith('blob:'))return;try{const response=await fetch(image.src);if(!response.ok)return;const reader=new FileReader();reader.readAsDataURL(await response.blob());await new Promise<void>((resolve,reject)=>{reader.onload=()=>resolve();reader.onerror=()=>reject(reader.error)});image.src=String(reader.result)}catch{ /* Keep externally hosted images unchanged when they cannot be fetched. */ }}
+const imageElements=(root:Element)=>[...(root.matches('img')?[root as HTMLImageElement]:[]),...Array.from(root.querySelectorAll<HTMLImageElement>('img'))]
+const hasImage=(root:Element)=>root.matches('img')||!!root.querySelector('img')
+const waitForImages=async(root:Element)=>{await Promise.all(imageElements(root).map(async image=>{if(!image.complete)await new Promise<void>(resolve=>{image.addEventListener('load',()=>resolve(),{once:true});image.addEventListener('error',()=>resolve(),{once:true})});try{await image.decode()}catch{}}))}
+const normalizeExportImages=(root:Element)=>{imageElements(root).forEach(image=>{image.style.setProperty('border','0','important');image.style.setProperty('outline','0','important');image.style.setProperty('box-shadow','none','important')})}
+const inlineImages=async(root:Element)=>{normalizeExportImages(root);await Promise.all(imageElements(root).map(imageDataUrl));await waitForImages(root);normalizeExportImages(root)}
+const createExportClone=async(element:HTMLElement,width=1000)=>{const stage=document.createElement('div');stage.className='coolnote-export-stage';stage.style.cssText=`position:fixed;left:-100000px;top:0;width:${width}px;overflow:visible;background:#fff;z-index:-1;`;const clone=element.cloneNode(true) as HTMLElement;clone.classList.add('is-exporting');clone.removeAttribute('contenteditable');clone.querySelectorAll('[contenteditable]').forEach(node=>node.removeAttribute('contenteditable'));clone.querySelectorAll('.jotting-cover-actions,.ProseMirror-gapcursor,.ProseMirror-separator').forEach(node=>node.remove());clone.style.cssText+=`;box-sizing:border-box;width:${width}px;max-width:none;height:auto;min-height:0;margin:0;overflow:visible;transform:none;`;stage.append(clone);document.body.append(stage);await document.fonts.ready;await inlineImages(clone);return{stage,clone}}
 const renderCanvas=async(element:HTMLElement,width=1000)=>{const {stage,clone}=await createExportClone(element,width);try{const height=Math.ceil(clone.getBoundingClientRect().height);return await toCanvas(clone,{cacheBust:false,skipFonts:true,pixelRatio:1,backgroundColor:'#fff',width,height,canvasWidth:Math.round(width*1.5),canvasHeight:Math.round(height*1.5),style:{overflow:'visible',maxWidth:'none'}})}finally{stage.remove()}}
 const canvasBlob=async(canvas:HTMLCanvasElement,type:string,quality?:number)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('无法生成导出文件')),type,quality))
 const blobBytes=async(blob:Blob)=>new Uint8Array(await blob.arrayBuffer())
@@ -170,8 +176,8 @@ const SHARE_EXPORT_STYLE=`
 
 export type JottingGroupExportOptions={template?:JottingGroupTemplate;author?:ShareAuthor;product?:ProductProfile;onProgress?:(current:number,total:number)=>void;onPage?:(dataUrl:string,index:number,total:number)=>void;write?:boolean}
 
-export const DEFAULT_SHARE_AVATAR_SRC='./assets/share-default-avatar.png'
-export const DEFAULT_PRODUCT_LOGO_SRC='./assets/product-default-logo.svg'
+export const DEFAULT_SHARE_AVATAR_SRC=assetUrl('./assets/share-default-avatar.png')
+export const DEFAULT_PRODUCT_LOGO_SRC=assetUrl('./assets/product-default-logo.svg')
 
 export const paginateJottingBlocks=(blocks:Array<{height:number}>,availableHeight=GROUP_CONTENT_HEIGHT)=>{
   const pages:Array<number[]>=[[]]
@@ -186,7 +192,7 @@ export const paginateJottingBlocks=(blocks:Array<{height:number}>,availableHeigh
 
 export const groupDirectoryName=(title:string)=>`${safeFileName(title)}-${new Date().toISOString().replace(/[:.]/g,'-')}`
 const cloneGroupNode=(node:Node)=>node.cloneNode(true) as HTMLElement
-const hasVisibleBlockContent=(node:Element)=>!!node.textContent?.trim()||!!node.querySelector('img,video,audio,table,hr,pre,blockquote,[data-type="taskList"]')
+export const hasVisibleBlockContent=(node:Element)=>!!node.textContent?.trim()||node.matches('img,video,audio,table,hr,pre,blockquote,[data-type="taskList"]')||!!node.querySelector('img,video,audio,table,hr,pre,blockquote,[data-type="taskList"]')
 
 export const jottingBlockFlowHeights=(blocks:Array<{top:number;bottom:number;marginBottom:number}>,contentTop:number)=>blocks.map((block,index)=>({
   height:Math.max(1,Math.ceil((blocks[index+1]?.top??block.bottom+block.marginBottom)-(index===0?contentTop:block.top))),
@@ -267,7 +273,7 @@ const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuth
   const nextPage=()=>{const created=createSharePage(stage,author);pages.push(created);return created}
   let current=nextPage();let firstTitle=true
   while(queue.length){const block=queue.shift()!;if(firstTitle&&block.tagName==='H1'){block.classList.add('coolnote-share-title');firstTitle=false}
-    if(block.querySelector('img'))await waitForImages(block)
+    if(hasImage(block))await waitForImages(block)
     if(isHeading(block)&&current.body.children.length&&queue.length){const following=cloneGroupNode(queue[0]);current.body.append(block,following);const fit=current.body.scrollHeight<=current.body.clientHeight+1;following.remove();block.remove();if(!fit)current=nextPage()}
     current.body.append(block)
     if(current.body.scrollHeight<=current.body.clientHeight+1)continue
@@ -281,7 +287,7 @@ const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuth
 
 const PRODUCT_FONT_FAMILY='"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif'
 const PRODUCT_TEXT_COLOR='#5f6368'
-const PRODUCT_MASCOT_SRC='/assets/product-mascot.png'
+const PRODUCT_MASCOT_SRC=assetUrl('./assets/product-mascot.png')
 const PRODUCT_STYLE=`
   .coolnote-product-export-page *{box-sizing:border-box;}
   .coolnote-product-export-page{position:relative;background-color:#f8fafb;background-image:linear-gradient(#dfe5e8 1px,transparent 1px),linear-gradient(90deg,#dfe5e8 1px,transparent 1px);background-size:72px 72px;color:#111416;font-family:${PRODUCT_FONT_FAMILY};overflow:hidden;}
@@ -305,7 +311,7 @@ const PRODUCT_STYLE=`
   .coolnote-product-body blockquote p:last-child{margin-bottom:0;}
   .coolnote-product-body ul,.coolnote-product-body ol{margin:18px 0 28px;padding-left:38px;}
   .coolnote-product-body li{margin:8px 0;}
-  .coolnote-product-body img{display:block;width:100%;max-width:100%;height:auto;margin:28px auto;border:1px solid #dce1e5;border-radius:8px;box-shadow:0 8px 24px rgba(25,31,36,.08);object-fit:contain;}
+  .coolnote-product-body img{display:block;width:100%;max-width:100%;height:auto;margin:28px auto;border:0;border-radius:8px;box-shadow:0 8px 24px rgba(25,31,36,.08);object-fit:contain;}
   .coolnote-product-body pre{margin:28px 0;padding:20px 22px;overflow:hidden;border-radius:6px;color:#f4f6f7;background:#171a1d;font:17px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;}
   .coolnote-product-body code:not(pre code){padding:2px 5px;color:#20252a;background:#eef1f3;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.86em;}
   .coolnote-product-body table{width:100%;margin:26px 0;border-collapse:collapse;font-size:18px;line-height:1.55;}
@@ -314,8 +320,6 @@ const PRODUCT_STYLE=`
   .coolnote-product-body hr{width:100%;height:2px;margin:34px 0;border:0;background:#d9dee2;}
   .coolnote-product-body .editor-highlight-block,.coolnote-product-body .highlight-block{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;margin:28px 0;padding:18px;border:1px solid color-mix(in srgb,var(--product-brand) 32%,#d9dee2);border-radius:8px;background:color-mix(in srgb,var(--product-brand) 7%,#fff);}
 `
-
-export const compactProductUrl=(value:string)=>{if(!value)return'';try{const parsed=new URL(value);const display=`${parsed.host}${parsed.pathname==='/'?'':parsed.pathname}`.replace(/\/$/,'');return display.length>52?`${display.slice(0,49)}…`:display}catch{return value}}
 
 const addProductBackdrop=(page:HTMLElement,brandColor:string)=>{
   page.style.setProperty('--product-brand',brandColor)
@@ -333,8 +337,8 @@ export const createProductCover=(stage:HTMLElement,product:ProductProfile)=>{
   main.append(logo,name,intro);page.append(main)
   const panel=document.createElement('section');panel.className='coolnote-product-terminal';panel.style.cssText='position:absolute;left:58px;right:58px;bottom:70px;height:154px;padding:51px 250px 20px 28px;border-radius:22px;color:#fff;background:#111416;box-shadow:0 18px 38px rgba(17,20,22,.14);overflow:visible;'
   const lights=document.createElement('div');lights.setAttribute('aria-hidden','true');lights.style.cssText='position:absolute;top:20px;left:28px;width:11px;height:11px;border-radius:50%;background:#ff5f57;box-shadow:20px 0 0 #febc2e,40px 0 0 #8b5cf6;'
-  const copy=document.createElement('div');copy.innerHTML='<strong style="display:block;font-size:23px;line-height:1.25">探索产品 / VIEW PROJECT</strong>'
-  if(product.url){const link=document.createElement('span');link.textContent=product.url;link.style.cssText=`display:-webkit-box;max-width:510px;margin-top:9px;overflow:hidden;color:${product.brandColor};font:650 15px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;word-break:break-all;-webkit-box-orient:vertical;-webkit-line-clamp:2;`;copy.append(link)}
+  const copy=document.createElement('div');copy.innerHTML='<strong style="display:block;font-size:23px;line-height:1.25">产品信息 / PRODUCT INFO</strong>'
+  if(product.url){const stamp=document.createElement('span');stamp.textContent=product.url;stamp.style.cssText=`display:inline-flex;max-width:510px;margin-top:12px;padding:7px 12px;border:1px solid color-mix(in srgb,${product.brandColor} 42%,#fff);border-radius:999px;overflow:hidden;color:${product.brandColor};background:color-mix(in srgb,${product.brandColor} 10%,#111416);font:650 15px/1.3 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;word-break:break-word;`;copy.append(stamp)}
   const mascot=document.createElement('img');mascot.className='coolnote-product-mascot';mascot.src=PRODUCT_MASCOT_SRC;mascot.alt='';mascot.style.cssText='position:absolute;right:24px;bottom:0;width:226px;height:226px;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 8px 12px rgba(0,0,0,.16));'
   panel.append(lights,copy,mascot);page.append(panel)
   stage.append(page);return page
@@ -352,7 +356,7 @@ const createProductBodyPage=(stage:HTMLElement,product:ProductProfile)=>{
   const watermark=document.createElement('img');watermark.src=product.logoDataUrl||DEFAULT_PRODUCT_LOGO_SRC;watermark.alt='';watermark.style.cssText='position:absolute;right:28px;bottom:24px;width:190px;height:190px;object-fit:contain;opacity:.045;filter:grayscale(1);'
   const body=document.createElement('div');body.className='coolnote-product-body';paper.append(holes,clip,watermark,body);page.append(paper)
   const footer=document.createElement('footer');footer.style.cssText='position:absolute;right:60px;bottom:38px;left:60px;display:flex;align-items:center;gap:22px;color:#353a3f;font:600 16px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.04em;'
-  const footerName=document.createElement('span');footerName.textContent=product.name;footerName.style.cssText='max-width:370px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';footer.append(footerName);if(product.url){const link=document.createElement('span');link.textContent=compactProductUrl(product.url);link.style.cssText='max-width:360px;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';footer.append(link)}page.append(footer);stage.append(page)
+  const footerName=document.createElement('span');footerName.textContent=product.name;footerName.style.cssText='max-width:370px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';footer.append(footerName);page.append(footer);stage.append(page)
   return{page,body,number}
 }
 
@@ -364,7 +368,7 @@ const buildProductPages=async(stage:HTMLElement,clone:HTMLElement,product:Produc
   const pages:Array<ReturnType<typeof createProductBodyPage>>=[]
   const nextPage=()=>{const created=createProductBodyPage(stage,product);pages.push(created);return created}
   let current=nextPage()
-  while(queue.length){const block=queue.shift()!;if(block.querySelector('img'))await waitForImages(block)
+  while(queue.length){const block=queue.shift()!;if(hasImage(block))await waitForImages(block)
     if(isHeading(block)&&current.body.children.length&&queue.length){const following=cloneGroupNode(queue[0]);current.body.append(block,following);const fit=current.body.scrollHeight<=current.body.clientHeight+1;following.remove();block.remove();if(!fit)current=nextPage()}
     current.body.append(block)
     if(current.body.scrollHeight<=current.body.clientHeight+1)continue
@@ -388,7 +392,7 @@ export async function exportJottingImageGroup(element:HTMLElement,title:string,o
     for(let pageIndex=0;pageIndex<pages.length;pageIndex++){
       const page=pages[pageIndex]
       await document.fonts.ready
-      await waitForImages(page)
+      await inlineImages(page)
       const canvas=await toCanvas(page,{cacheBust:false,skipFonts:true,pixelRatio:1,backgroundColor:'#fff',width:GROUP_PAGE_WIDTH,height:GROUP_PAGE_HEIGHT,canvasWidth:GROUP_PAGE_WIDTH*2,canvasHeight:GROUP_PAGE_HEIGHT*2,style:{overflow:'hidden'}})
       onPage?.(canvas.toDataURL('image/png'),pageIndex,pages.length)
       if(write){const bytes=await blobBytes(await canvasBlob(canvas,'image/png'));await writeJottingGroupImage(folderName,`${safeFileName(title)}-${String(pageIndex+1).padStart(2,'0')}.png`,bytes)}

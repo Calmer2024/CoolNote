@@ -4,8 +4,8 @@ pub mod commands;
 pub mod domain;
 pub mod infrastructure;
 
-use tauri::{Emitter, Manager};
 use std::time::Duration;
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,7 +17,10 @@ pub fn run() {
         .setup(|app| {
             let library_root = app.path().app_data_dir()?.join("library");
             app.manage(app_state::AppState::new(library_root));
-            if let Some(path) = std::env::args().skip(1).find(|value| !value.starts_with('-')) {
+            if let Some(path) = std::env::args()
+                .skip(1)
+                .find(|value| !value.starts_with('-'))
+            {
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(Duration::from_millis(900)).await;
@@ -68,6 +71,8 @@ pub fn run() {
             commands::workspace::import_notes,
             commands::workspace::get_jotting_snapshot,
             commands::workspace::create_jotting_folder,
+            commands::workspace::rename_jotting_folder,
+            commands::workspace::reorder_jotting_folder,
             commands::workspace::create_jotting,
             commands::workspace::update_jotting,
             commands::workspace::move_jotting,

@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest'
 
-import {DEFAULT_PRODUCT_BRAND_COLOR,DEFAULT_PRODUCT_INTRO,DEFAULT_PRODUCT_NAME,DEFAULT_SHARE_SETTINGS,normalizeProductUrl,productIntroFitsCover,settingsWithShareTemplate,shareSettingsFromLibrary} from './shareTemplate'
+import {DEFAULT_PRODUCT_BRAND_COLOR,DEFAULT_PRODUCT_INTRO,DEFAULT_PRODUCT_NAME,DEFAULT_SHARE_SETTINGS,normalizeProductInfoStamp,productIntroFitsCover,settingsWithShareTemplate,shareSettingsFromLibrary} from './shareTemplate'
 
 describe('share template settings',()=>{
   it('defaults first-time users to the share template and CoolNote author name',()=>{
@@ -9,7 +9,7 @@ describe('share template settings',()=>{
 
   it('preserves unrelated library settings when saving author information',()=>{
     const settingsJson=settingsWithShareTemplate('{"theme":"dark"}',{...DEFAULT_SHARE_SETTINGS,selectedTemplate:'product',authorName:'作者',authorBio:'简介',productName:'CoolNote',productIntro:'本地优先笔记应用',productUrl:'github.com/Calmer2024/CoolNote',productBrandColor:'#7C5CE7'})
-    expect(JSON.parse(settingsJson)).toEqual({theme:'dark',shareTemplate:{version:3,selectedTemplate:'product',authorName:'作者',authorBio:'简介',productName:'CoolNote',productIntro:'本地优先笔记应用',productUrl:'https://github.com/Calmer2024/CoolNote',productBrandColor:'#7c5ce7'}})
+    expect(JSON.parse(settingsJson)).toEqual({theme:'dark',shareTemplate:{version:3,selectedTemplate:'product',authorName:'作者',authorBio:'简介',productName:'CoolNote',productIntro:'本地优先笔记应用',productUrl:'github.com/Calmer2024/CoolNote',productBrandColor:'#7c5ce7'}})
   })
 
   it('normalizes empty and overlong author fields',()=>{
@@ -23,9 +23,10 @@ describe('share template settings',()=>{
   })
 
   it('normalizes product defaults, URLs and brand colors',()=>{
-    expect(normalizeProductUrl('github.com/Calmer2024/CoolNote')).toBe('https://github.com/Calmer2024/CoolNote')
-    expect(normalizeProductUrl('ftp://example.com')).toBeNull()
-    expect(shareSettingsFromLibrary({settingsJson:'{"shareTemplate":{"selectedTemplate":"product","productName":"","productIntro":"","productUrl":"bad url","productBrandColor":"red"}}'})).toEqual({...DEFAULT_SHARE_SETTINGS,selectedTemplate:'product',productName:DEFAULT_PRODUCT_NAME,productIntro:DEFAULT_PRODUCT_INTRO,productUrl:'',productBrandColor:DEFAULT_PRODUCT_BRAND_COLOR})
+    expect(normalizeProductInfoStamp('github.com/Calmer2024/CoolNote')).toBe('github.com/Calmer2024/CoolNote')
+    expect(normalizeProductInfoStamp('ftp://example.com')).toBe('ftp://example.com')
+    expect(normalizeProductInfoStamp('x'.repeat(240))).toHaveLength(200)
+    expect(shareSettingsFromLibrary({settingsJson:'{"shareTemplate":{"selectedTemplate":"product","productName":"","productIntro":"","productUrl":"bad url","productBrandColor":"red"}}'})).toEqual({...DEFAULT_SHARE_SETTINGS,selectedTemplate:'product',productName:DEFAULT_PRODUCT_NAME,productIntro:DEFAULT_PRODUCT_INTRO,productUrl:'bad url',productBrandColor:DEFAULT_PRODUCT_BRAND_COLOR})
   })
 
   it('guards the three-line product introduction budget',()=>{

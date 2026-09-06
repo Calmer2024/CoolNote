@@ -187,9 +187,10 @@ type Props = {
 type Point = { left: number; top: number };
 type SlashState = Point & { query: string };
 type InputLayer = {
-  kind: "link" | "inlineMath" | "blockMath" | "mermaid" | "webResource";
+  kind: "link" | "inlineMath" | "blockMath" | "webResource";
   value: string;
-  point: Point;
+  point?: Point;
+  anchor?: HTMLElement;
 } | null;
 function CodeLanguageIcon({ language }: { language: string }) {
   const icon = phycatLanguageIcon(language);
@@ -772,7 +773,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         Mathematics.configure({ katexOptions: { throwOnError: false } }),
         MarkdownSyntaxNormalizer,
         MermaidNode,
-        Placeholder.configure({ placeholder: "输入 / 插入内容" }),
+        Placeholder.configure({
+          placeholder: "输入 / 唤醒菜单",
+          showOnlyCurrent: true,
+        }),
         StableBlockIds,
       ],
       content: toTiptapDocument(normalizedDocument),
@@ -1153,6 +1157,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         ? { left: slash.left, top: slash.top }
         : { left: window.innerWidth / 2, top: 120 };
       const { from, $from } = editor.state.selection;
+      const anchorNode = $from.depth >= 1
+        ? editor.view.nodeDOM($from.before(1))
+        : null;
+      const inputAnchor = anchorNode instanceof HTMLElement ? anchorNode : undefined;
       editor
         .chain()
         .focus()
@@ -1175,6 +1183,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           kind: "webResource",
           value: "https://",
           point: inputPoint,
+          anchor: inputAnchor,
         });
       else if (item.id === "table")
         editor
@@ -1187,13 +1196,21 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           kind: "blockMath",
           value: "\\sum_{i=1}^{n} i",
           point: inputPoint,
+          anchor: inputAnchor,
         });
       else if (item.id === "mermaid")
-        setInputLayer({
-          kind: "mermaid",
-          value: "graph TD\n  A[开始] --> B[完成]",
-          point: inputPoint,
-        });
+        editor
+          .chain()
+          .focus()
+          .insertContent({
+            type: "mermaid",
+            attrs: {
+              source: "graph TD\n  A[开始] --> B[完成]",
+              width: 100,
+              focusSource: true,
+            },
+          })
+          .run();
       setSlash(null);
     }
     const applyInput = async () => {
@@ -1214,12 +1231,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         editor.chain().focus().insertInlineMath({ latex: value }).run();
       if (inputLayer.kind === "blockMath")
         editor.chain().focus().insertBlockMath({ latex: value }).run();
-      if (inputLayer.kind === "mermaid")
-        editor
-          .chain()
-          .focus()
-          .insertContent({ type: "mermaid", attrs: { source: value } })
-          .run();
       if (inputLayer.kind === "webResource" && /^https?:\/\//i.test(value)) {
         let label = value;
         try {
@@ -1837,36 +1848,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         </FloatingLayer>
         <FloatingLayer
           open={!!inputLayer}
-          point={inputLayer?.point}
+          anchor={inputLayer?.anchor ? { current: inputLayer.anchor } : undefined}
+          point={inputLayer?.anchor ? undefined : inputLayer?.point}
           placement="bottom-start"
           gap={6}
-          className={`inline-input-popover product-layer${inputLayer?.kind === "mermaid" ? " is-mermaid" : ""}`}
+          className="inline-input-popover product-layer"
           onDismiss={() => setInputLayer(null)}
         >
           {inputLayer &&
-            (inputLayer.kind === "mermaid" ? (
-              <>
-                <textarea
-                  autoFocus
-                  aria-label="输入文本绘图源码"
-                  value={inputLayer.value}
-                  onChange={(event) =>
-                    setInputLayer({ ...inputLayer, value: event.target.value })
-                  }
-                  onKeyDown={(event) => {
-                    if (
-                      (event.ctrlKey || event.metaKey) &&
-                      event.key === "Enter"
-                    ) {
-                      event.preventDefault();
-                      void applyInput();
-                    }
-                    if (event.key === "Escape") setInputLayer(null);
-                  }}
-                />
-                <button onClick={() => void applyInput()}>确认</button>
-              </>
-            ) : (
+            (
               <>
                 <input
                   autoFocus
@@ -1892,7 +1882,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
                 />
                 <button onClick={() => void applyInput()}>确认</button>
               </>
-            ))}
+            )}
         </FloatingLayer>
         {pasteProgress && (
           <div

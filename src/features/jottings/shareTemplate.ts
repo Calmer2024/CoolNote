@@ -35,17 +35,12 @@ export const shareSettingsFromLibrary=(library:Pick<LibraryDto,'settingsJson'>|n
   const authorBio=typeof settings.authorBio==='string'&&!legacyEmptyBio?settings.authorBio.slice(0,40):DEFAULT_SHARE_SETTINGS.authorBio
   const productName=typeof settings.productName==='string'&&settings.productName.trim()?settings.productName.trim().slice(0,30):DEFAULT_PRODUCT_NAME
   const productIntro=typeof settings.productIntro==='string'&&settings.productIntro.trim()?settings.productIntro.trim().slice(0,120):DEFAULT_PRODUCT_INTRO
-  const productUrl=typeof settings.productUrl==='string'?normalizeProductUrl(settings.productUrl)??'':''
+  const productUrl=typeof settings.productUrl==='string'?normalizeProductInfoStamp(settings.productUrl):''
   const productBrandColor=typeof settings.productBrandColor==='string'&&/^#[0-9a-f]{6}$/i.test(settings.productBrandColor)?settings.productBrandColor.toLowerCase():DEFAULT_PRODUCT_BRAND_COLOR
   return{selectedTemplate,authorName,authorBio,productName,productIntro,productUrl,productBrandColor}
 }
 
-export const normalizeProductUrl=(raw:string):string|null=>{
-  const value=raw.trim();if(!value)return''
-  if(/^[a-z][a-z0-9+.-]*:\/\//i.test(value)&&!/^https?:\/\//i.test(value))return null
-  const candidate=/^https?:\/\//i.test(value)?value:`https://${value}`
-  try{const parsed=new URL(candidate);return(parsed.protocol==='http:'||parsed.protocol==='https:')&&parsed.hostname?parsed.toString():null}catch{return null}
-}
+export const normalizeProductInfoStamp=(raw:string)=>raw.trim().slice(0,200)
 
 export const productIntroFitsCover=(value:string)=>Array.from(value.trim()).reduce((units,char)=>units+(/[\u0000-\u00ff]/.test(char)?.52:1),0)<=72
 
@@ -58,7 +53,7 @@ export const settingsWithShareTemplate=(settingsJson:string,value:ShareTemplateS
     authorBio:value.authorBio.slice(0,40),
     productName:(value.productName.trim()||DEFAULT_PRODUCT_NAME).slice(0,30),
     productIntro:(value.productIntro.trim()||DEFAULT_PRODUCT_INTRO).slice(0,120),
-    productUrl:normalizeProductUrl(value.productUrl)??'',
+    productUrl:normalizeProductInfoStamp(value.productUrl),
     productBrandColor:/^#[0-9a-f]{6}$/i.test(value.productBrandColor)?value.productBrandColor.toLowerCase():DEFAULT_PRODUCT_BRAND_COLOR,
   },
 })

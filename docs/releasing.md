@@ -1,4 +1,4 @@
-# CoolNote 发布与静默更新
+# CoolNote 发布与应用内更新
 
 CoolNote 使用 Tauri Updater 检查 GitHub Releases 中的 `latest.json`。Windows 更新器使用 `quiet` 安装模式，下载并验证签名后静默替换已安装程序。
 
@@ -12,4 +12,4 @@ CoolNote 使用 Tauri Updater 检查 GitHub Releases 中的 `latest.json`。Wind
 
 同步更新 `package.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json` 中的版本号，然后推送相同版本标签，例如 `v0.1.19`。GitHub Actions 会构建 NSIS 安装包、签名更新包并发布 `latest.json`。
 
-已安装的生产版本会在启动 8 秒后后台检查更新。发现新版本后，应用下载并校验更新包，然后以 Windows quiet 模式安装并重启。
+已安装的生产版本会在启动 8 秒后后台检查更新。发现新版本后，顶部搜索框右侧显示下载按钮；用户点击后，应用下载并校验更新包，然后以 Windows quiet 模式安装并重启。
