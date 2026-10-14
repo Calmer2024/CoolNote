@@ -1,6 +1,6 @@
 import type { LibraryDto } from '../../shared/tauri/contracts'
 
-export type JottingGroupTemplate='emotion'|'share'|'product'
+export type JottingGroupTemplate='emotion'|'share'|'product'|'night'
 export type ShareAuthor={name:string;bio:string;avatarDataUrl:string|null}
 export type ProductProfile={name:string;intro:string;url:string;brandColor:string;logoDataUrl:string|null}
 export type ShareTemplateSettings={selectedTemplate:JottingGroupTemplate;authorName:string;authorBio:string;productName:string;productIntro:string;productUrl:string;productBrandColor:string}
@@ -29,7 +29,7 @@ export const shareSettingsFromLibrary=(library:Pick<LibraryDto,'settingsJson'>|n
   const value=root.shareTemplate
   if(!value||typeof value!=='object'||Array.isArray(value))return DEFAULT_SHARE_SETTINGS
   const settings=value as Record<string,unknown>
-  const selectedTemplate=settings.selectedTemplate==='emotion'||settings.selectedTemplate==='product'?settings.selectedTemplate:'share'
+  const selectedTemplate=settings.selectedTemplate==='emotion'||settings.selectedTemplate==='product'||settings.selectedTemplate==='night'?settings.selectedTemplate:'share'
   const authorName=typeof settings.authorName==='string'&&settings.authorName.trim()?settings.authorName.trim().slice(0,20):DEFAULT_SHARE_SETTINGS.authorName
   const legacyEmptyBio=settings.version!==2&&settings.version!==3&&settings.authorBio===''
   const authorBio=typeof settings.authorBio==='string'&&!legacyEmptyBio?settings.authorBio.slice(0,40):DEFAULT_SHARE_SETTINGS.authorBio

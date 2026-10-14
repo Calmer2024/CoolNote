@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 // @vitest-environment jsdom
 
-import { createProductCover, formatGroupPageNumber, groupDirectoryName, hasVisibleBlockContent, jottingBlockFlowHeights, paginateJottingBlocks, safeFileName } from './export'
+import { createNightPage, createProductCover, formatNightTimestamp, formatGroupPageNumber, groupDirectoryName, hasVisibleBlockContent, jottingBlockFlowHeights, paginateJottingBlocks, safeFileName } from './export'
 
 describe('jotting group export naming and pagination', () => {
   it('sanitizes slash-containing titles before building Windows paths', () => {
@@ -43,5 +43,27 @@ describe('jotting group export naming and pagination', () => {
     const image=document.createElement('img')
     image.src='data:image/png;base64,abc'
     expect(hasVisibleBlockContent(image)).toBe(true)
+  })
+
+  it('fills the night top corners and reserves the bottom corner for pagination',()=>{
+    const stage=document.createElement('div')
+    const timestamp=new Date(2026,8,2,19,58).toISOString()
+    const {page,number}=createNightPage(stage,{name:'失效样本',bio:'@sample404',avatarDataUrl:'data:image/png;base64,abc'},timestamp)
+    expect(page.querySelector('header')?.textContent).toBe('19:58 · Sep 2, 2026@失效样本')
+    expect(page.querySelector('img')).toBeNull()
+    expect(page.textContent).not.toContain('@sample404')
+    expect(page.querySelector('time')?.textContent).toBe('19:58 · Sep 2, 2026')
+    expect(page.querySelector('time')?.getAttribute('datetime')).toBe(timestamp)
+    number.textContent=formatGroupPageNumber(1,3)
+    expect(page.querySelector('.coolnote-night-page-number')?.textContent).toBe('02 / 03')
+    expect(page.style.backgroundColor).toBe('rgb(0, 0, 0)')
+    expect(page.querySelector('.jotting-cover')).toBeNull()
+  })
+
+  it('omits an unavailable timestamp instead of exporting an invalid date',()=>{
+    expect(formatNightTimestamp('')).toBe('')
+    const {page}=createNightPage(document.createElement('div'),{name:'作者',bio:'',avatarDataUrl:null},'')
+    expect(page.querySelector('time')).toBeNull()
+    expect(page.querySelector('header')?.textContent).toBe('@作者')
   })
 })

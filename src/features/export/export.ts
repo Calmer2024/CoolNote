@@ -266,11 +266,53 @@ const createSharePage=(stage:HTMLElement,author:ShareAuthor)=>{
   return{page,body,number}
 }
 
-const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuthor)=>{
+// Keep the reference's typography and quiet metadata, with the content framed
+// by a top timestamp/author row and a bottom page counter.
+const NIGHT_FONT_FAMILY='"Noto Serif Simplified Chinese","Noto Serif SC","Noto Serif SC Local",serif'
+const NIGHT_EXPORT_STYLE=SHARE_EXPORT_STYLE.replace(/coolnote-share-export/g,'coolnote-night-export')+`
+  .coolnote-night-export-body{width:700px!important;color:#f2f2f2;font-family:${NIGHT_FONT_FAMILY};font-size:24px;line-height:1.72;}
+  .coolnote-night-export-body h1,.coolnote-night-export-body h2,.coolnote-night-export-body h3,.coolnote-night-export-body h4,.coolnote-night-export-body h5{color:#f2f2f2;letter-spacing:0;padding:0;}
+  .coolnote-night-export-body h1{margin:0 0 40px;font-size:30px;line-height:1.45;}
+  .coolnote-night-export-body h1::before,.coolnote-night-export-body h1::after{display:none;}
+  .coolnote-night-export-body h2{font-size:27px;}
+  .coolnote-night-export-body h3{font-size:24px;}
+  .coolnote-night-export-body h4,.coolnote-night-export-body h5{font-size:22px;}
+  .coolnote-night-export-body p{margin:0 0 32px;}
+  .coolnote-night-export-body a{color:#b5d9f4;}
+  .coolnote-night-export-body mark,.coolnote-night-export-body code:not(pre code){color:#f2f2f2;background:#343638;}
+  .coolnote-night-export-body blockquote{color:#c2c3c4;border-color:#717477;}
+  .coolnote-night-export-body th{color:#f2f2f2;background:#303234;}
+  .coolnote-night-export-body th,.coolnote-night-export-body td{border-color:#55585b;}
+  .coolnote-night-export-body hr{background:#55585b;}
+  .coolnote-night-export-body .editor-highlight-block,.coolnote-night-export-body .highlight-block{border-color:#55585b;}
+`
+
+export const formatNightTimestamp=(value:string)=>{
+  const date=new Date(value)
+  if(Number.isNaN(date.getTime()))return ''
+  const time=`${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
+  const month=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date.getMonth()]
+  return `${time} · ${month} ${date.getDate()}, ${date.getFullYear()}`
+}
+
+export const createNightPage=(stage:HTMLElement,author:ShareAuthor,timestamp:string)=>{
+  const page=document.createElement('article');page.className='coolnote-group-export-page coolnote-night-export-page';page.style.cssText=`position:relative;box-sizing:border-box;width:${GROUP_PAGE_WIDTH}px;height:${GROUP_PAGE_HEIGHT}px;background:#000;color:#f2f2f2;font-family:${NIGHT_FONT_FAMILY};overflow:hidden;border-radius:0;`
+  const style=document.createElement('style');style.textContent=NIGHT_EXPORT_STYLE;page.append(style)
+  const header=document.createElement('header');header.style.cssText=`position:absolute;left:100px;right:100px;top:64px;display:flex;align-items:center;gap:18px;color:#929496;font-family:${SHARE_FONT_FAMILY};font-size:18px;font-weight:400;line-height:1.4;`
+  const date=document.createElement('time');date.className='coolnote-night-timestamp';date.textContent=formatNightTimestamp(timestamp);if(date.textContent){date.dateTime=timestamp;date.style.cssText='display:flex;align-items:center;gap:10px;white-space:nowrap;';const clock=document.createElement('span');clock.setAttribute('aria-hidden','true');clock.style.cssText='position:relative;display:inline-block;width:18px;height:18px;border:1.5px solid currentColor;border-radius:50%;';const hands=document.createElement('span');hands.style.cssText='position:absolute;left:7px;top:3px;width:5px;height:6px;border-left:1.5px solid currentColor;border-bottom:1.5px solid currentColor;';clock.append(hands);date.prepend(clock);header.append(date)}
+  const watermark=document.createElement('span');watermark.className='coolnote-night-watermark';watermark.textContent=`@${author.name||'CoolNote 创作者'}`;watermark.style.cssText='margin-left:auto;max-width:310px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';header.append(watermark);page.append(header)
+  const body=document.createElement('div');body.className='coolnote-night-export-body';body.style.cssText='box-sizing:border-box;position:absolute;top:200px;left:100px;width:700px;height:850px;overflow:hidden;';page.append(body)
+  const number=document.createElement('span');number.className='coolnote-night-page-number';number.style.cssText=`position:absolute;right:100px;bottom:58px;color:#929496;font:400 18px/1.4 ${NIGHT_FONT_FAMILY};white-space:nowrap;`;page.append(number);stage.append(page)
+  return{page,body,number}
+}
+
+const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuthor,night=false)=>{
   const editor=clone.querySelector('.jotting-markdown');if(!editor)throw new Error('无法读取小记正文')
   const queue=Array.from(editor.children).filter(hasVisibleBlockContent).map(cloneGroupNode)
+  if(night&&queue[0]?.tagName==='H1')queue.shift()
   const pages:Array<ReturnType<typeof createSharePage>>=[]
-  const nextPage=()=>{const created=createSharePage(stage,author);pages.push(created);return created}
+  const timestamp=clone.querySelector('time.jotting-date-signature')?.getAttribute('datetime')??''
+  const nextPage=()=>{const created=night?createNightPage(stage,author,timestamp):createSharePage(stage,author);pages.push(created);return created}
   let current=nextPage();let firstTitle=true
   while(queue.length){const block=queue.shift()!;if(firstTitle&&block.tagName==='H1'){block.classList.add('coolnote-share-title');firstTitle=false}
     if(hasImage(block))await waitForImages(block)
@@ -279,10 +321,11 @@ const buildSharePages=async(stage:HTMLElement,clone:HTMLElement,author:ShareAuth
     if(current.body.scrollHeight<=current.body.clientHeight+1)continue
     block.remove()
     if(current.body.children.length){if(!isAtomicShareBlock(block)){const split=splitBlockToFit(block,current.body);if(split){current.body.append(split.before);current=nextPage();queue.unshift(split.after);continue}}current=nextPage();queue.unshift(block);continue}
+    if(night&&!isAtomicShareBlock(block)){const split=splitBlockToFit(block,current.body);if(split){current.body.append(split.before);current=nextPage();queue.unshift(split.after);continue}}
     current.body.append(block)
     if(isAtomicShareBlock(block)){const image=block.matches('img')?block as HTMLImageElement:block.querySelector<HTMLImageElement>('img');if(image){image.style.maxHeight=`${Math.max(120,current.body.clientHeight-68)}px`;image.style.width='auto'}const table=block.matches('table')?block as HTMLElement:block.querySelector<HTMLElement>('table');if(table&&current.body.scrollHeight>current.body.clientHeight)table.style.fontSize='14px'}
   }
-  const total=pages.length;pages.forEach((item,index)=>item.number.textContent=formatGroupPageNumber(index,total));return pages.map(item=>item.page)
+  const total=pages.length;pages.forEach((item,index)=>item.number.textContent=night?String(index+1):formatGroupPageNumber(index,total));return pages.map(item=>item.page)
 }
 
 const PRODUCT_FONT_FAMILY='"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif'
@@ -386,14 +429,14 @@ export async function exportJottingImageGroup(element:HTMLElement,title:string,o
   const {template='emotion',author={name:'CoolNote 创作者',bio:'',avatarDataUrl:null},product={name:'我的开源产品',intro:'用一句话介绍你的产品亮点与价值。',url:'',brandColor:'#1687e8',logoDataUrl:null},onProgress,onPage,write=true}=options
   const {stage,clone}=await createExportClone(element,GROUP_PAGE_WIDTH)
   try{
-    const pages=template==='share'?await buildSharePages(stage,clone,author):template==='product'?await buildProductPages(stage,clone,product):buildEmotionPages(stage,clone)
+    const pages=template==='share'||template==='night'?await buildSharePages(stage,clone,author,template==='night'):template==='product'?await buildProductPages(stage,clone,product):buildEmotionPages(stage,clone)
     const folderName=groupDirectoryName(title)
     onProgress?.(0,pages.length)
     for(let pageIndex=0;pageIndex<pages.length;pageIndex++){
       const page=pages[pageIndex]
       await document.fonts.ready
       await inlineImages(page)
-      const canvas=await toCanvas(page,{cacheBust:false,skipFonts:true,pixelRatio:1,backgroundColor:'#fff',width:GROUP_PAGE_WIDTH,height:GROUP_PAGE_HEIGHT,canvasWidth:GROUP_PAGE_WIDTH*2,canvasHeight:GROUP_PAGE_HEIGHT*2,style:{overflow:'hidden'}})
+      const canvas=await toCanvas(page,{cacheBust:false,skipFonts:true,pixelRatio:1,backgroundColor:template==='night'?'#000':'#fff',width:GROUP_PAGE_WIDTH,height:GROUP_PAGE_HEIGHT,canvasWidth:GROUP_PAGE_WIDTH*2,canvasHeight:GROUP_PAGE_HEIGHT*2,style:{overflow:'hidden'}})
       onPage?.(canvas.toDataURL('image/png'),pageIndex,pages.length)
       if(write){const bytes=await blobBytes(await canvasBlob(canvas,'image/png'));await writeJottingGroupImage(folderName,`${safeFileName(title)}-${String(pageIndex+1).padStart(2,'0')}.png`,bytes)}
       onProgress?.(pageIndex+1,pages.length)

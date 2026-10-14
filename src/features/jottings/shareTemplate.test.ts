@@ -7,6 +7,11 @@ describe('share template settings',()=>{
     expect(shareSettingsFromLibrary(null)).toEqual(DEFAULT_SHARE_SETTINGS)
   })
 
+  it('restores the night template with the shared author settings',()=>{
+    const settings={...DEFAULT_SHARE_SETTINGS,selectedTemplate:'night' as const,authorName:'失效样本',authorBio:'@sample404'}
+    expect(shareSettingsFromLibrary({settingsJson:settingsWithShareTemplate('{}',settings)})).toEqual(settings)
+  })
+
   it('preserves unrelated library settings when saving author information',()=>{
     const settingsJson=settingsWithShareTemplate('{"theme":"dark"}',{...DEFAULT_SHARE_SETTINGS,selectedTemplate:'product',authorName:'作者',authorBio:'简介',productName:'CoolNote',productIntro:'本地优先笔记应用',productUrl:'github.com/Calmer2024/CoolNote',productBrandColor:'#7C5CE7'})
     expect(JSON.parse(settingsJson)).toEqual({theme:'dark',shareTemplate:{version:3,selectedTemplate:'product',authorName:'作者',authorBio:'简介',productName:'CoolNote',productIntro:'本地优先笔记应用',productUrl:'github.com/Calmer2024/CoolNote',productBrandColor:'#7c5ce7'}})
