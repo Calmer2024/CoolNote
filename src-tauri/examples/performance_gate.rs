@@ -16,7 +16,7 @@ const BLOCKS_PER_NOTE: usize = 10;
 const SAMPLES: usize = 30;
 const LIST_P95_MS: f64 = 100.0;
 const LOAD_P95_MS: f64 = 100.0;
-const SAVE_P95_MS: f64 = 150.0;
+const SAVE_P95_MS: f64 = 100.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = tempdir()?;
@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             params![library_id, root.path().to_string_lossy(), now],
         )?;
         tx.execute(
-            "INSERT INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at) VALUES(?1,NULL,'未分类','folder','#1687e8',0,?2,?2,NULL)",
+            "INSERT OR IGNORE INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at) VALUES(?1,NULL,'未分类','folder','#1687e8',0,?2,?2,NULL)",
             params![UNCATEGORIZED_ID, now],
         )?;
         let mut insert = tx.prepare_cached(
@@ -60,10 +60,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         NOTE_COUNT / 2 + 1
     );
 
+    let mut short_search_times = Vec::new();
+    let mut category_times = Vec::new();
+    let mut search_miss_times = Vec::new();
+    let mut search_common_times = Vec::new();
     let mut list_times = Vec::new();
     let mut load_times = Vec::new();
     let mut save_times = Vec::new();
     for sample in 0..SAMPLES {
+        let started = Instant::now();
+        let page = workspace.list_notes(NoteQuery {view:"all".into(),category_id:Some(UNCATEGORIZED_ID.into()),search:None,sort_by:"updatedAt".into(),sort_direction:"desc".into(),offset:0,limit:80})?;
+        assert_eq!(page.items.len(), 80);
+        category_times.push(started.elapsed().as_secs_f64()*1000.0);
+        let started = Instant::now();
+        assert!(workspace.global_search("no-such-needle",50)?.is_empty());
+        search_miss_times.push(started.elapsed().as_secs_f64()*1000.0);
+        let started = Instant::now();
+        assert!(workspace.global_search("龘",50)?.is_empty());
+        assert!(workspace.global_search("龘靐",50)?.is_empty());
+        short_search_times.push(started.elapsed().as_secs_f64()*1000.0);
+        let started = Instant::now();
+        assert_eq!(workspace.global_search("note",50)?.len(),50);
+        search_common_times.push(started.elapsed().as_secs_f64()*1000.0);
         let started = Instant::now();
         let page = workspace.list_notes(NoteQuery {
             view: "all".into(),
@@ -95,6 +113,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         save_times.push(started.elapsed().as_secs_f64() * 1000.0);
     }
 
+    report("short-search-1-and-2-chars-miss-100k", &mut short_search_times, 200.0)?;
+    report("category-list-100k", &mut category_times, LIST_P95_MS)?;
+    report("global-search-miss-100k", &mut search_miss_times, 200.0)?;
+    report("global-search-common-100k", &mut search_common_times, 200.0)?;
     report("list-100k", &mut list_times, LIST_P95_MS)?;
     report("load-10-block", &mut load_times, LOAD_P95_MS)?;
     report("save-revision-safe", &mut save_times, SAVE_P95_MS)?;

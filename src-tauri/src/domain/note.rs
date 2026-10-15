@@ -39,6 +39,8 @@ pub struct Note {
     pub plain_text: String,
     pub content_hash: String,
     pub revision: i64,
+    #[serde(default)]
+    pub is_pinned: bool,
     pub is_favorite: bool,
     pub is_archived: bool,
     pub deleted_at: Option<String>,
@@ -55,6 +57,8 @@ pub struct NoteSummary {
     pub excerpt: String,
     pub revision: i64,
     pub category_id: String,
+    #[serde(default)]
+    pub is_pinned: bool,
     pub is_favorite: bool,
     pub is_archived: bool,
     pub deleted_at: Option<String>,

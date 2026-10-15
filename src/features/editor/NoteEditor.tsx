@@ -1,8 +1,10 @@
-import { Extension } from "@tiptap/core";
+import { useWorkspaceVisibility } from '../../shared/workspaceVisibility'
+import { Extension, getText, getTextSerializersFromSchema } from "@tiptap/core";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import Placeholder from "@tiptap/extension-placeholder";
+import { EditingBehavior, tablePlainText } from "./editingBehavior";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
@@ -35,7 +37,8 @@ import {
   toTiptapDocument,
 } from "./document";
 import { linkActivationFromPointerEvent, shouldAutoLink } from "./linkPolicy";
-import { noteToMarkdown } from "../export/export";
+import { noteToMarkdown } from "../export/markdownExport";
+import { createSnapshotSerializer } from "./editorSnapshot";
 import {
   PhycatCodeBlock,
   phycatCodeLanguages,
@@ -180,6 +183,7 @@ const ImageGalleryLayout = Extension.create({
 type Props = {
   note: NoteDto;
   focusTitle?: boolean;
+  onToast?: (message: string) => void;
   onChange: (change: EditorChange) => void;
   onMoodChange: (mood: string | null) => void;
   onAddAttachment: (file: File) => Promise<AttachmentDto>;
@@ -473,7 +477,7 @@ const textMatches = (editor: any, query: string): TextMatch[] => {
 
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
   function NoteEditor(
-    { note, focusTitle = false, onChange, onMoodChange, onAddAttachment },
+    { note, focusTitle = false, onChange, onMoodChange, onAddAttachment, onToast = () => {} },
     ref,
   ) {
     const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -489,6 +493,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
     );
     const latestTitle = useRef(note.title);
     const latestDocument = useRef(normalizedDocument);
+    const snapshotSerializer = useRef(createSnapshotSerializer());
+    const latestMarkdown = useRef<string | null>(null);
+    const [wordCount, setWordCount] = useState(0);
     const onChangeRef = useRef(onChange);
     const pendingDocRef = useRef<any>(null);
     const dirtyRef = useRef(false);
@@ -500,6 +507,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
     const layerFrameRef = useRef<number | null>(null);
     const pasteAbortRef = useRef(false);
     const [localTitle, setLocalTitle] = useState(note.title);
+    const workspaceVisible = useWorkspaceVisibility();
     const [selection, setSelection] = useState<Point | null>(null);
     const [slash, setSlash] = useState<SlashState | null>(null);
     const [slashIndex, setSlashIndex] = useState(0);
@@ -627,18 +635,16 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       const doc = pendingDocRef.current;
       if (doc) {
         pendingDocRef.current = null;
-        const next = normalizeDocument({
-          schemaVersion: 1,
-          type: "doc",
-          content: doc.toJSON().content ?? [],
-        });
-        latestDocument.current = next;
+        const snapshot = snapshotSerializer.current(doc, latestTitle.current);
+        latestDocument.current = snapshot.documentJson;
+        latestMarkdown.current = snapshot.markdownSnapshot;
+        setWordCount(getText(doc, { textSerializers:getTextSerializersFromSchema(doc.type.schema) }).replace(/\s/g, "").length);
       }
       dirtyRef.current = false;
       onChangeRef.current({
         title: latestTitle.current,
         documentJson: latestDocument.current,
-        markdownSnapshot: noteToMarkdown(
+        markdownSnapshot: latestMarkdown.current ?? noteToMarkdown(
           latestTitle.current,
           latestDocument.current,
         ),
@@ -767,7 +773,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         ImageGalleryLayout,
         MediaNode,
         HighlightBlock,
-        TableKit.configure({ table: { resizable: true } }),
+        TableKit.configure({ table: { resizable: false } }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Mathematics.configure({ katexOptions: { throwOnError: false } }),
@@ -778,6 +784,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           showOnlyCurrent: true,
         }),
         StableBlockIds,
+        EditingBehavior,
       ],
       content: toTiptapDocument(normalizedDocument),
       editorProps: {
@@ -969,6 +976,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       [serializePending],
     );
     useEffect(() => {
+      if (!workspaceVisible) return;
       registerOutlineNavigator((blockId) => {
         if (!editor) return null;
         let targetPos: number | null = null;
@@ -983,7 +991,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         return dom;
       });
       return () => registerOutlineNavigator(null);
-    }, [editor]);
+    }, [editor, workspaceVisible]);
+    useEffect(() => {
+      if (workspaceVisible) return;
+      editor?.commands.blur();
+      setSelection(null);
+      setSlash(null);
+      setInputLayer(null);
+      setFindPanel(null);
+    }, [workspaceVisible, editor]);
     useEffect(() => {
       onChangeRef.current = onChange;
     }, [onChange]);
@@ -994,11 +1010,16 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
     }, [note.id]);
     useEffect(() => {
       latestDocument.current = normalizedDocument;
+      latestMarkdown.current = null;
       pendingDocRef.current = null;
       dirtyRef.current = false;
       editor?.commands.setContent(toTiptapDocument(normalizedDocument), {
         emitUpdate: false,
       });
+      if (editor) {
+        snapshotSerializer.current(editor.state.doc, note.title);
+        setWordCount(editor.getText().replace(/\s/g, "").length);
+      }
     }, [normalizedDocument, editor, note.id]);
     useEffect(() => {
       if (focusTitle) titleRef.current?.focus();
@@ -1014,7 +1035,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       [],
     );
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || !workspaceVisible) return;
       const reposition = (event?: Event) => {
         if (
           event?.type === "scroll" &&
@@ -1041,9 +1062,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         viewport?.removeEventListener("resize", reposition);
         viewport?.removeEventListener("scroll", reposition);
       };
-    }, [editor]);
+    }, [editor, workspaceVisible]);
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || !workspaceVisible) return;
       const total = filteredSlashItems.length;
       const handler = (event: KeyboardEvent) => {
         if (!slash) return;
@@ -1063,9 +1084,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       };
       document.addEventListener("keydown", handler, true);
       return () => document.removeEventListener("keydown", handler, true);
-    }, [editor, slash, slashIndex, filteredSlashItems]);
+    }, [editor, workspaceVisible, slash, slashIndex, filteredSlashItems]);
     useEffect(() => {
-      if (!editor) return;
+      if (!editor || !workspaceVisible) return;
       const handler = (event: KeyboardEvent) => {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
         const key = event.key.toLowerCase();
@@ -1100,7 +1121,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       };
       document.addEventListener("keydown", handler, true);
       return () => document.removeEventListener("keydown", handler, true);
-    }, [editor]);
+    }, [editor, workspaceVisible]);
     useEffect(() => {
       slashRef.current
         ?.querySelector(".slash-item.active")
@@ -1378,6 +1399,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
               const title = event.currentTarget.value.replace(/\r?\n/g, " ");
               setLocalTitle(title);
               latestTitle.current = title;
+              latestMarkdown.current = null;
               fitTextareaHeight(event.currentTarget);
               dirtyRef.current = true;
               scheduleSerialization();
@@ -1599,6 +1621,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         >
           {tableControl && (
             <div onMouseDown={(event) => event.preventDefault()}>
+              <button aria-label="复制表格" onClick={() => {
+                const { $from } = editor.state.selection;
+                for (let depth = $from.depth; depth > 0; depth--) {
+                  if ($from.node(depth).type.name === "table") {
+                    void navigator.clipboard.writeText(tablePlainText($from.node(depth))).then(() => onToast("表格已复制")).catch(() => onToast("复制表格失败"));
+                    break;
+                  }
+                }
+              }}><Icon name="copy" />复制</button>
               <button
                 aria-label="向上插入行"
                 onClick={() => editor.chain().focus().addRowBefore().run()}
@@ -1921,7 +1952,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           </div>
         )}
         <div className="editor-word-count" aria-live="polite">
-          {editor.getText().replace(/\s/g, "").length} 字
+          {wordCount} 字
         </div>
         <input
           ref={fileRef}

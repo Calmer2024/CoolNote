@@ -1,0 +1,39 @@
+
+> coolnote@1.0.20 rust:test
+> node scripts/rust-build.mjs test --lib
+
+   Compiling coolnote v1.0.20 (D:\Files\Github\CoolNote\src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.57s
+     Running unittests src\lib.rs (src-tauri\.target\test\debug\deps\coolnote_lib-b29cff469b8b0acc.exe)
+
+running 28 tests
+test commands::workspace::web_metadata_tests::rejects_private_metadata_targets ... ok
+test commands::workspace::web_metadata_tests::export_segments_reject_path_separators_and_accept_unicode_names ... ok
+test commands::workspace::web_metadata_tests::extracts_open_graph_metadata ... ok
+test commands::workspace::web_metadata_tests::validates_external_browser_urls_without_treating_paths_as_links ... ok
+test domain::document::tests::highlight_blocks_validate_and_contribute_search_text ... ok
+test domain::document::tests::mermaid_nodes_validate_and_contribute_search_text ... ok
+test domain::document::tests::markdown_import_nodes_and_highlight_marks_validate ... ok
+test infrastructure::database::tests::fresh_database_applies_the_complete_schema ... ok
+test application::gallery_service::tests::galleries_allow_duplicate_names_and_persist_order ... ok
+test application::task_service::tests::creates_lists_tasks_and_light_subtasks ... ok
+test application::save_service::tests::identical_save_keeps_revision_and_updated_at ... ok
+test infrastructure::database::tests::moving_a_jotting_persists_its_destination_folder ... ok
+test application::task_service::tests::list_delete_and_undo_restore_whole_tree ... ok
+test application::gallery_service::tests::dropped_file_data_imports_without_a_local_path ... ok
+test application::task_service::tests::rejects_invalid_range ... ok
+test application::gallery_service::tests::gallery_update_rejects_stale_revision ... ok
+test application::gallery_service::tests::imports_deduplicate_assets_across_galleries ... ok
+test application::workspace_service::search_performance_regressions::substring_search_preserves_chinese_partial_words_and_index_updates ... ok
+test application::workspace_service::search_performance_regressions::recent_probe_keeps_older_matches_and_merges_newer_jottings ... ok
+test application::workspace_service::pinning_tests::built_in_guide_uses_normal_pinning_and_keeps_unpin_after_reopening ... ok
+test application::workspace_service::search_performance_regressions::development_version_eighteen_index_upgrades_to_short_substring_search ... ok
+test application::workspace_service::search_performance_regressions::substring_migration_indexes_existing_documents_without_changing_them ... ok
+test application::workspace_service::pinning_tests::pinned_notes_sort_before_pagination_and_stay_in_their_category_after_reopening ... ok
+test application::gallery_service::tests::soft_deleted_items_can_be_undone ... ok
+test application::workspace_service::pinning_tests::version_fifteen_upgrades_without_changing_existing_note_content ... ok
+test infrastructure::database::tests::version_five_database_upgrades_in_place_without_losing_jottings ... ok
+test application::save_service::tests::interrupted_large_save_keeps_a_complete_recoverable_draft_and_original_revision ... ok
+test infrastructure::database::tests::version_fourteen_duplicate_my_files_categories_are_merged_in_place ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.24s

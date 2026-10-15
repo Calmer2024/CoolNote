@@ -1,0 +1,16 @@
+
+> coolnote@1.0.20 perf:gate
+> node scripts/rust-build.mjs perf-gate
+
+   Compiling rusqlite v0.40.2
+   Compiling coolnote v1.0.20 (D:\Files\Github\CoolNote\src-tauri)
+    Finished `release` profile [optimized] target(s) in 58.31s
+     Running `src-tauri\.target\perf\release\examples\performance_gate.exe`
+metric=short-search-1-and-2-chars-miss-100k median_ms=0.38 p95_ms=0.45 threshold_ms=200.00
+metric=category-list-100k median_ms=13.56 p95_ms=15.49 threshold_ms=100.00
+metric=global-search-miss-100k median_ms=0.80 p95_ms=0.92 threshold_ms=200.00
+metric=global-search-common-100k median_ms=0.13 p95_ms=0.16 threshold_ms=200.00
+metric=list-100k median_ms=37.83 p95_ms=42.35 threshold_ms=100.00
+metric=load-10-block median_ms=0.14 p95_ms=0.27 threshold_ms=100.00
+metric=save-revision-safe median_ms=6.17 p95_ms=8.35 threshold_ms=100.00
+dataset notes=100000 blocks=1000000 samples=30 temporary=C:\Users\28109\AppData\Local\Temp\.tmpq36wi3

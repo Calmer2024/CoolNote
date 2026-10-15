@@ -62,8 +62,13 @@ impl RecoveryStore {
         })?;
         let target = self.path_for(&record.note_id)?;
         let mut temporary = tempfile::NamedTempFile::new_in(&self.root)?;
-        serde_json::to_writer(&mut temporary, record)?;
-        temporary.write_all(b"\n")?;
+        // Serialize through a bounded buffer; keep the durability boundary before rename.
+        {
+            let mut writer = std::io::BufWriter::new(temporary.as_file_mut());
+            serde_json::to_writer(&mut writer, record)?;
+            writer.write_all(b"\n")?;
+            writer.flush()?;
+        }
         temporary.as_file_mut().sync_all()?;
         temporary.persist(&target).map_err(|error| error.error)?;
         Ok(())

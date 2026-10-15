@@ -1,3 +1,4 @@
+import { useWorkspaceVisibility } from '../workspaceVisibility'
 import { createPortal } from 'react-dom'
 import { type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
@@ -57,6 +58,8 @@ type FloatingLayerProps = {
 
 /** Shared light-dismiss and viewport-aware layer used by every non-modal popover. */
 export function FloatingLayer({ open, anchor, boundary, point, placement = 'bottom-start', className, children, onDismiss, role, gap = 6, style }: FloatingLayerProps) {
+  const visible = useWorkspaceVisibility()
+  open = open && visible
   const layerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<CSSProperties>({ visibility: 'hidden' })
   const update = useCallback(() => {

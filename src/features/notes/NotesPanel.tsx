@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { BatchAction, CategoryDto, NoteSummaryDto, NoteView } from '../../shared/tauri/contracts'
 import { Icon } from '../../shared/components/Icon'
 import { FloatingLayer } from '../../shared/components/Overlay'
 import { NoteListSkeleton } from '../../shared/components/Skeleton'
 import { isBuiltInNote } from '../../shared/builtin'
+import { useVirtualNotes } from './useVirtualNotes'
 
 type Props = {
   notes: NoteSummaryDto[]; total: number; selectedNoteId: string | null; selectedIds: Set<string>
@@ -17,26 +18,33 @@ type Props = {
 }
 
 const noteTitle = (title: string) => title.trim() || '无标题笔记'
-const noteExcerpt = (excerpt: string) => excerpt.trim() || '开始写下你的想法…'
-const updatedLabel = (value: string) => new Intl.DateTimeFormat('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value))
+const noteExcerpt = (excerpt: string) => excerpt.slice(0,240).replace(/[\uD800-\uDBFF]$/,'').trim() || '开始写下你的想法…'
+const dateFormatter = new Intl.DateTimeFormat('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })
+const updatedLabel = (value: string) => dateFormatter.format(new Date(value))
 
 type MenuState = { note: NoteSummaryDto; x: number; y: number; mode: 'note' | 'move' }
 
 export function NotesPanel(props: Props) {
   const { notes, total, selectedNoteId, selectedIds } = props
-  const orderedNotes = [...notes].sort((a,b) => Number(isBuiltInNote(b.id)) - Number(isBuiltInNote(a.id)))
+  const orderedNotes = useMemo(() => [...notes].sort((a,b) => Number(props.view!=='trash'&&!!b.isPinned) - Number(props.view!=='trash'&&!!a.isPinned)), [notes, props.view])
+  const categoriesById = useMemo(() => new Map(props.categories.map(category => [category.id,category])), [props.categories])
+  const hasPinned = props.view !== 'trash' && orderedNotes.some(note => note.isPinned)
   const selectedIndex = orderedNotes.findIndex((note) => note.id === selectedNoteId)
   const [activeIndex, setActiveIndex] = useState(selectedIndex >= 0 ? selectedIndex : notes.length ? 0 : -1)
+  const { listRef, virtual, layout, first, end, readViewport, reveal } = useVirtualNotes(orderedNotes, hasPinned, props.loading)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [createMenu, setCreateMenu] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
   const createButtonRef = useRef<HTMLButtonElement>(null)
   useEffect(() => setActiveIndex(orderedNotes.length ? Math.max(0, selectedIndex) : -1), [orderedNotes.length, selectedIndex])
+  useEffect(() => { reveal(selectedIndex) }, [selectedNoteId, selectedIndex, props.loading])
+  useEffect(() => { if (listRef.current) { listRef.current.scrollTop=0; readViewport() } }, [props.title, props.view, props.sortDirection])
   const keydown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!orderedNotes.length) return
-    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((value) => Math.min(orderedNotes.length - 1, value + 1)) }
-    if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((value) => Math.max(0, value - 1)) }
+    if (event.key === 'ArrowDown') { event.preventDefault(); const next=Math.min(orderedNotes.length - 1, activeIndex + 1); setActiveIndex(next); reveal(next) }
+    if (event.key === 'ArrowUp') { event.preventDefault(); const next=Math.max(0, activeIndex - 1); setActiveIndex(next); reveal(next) }
+    if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); const next=event.key==='Home'?0:orderedNotes.length-1; setActiveIndex(next); reveal(next) }
     if (event.key === 'Enter' && activeIndex >= 0) { event.preventDefault(); props.onSelect(orderedNotes[activeIndex].id) }
   }
   const act = (note: NoteSummaryDto, action: BatchAction) => { setMenu(null); props.onAction([note.id], action) }
@@ -55,22 +63,26 @@ export function NotesPanel(props: Props) {
     </div>
     <FloatingLayer open={createMenu&&props.showCreate} anchor={createButtonRef} placement="bottom-start" className="product-menu note-create-dropdown" role="menu" onDismiss={()=>setCreateMenu(false)}><button onClick={()=>{setCreateMenu(false);props.onCreate()}}><Icon name="file-plus"/><span>新建笔记</span></button><button onClick={()=>{setCreateMenu(false);props.onImport()}}><Icon name="upload"/><span>导入笔记</span></button></FloatingLayer>
     {props.loading ? <div className="notes-list"><NoteListSkeleton rows={7}/></div> : notes.length ?
-      <div className="notes-list" data-sort-direction={props.sortDirection} role="listbox" tabIndex={0} onKeyDown={keydown}>
-          {orderedNotes.map((note, index) => <div className={`note-card-row prototype-note-row${note.id === selectedNoteId ? ' selected' : ''}${isBuiltInNote(note.id)?' built-in-note':''}`} key={note.id} onContextMenu={(event) => { if(isBuiltInNote(note.id))return;event.preventDefault(); setMenu({note,x:event.clientX,y:event.clientY,mode:'note'}) }}>
-          {isBuiltInNote(note.id)?<span className="built-in-pin" data-tooltip="内置产品介绍"><Icon name="pin"/></span>:<input type="checkbox" aria-label={`选择${noteTitle(note.title)}`} checked={selectedIds.has(note.id)} onChange={() => props.onToggleSelected(note.id)} />}
+      <div ref={listRef} className="notes-list" data-sort-direction={props.sortDirection} role="listbox" aria-activedescendant={activeIndex>=first&&activeIndex<end?`note-row-${orderedNotes[activeIndex].id}`:undefined} tabIndex={0} onKeyDown={keydown} onScroll={readViewport}>
+        <div className={virtual?'virtual-notes-content':undefined} style={virtual?{height:layout[orderedNotes.length]}:undefined}>
+          {orderedNotes.slice(first,end).map((note, offset) => { const index=first+offset; const category=categoriesById.get(note.categoryId ?? ''); return <div key={note.id} data-virtual-note-id={note.id} className="note-list-item" style={virtual?{position:'absolute',top:layout[index],left:0,right:0}:undefined}>
+          {hasPinned && (index === 0 || !!orderedNotes[index-1]?.isPinned !== !!note.isPinned) && <div className="note-section-label" role="presentation">{note.isPinned ? <><Icon name="pin"/>置顶</> : <><Icon name="file-text"/>笔记</>}</div>}
+          <div id={`note-row-${note.id}`} role="option" aria-selected={note.id===selectedNoteId} aria-posinset={index+1} aria-setsize={orderedNotes.length} className={`note-card-row prototype-note-row${note.id === selectedNoteId ? ' selected' : ''}${isBuiltInNote(note.id)?' built-in-note':''}`} key={note.id} onContextMenu={(event) => { event.preventDefault(); setMenu({note,x:event.clientX,y:event.clientY,mode:'note'}) }}>
+          {isBuiltInNote(note.id)?<span className="note-selection-placeholder"/>:<input type="checkbox" aria-label={`选择${noteTitle(note.title)}`} checked={selectedIds.has(note.id)} onChange={() => props.onToggleSelected(note.id)} />}
           <button className="note-card" type="button" aria-current={index === activeIndex ? 'true' : undefined} onClick={() => { setActiveIndex(index); props.onSelect(note.id) }}>
             <h2>{noteTitle(note.title)}</h2><p>{noteExcerpt(note.excerpt)}</p>
-            <div className="note-meta"><time>{updatedLabel(note.updatedAt)}</time>{note.mood&&<span className="note-mood" aria-label={`心情 ${note.mood}`}>{note.mood}</span>}{props.categories.find(category=>category.id===note.categoryId)&&<span className="note-category-token">{props.categories.find(category=>category.id===note.categoryId)!.name}</span>}<span className="note-flags">{note.isFavorite && <Icon name="star" />}</span></div>
+            <div className="note-meta"><time>{updatedLabel(note.updatedAt)}</time>{note.mood&&<span className="note-mood" aria-label={`心情 ${note.mood}`}>{note.mood}</span>}{category&&<span className="note-category-token">{category.name}</span>}<span className="note-flags">{props.view!=='trash'&&note.isPinned && <Icon name="pin" />}{note.isFavorite && <Icon name="star" />}</span></div>
           </button>
-          {!isBuiltInNote(note.id)&&<div className="note-hover-actions">{props.view!=='trash'&&<button className={`icon-button${note.isFavorite?' is-active':''}`} aria-label={note.isFavorite?'取消收藏':'收藏'} onClick={() => act(note,note.isFavorite?'unfavorite':'favorite')}><Icon name="star" /></button>}<button className="icon-button" aria-label="更多" onClick={(event) => { event.stopPropagation(); const rect=event.currentTarget.getBoundingClientRect(); setMenu({note,x:rect.left,y:rect.bottom+4,mode:'note'}) }}><Icon name="ellipsis" /></button></div>}
-        </div>)}
+          {<div className="note-hover-actions">{props.view!=='trash'&&<button className={`icon-button${note.isFavorite?' is-active':''}`} aria-label={note.isFavorite?'取消收藏':'收藏'} onClick={() => act(note,note.isFavorite?'unfavorite':'favorite')}><Icon name="star" /></button>}<button className="icon-button" aria-label="更多" onClick={(event) => { event.stopPropagation(); const rect=event.currentTarget.getBoundingClientRect(); setMenu({note,x:rect.left,y:rect.bottom+4,mode:'note'}) }}><Icon name="ellipsis" /></button></div>}
+        </div></div>})}
+        </div>
       </div> : <div className="notes-list notes-empty"><Icon name="file-text" className="empty-state-icon" /><strong>没有匹配的笔记</strong></div>}
     {props.canLoadMore && <button className="load-more-button" disabled={props.loadingMore} onClick={props.onLoadMore}>{props.loadingMore ? '正在加载…' : '加载更多笔记'}</button>}
     <FloatingLayer open={!!menu} point={menu?{left:menu.x,top:menu.y}:undefined} className="product-menu note-list-menu" role="menu" onDismiss={()=>{setMenu(null);setDeleteConfirm(null)}}>
       {menu&&<>
       {menu.mode === 'move' ? <><div className="menu-label">移动到分类</div>{props.categories.map(category=><button key={category.id} onClick={()=>{props.onMove(selectedIds.size ? selected : [menu.note.id],category.id);setMenu(null)}}><Icon name={category.iconName || 'folder'} /><span>{category.name}</span></button>)}</> : <>
-        {props.view!=='trash'&&<><button onClick={()=>act(menu.note,menu.note.isFavorite?'unfavorite':'favorite')}><Icon name="star" /><span>{menu.note.isFavorite?'取消收藏':'收藏'}</span></button><button onClick={()=>setMenu({...menu,mode:'move'})}><Icon name="folder" /><span>移动到</span><Icon name="chevron-right" /></button><div className="separator" /></>}
-        {props.view === 'trash' ? <><button onClick={()=>act(menu.note,'restore')}><Icon name="rotate-ccw" /><span>恢复</span></button><button className={`danger${deleteConfirm===menu.note.id?' confirm-delete':''}`} onClick={()=>{if(deleteConfirm===menu.note.id){setDeleteConfirm(null);act(menu.note,'deletePermanently')}else setDeleteConfirm(menu.note.id)}}><Icon name={deleteConfirm===menu.note.id?'check-square':'trash-2'} /><span>{deleteConfirm===menu.note.id?'确认永久删除':'永久删除'}</span></button></> : <><button onClick={()=>act(menu.note,menu.note.isArchived?'unarchive':'archive')}><Icon name="book-open" /><span>{menu.note.isArchived?'取消归档':'归档'}</span></button><button className="danger" onClick={()=>act(menu.note,'trash')}><Icon name="trash-2" /><span>移到回收站</span></button></>}
+        {props.view!=='trash'&&<><button onClick={()=>act(menu.note,menu.note.isPinned?'unpin':'pin')}><Icon name="pin"/><span>{menu.note.isPinned?'取消置顶':'置顶'}</span></button><button onClick={()=>act(menu.note,menu.note.isFavorite?'unfavorite':'favorite')}><Icon name="star" /><span>{menu.note.isFavorite?'取消收藏':'收藏'}</span></button>{!isBuiltInNote(menu.note.id)&&<button onClick={()=>setMenu({...menu,mode:'move'})}><Icon name="folder" /><span>移动到</span><Icon name="chevron-right" /></button>}<div className="separator" /></>}
+        {props.view === 'trash' ? <><button onClick={()=>act(menu.note,'restore')}><Icon name="rotate-ccw" /><span>恢复</span></button><button className={`danger${deleteConfirm===menu.note.id?' confirm-delete':''}`} onClick={()=>{if(deleteConfirm===menu.note.id){setDeleteConfirm(null);act(menu.note,'deletePermanently')}else setDeleteConfirm(menu.note.id)}}><Icon name={deleteConfirm===menu.note.id?'check-square':'trash-2'} /><span>{deleteConfirm===menu.note.id?'确认永久删除':'永久删除'}</span></button></> : !isBuiltInNote(menu.note.id)&&<><button onClick={()=>act(menu.note,menu.note.isArchived?'unarchive':'archive')}><Icon name="book-open" /><span>{menu.note.isArchived?'取消归档':'归档'}</span></button><button className="danger" onClick={()=>act(menu.note,'trash')}><Icon name="trash-2" /><span>移到回收站</span></button></>}
       </>}
       </>}
     </FloatingLayer>

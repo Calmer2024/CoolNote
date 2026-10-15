@@ -1,0 +1,1321 @@
+[
+  {
+    "environment": {
+      "production": true,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "blocks": 1000,
+      "tasks": 30
+    }
+  },
+  {
+    "mode": "notes",
+    "ready": {
+      "n": 12,
+      "median_ms": 73.30000000074506,
+      "p95_ms": 1970.199999999255
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 211,
+      "p95_ms": 3973.800000000745
+    },
+    "editor_reuse_count": 12,
+    "finite_animation_max": 4
+  },
+  {
+    "mode": "jottings",
+    "ready": {
+      "n": 12,
+      "median_ms": 32.399999998509884,
+      "p95_ms": 1963.5
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 178.09999999776483,
+      "p95_ms": 3967.300000000745
+    },
+    "editor_reuse_count": 11,
+    "finite_animation_max": 4
+  },
+  {
+    "mode": "tasks",
+    "ready": {
+      "n": 12,
+      "median_ms": 24.099999997764826,
+      "p95_ms": 2001.1000000014901
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 173.5,
+      "p95_ms": 3969.7999999970198
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 4
+  },
+  {
+    "mode": "gallery",
+    "ready": {
+      "n": 12,
+      "median_ms": 13.800000000745058,
+      "p95_ms": 1966.8999999985099
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 165.10000000149012,
+      "p95_ms": 3969.900000002235
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 4
+  },
+  {
+    "samples": [
+      {
+        "cycle": 0,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 795.0999999977648,
+        "settled_ms": 796.8000000007451,
+        "animation_details": [],
+        "finite_animations": 0,
+        "editor_reused": false
+      },
+      {
+        "cycle": 0,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 2001.1000000014901,
+        "settled_ms": 3001,
+        "animation_details": [],
+        "finite_animations": 0,
+        "editor_reused": null
+      },
+      {
+        "cycle": 0,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 1966.199999999255,
+        "settled_ms": 3966.60000000149,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 0,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 1966.8999999985099,
+        "settled_ms": 3971.300000000745,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 1,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 1962,
+        "settled_ms": 3966.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 1,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 1956.4000000022352,
+        "settled_ms": 3956.300000000745,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 1,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 1966.1000000014901,
+        "settled_ms": 3969.900000002235,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 1,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 1970.199999999255,
+        "settled_ms": 3973.800000000745,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 2,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 1959.199999999255,
+        "settled_ms": 3963.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 2,
+        "editor_reused": true
+      },
+      {
+        "cycle": 2,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 1965.7999999970198,
+        "settled_ms": 3969.7999999970198,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 2,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 1966.8999999985099,
+        "settled_ms": 3966.699999999255,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 2,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 1966.5999999977648,
+        "settled_ms": 3970.099999997765,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 3,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 1963.5,
+        "settled_ms": 3967.300000000745,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 2,
+        "editor_reused": true
+      },
+      {
+        "cycle": 3,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 1964.8999999985099,
+        "settled_ms": 2868.699999999255,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 3,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 13.800000000745058,
+        "settled_ms": 161.30000000074506,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 3,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 73.30000000074506,
+        "settled_ms": 211.19999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 4,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 42.399999998509884,
+        "settled_ms": 181.89999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 4,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 22.800000000745058,
+        "settled_ms": 173.39999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 4,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 13,
+        "settled_ms": 161.30000000074506,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 4,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 66,
+        "settled_ms": 206.40000000223517,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 5,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 30.400000002235174,
+        "settled_ms": 173.40000000223517,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 5,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 24.800000000745058,
+        "settled_ms": 168.80000000074506,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 5,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 12,
+        "settled_ms": 160.90000000223517,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 5,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 73.39999999850988,
+        "settled_ms": 211,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 6,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 32.399999998509884,
+        "settled_ms": 173.89999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 6,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 24,
+        "settled_ms": 173.90000000223517,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 6,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 13.300000000745058,
+        "settled_ms": 165.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 6,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 86.5,
+        "settled_ms": 215.39999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 7,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 29.600000001490116,
+        "settled_ms": 169.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 7,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 22.399999998509884,
+        "settled_ms": 169.19999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 7,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 12.299999997019768,
+        "settled_ms": 160.79999999701977,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 7,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 67,
+        "settled_ms": 206.19999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 8,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 30.299999997019768,
+        "settled_ms": 178.09999999776483,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 8,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 21.800000000745058,
+        "settled_ms": 172.30000000074506,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 8,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 16.5,
+        "settled_ms": 164.90000000223517,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 8,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 62.100000001490116,
+        "settled_ms": 202.10000000149012,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 9,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 31.5,
+        "settled_ms": 177.89999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 9,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 24.099999997764826,
+        "settled_ms": 173.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 9,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 14.400000002235174,
+        "settled_ms": 165.19999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 9,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 67.10000000149012,
+        "settled_ms": 206.39999999850988,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 10,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 32.100000001490116,
+        "settled_ms": 177,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 10,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 21.5,
+        "settled_ms": 172.69999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 10,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 12.900000002235174,
+        "settled_ms": 165.10000000149012,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 10,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 66.39999999850988,
+        "settled_ms": 202.10000000149012,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 11,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 31.800000000745058,
+        "settled_ms": 177.30000000074506,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      },
+      {
+        "cycle": 11,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 22.399999998509884,
+        "settled_ms": 169.69999999925494,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 11,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 13.099999997764826,
+        "settled_ms": 160.09999999776483,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": null
+      },
+      {
+        "cycle": 11,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 66.69999999925494,
+        "settled_ms": 205.5,
+        "animation_details": [
+          {
+            "property": "background-color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view active"
+          },
+          {
+            "property": "background-color",
+            "target": "nav-item system-view"
+          },
+          {
+            "property": "color",
+            "target": "nav-item system-view"
+          }
+        ],
+        "finite_animations": 4,
+        "editor_reused": true
+      }
+    ],
+    "status": "complete"
+  }
+]

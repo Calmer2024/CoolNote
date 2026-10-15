@@ -71,10 +71,8 @@ const required = [
   [guidelines, '每行最多 3 张', '设计规范缺少画廊三列上限'],
   [guidelines, '计时器不得因父组件重渲染而重置', '设计规范缺少 Toast 定时关闭约束'],
   [appCss, '.notes-header-actions .icon-button', '笔记列表标题栏操作按钮尺寸与颜色未统一'],
-  [app, 'data-view-transition={viewTransitionVersion%2', 'Tab 切换缺少可重播的过渡状态'],
-  [uxCss, '.workspace[data-view-transition="even"] > section', 'Tab 切换缺少偶数帧过渡'],
-  [uxCss, '.workspace[data-view-transition="odd"] > section', 'Tab 切换缺少奇数帧过渡'],
-  [guidelines, 'Tab 切换必须播放统一的过渡动画', '设计规范缺少 Tab 过渡约束'],
+  [app, '<RetainedWorkspace active=', 'Tab 页面必须按需挂载并保留编辑器'],
+  [guidelines, 'Tab 切换应立即呈现内容', '设计规范缺少即时切换约束'],
   [guidelines, '单行大字号标题输入框', '设计规范缺少英文字形防裁剪约束'],
 ]
 

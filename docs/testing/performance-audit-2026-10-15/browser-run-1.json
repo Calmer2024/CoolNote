@@ -1,0 +1,123 @@
+[
+  {
+    "environment": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "hardwareConcurrency": 24,
+      "production": true
+    }
+  },
+  {
+    "metric": "editor",
+    "blocks": 100,
+    "mount_ms": 82.30000000074506,
+    "paragraphs": 100,
+    "edit": {
+      "n": 30,
+      "median_ms": 0.6999999992549419,
+      "p95_ms": 1.1000000014901161,
+      "max_ms": 2.300000000745058
+    },
+    "edit_two_frames": {
+      "n": 30,
+      "median_ms": 3.399999998509884,
+      "p95_ms": 5,
+      "max_ms": 5.099999997764826
+    },
+    "serialize_markdown": {
+      "n": 30,
+      "median_ms": 0.3999999985098839,
+      "p95_ms": 0.5,
+      "max_ms": 0.8999999985098839
+    },
+    "whole_doc_replacements": 0
+  },
+  {
+    "metric": "editor",
+    "blocks": 1000,
+    "mount_ms": 82.60000000149012,
+    "paragraphs": 1000,
+    "edit": {
+      "n": 30,
+      "median_ms": 1,
+      "p95_ms": 1.1000000014901161,
+      "max_ms": 2.199999999254942
+    },
+    "edit_two_frames": {
+      "n": 30,
+      "median_ms": 4.199999999254942,
+      "p95_ms": 5.800000000745058,
+      "max_ms": 6.199999999254942
+    },
+    "serialize_markdown": {
+      "n": 30,
+      "median_ms": 4.100000001490116,
+      "p95_ms": 4.699999999254942,
+      "max_ms": 5.099999997764826
+    },
+    "whole_doc_replacements": 0
+  },
+  {
+    "metric": "editor",
+    "blocks": 5000,
+    "mount_ms": 414.9000000022352,
+    "paragraphs": 5000,
+    "edit": {
+      "n": 30,
+      "median_ms": 3.300000000745058,
+      "p95_ms": 4.699999999254942,
+      "max_ms": 5.199999999254942
+    },
+    "edit_two_frames": {
+      "n": 30,
+      "median_ms": 6,
+      "p95_ms": 8.699999999254942,
+      "max_ms": 9.5
+    },
+    "serialize_markdown": {
+      "n": 30,
+      "median_ms": 18.5,
+      "p95_ms": 20,
+      "max_ms": 20.199999999254942
+    },
+    "whole_doc_replacements": 0
+  },
+  {
+    "metric": "notes-list",
+    "rows": 80,
+    "mount_ms": 87.69999999925494,
+    "rendered_rows": 80,
+    "selection_render": {
+      "n": 20,
+      "median_ms": 4.300000000745058,
+      "p95_ms": 4.699999999254942,
+      "max_ms": 5.100000001490116
+    }
+  },
+  {
+    "metric": "notes-list",
+    "rows": 1000,
+    "mount_ms": 301.69999999925494,
+    "rendered_rows": 1000,
+    "selection_render": {
+      "n": 20,
+      "median_ms": 52.899999998509884,
+      "p95_ms": 55.399999998509884,
+      "max_ms": 58.600000001490116
+    }
+  },
+  {
+    "metric": "notes-list",
+    "rows": 5000,
+    "mount_ms": 1745.300000000745,
+    "rendered_rows": 5000,
+    "selection_render": {
+      "n": 20,
+      "median_ms": 256.3999999985099,
+      "p95_ms": 268,
+      "max_ms": 270.19999999925494
+    }
+  },
+  {
+    "status": "complete"
+  }
+]

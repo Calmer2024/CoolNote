@@ -1,0 +1,5 @@
+metric=save-100k-chars elapsed_ms=14.94 threshold_ms=750.00
+metric=load-100k-chars elapsed_ms=0.86 threshold_ms=500.00
+metric=save-5000-blocks elapsed_ms=686.19 threshold_ms=750.00
+metric=load-5000-blocks elapsed_ms=16.07 threshold_ms=500.00
+metric=independent-markdown-export status=passed versions=2

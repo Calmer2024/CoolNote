@@ -17,7 +17,7 @@ use crate::domain::note::{
     Attachment, Category, Jotting, JottingFolder, Note, NoteSummary, Page, SearchResult,
     UNCATEGORIZED_ID,
 };
-use crate::infrastructure::database::Database;
+use crate::infrastructure::database::{Database, encode_substring_text};
 
 const BUILT_IN_CATEGORY_ID: &str = "00000000-0000-4000-8000-000000000001";
 const BUILT_IN_NOTE_ID: &str = "00000000-0000-4000-8000-000000000011";
@@ -37,6 +37,8 @@ pub struct NoteQuery {
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum BatchAction {
+    Pin,
+    Unpin,
     Favorite,
     Unfavorite,
     Archive,
@@ -137,30 +139,40 @@ impl WorkspaceService {
         } else {
             format!("\"{}\"", search.replace('"', "\"\""))
         };
-        let where_sql = format!(
-            "{state_clause} AND (?1 IS NULL OR n.category_id=?1) AND (?2='' OR n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?2))"
-        );
+        let mut where_sql = state_clause.to_owned();
+        let mut bindings: Vec<rusqlite::types::Value> = Vec::new();
+        if let Some(category) = category {
+            bindings.push(category.into());
+            write!(where_sql, " AND n.category_id=?{}", bindings.len()).unwrap();
+        }
+        if !fts_query.is_empty() {
+            bindings.push(fts_query.into());
+            write!(where_sql, " AND n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?{})", bindings.len()).unwrap();
+        }
+        let pin_order = if view == "trash" { String::new() } else { "n.is_pinned DESC, ".to_owned() };
         let safe_offset = query.offset.max(0);
         let safe_limit = query.limit.clamp(1, 500);
         self.database.with_read(|connection| {
             let total_sql = format!("SELECT COUNT(*) FROM notes n WHERE {where_sql}");
             let total = connection.query_row(
                 &total_sql,
-                params![category, fts_query],
+                rusqlite::params_from_iter(bindings.iter()),
                 |row| row.get(0),
             )?;
             let sql = format!(
-                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_archived,n.deleted_at,n.mood,n.updated_at FROM notes n WHERE {where_sql} ORDER BY CASE WHEN n.id='{BUILT_IN_NOTE_ID}' THEN 0 ELSE 1 END, {order_column} {direction}, n.id ASC LIMIT ?3 OFFSET ?4"
+                "SELECT n.id,n.title,substr(n.plain_text,1,240),n.revision,n.category_id,n.is_favorite,n.is_archived,n.deleted_at,n.mood,n.updated_at,n.is_pinned FROM notes n WHERE {where_sql} ORDER BY {pin_order}{order_column} {direction}, n.id ASC LIMIT ?{} OFFSET ?{}", bindings.len()+1, bindings.len()+2
             );
+            bindings.push(safe_limit.into());
+            bindings.push(safe_offset.into());
             let mut statement = connection.prepare(&sql)?;
             let rows = statement.query_map(
-                params![category, fts_query, safe_limit, safe_offset],
+                rusqlite::params_from_iter(bindings.iter()),
                 |row| {
                     Ok((
                         row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
                         row.get::<_, i64>(3)?, row.get::<_, String>(4)?, row.get::<_, bool>(5)?,
                         row.get::<_, bool>(6)?, row.get::<_, Option<String>>(7)?,
-                        row.get::<_, Option<String>>(8)?, row.get::<_, String>(9)?,
+                        row.get::<_, Option<String>>(8)?, row.get::<_, String>(9)?, row.get::<_, bool>(10)?,
                     ))
                 },
             )?;
@@ -169,7 +181,7 @@ impl WorkspaceService {
                 let raw = row?;
                 items.push(NoteSummary {
                     id: raw.0.clone(), title: raw.1, excerpt: raw.2, revision: raw.3,
-                    category_id: raw.4, is_favorite: raw.5,
+                    category_id: raw.4, is_favorite: raw.5, is_pinned: raw.10,
                     is_archived: raw.6, deleted_at: raw.7, mood: raw.8, updated_at: raw.9,
                 });
             }
@@ -180,12 +192,12 @@ impl WorkspaceService {
     pub fn get_note(&self, note_id: &str) -> Result<Note, AppError> {
         self.database.with_read(|connection| {
             let raw = connection.query_row(
-                "SELECT id,category_id,title,document_json,plain_text,content_hash,revision,is_favorite,is_archived,deleted_at,mood,created_at,updated_at FROM notes WHERE id=?1",
+                "SELECT id,category_id,title,document_json,plain_text,content_hash,revision,is_favorite,is_archived,deleted_at,mood,created_at,updated_at,is_pinned FROM notes WHERE id=?1",
                 [note_id],
-                |row| Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,String>(3)?,row.get::<_,String>(4)?,row.get::<_,String>(5)?,row.get::<_,i64>(6)?,row.get::<_,bool>(7)?,row.get::<_,bool>(8)?,row.get::<_,Option<String>>(9)?,row.get::<_,Option<String>>(10)?,row.get::<_,String>(11)?,row.get::<_,String>(12)?)),
+                |row| Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,String>(2)?,row.get::<_,String>(3)?,row.get::<_,String>(4)?,row.get::<_,String>(5)?,row.get::<_,i64>(6)?,row.get::<_,bool>(7)?,row.get::<_,bool>(8)?,row.get::<_,Option<String>>(9)?,row.get::<_,Option<String>>(10)?,row.get::<_,String>(11)?,row.get::<_,String>(12)?,row.get::<_,bool>(13)?)),
             ).map_err(|error| match error { rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(note_id.to_owned()), other => AppError::Database(other) })?;
             let value = serde_json::from_str(&raw.3)?;
-            Ok(Note { id:raw.0,category_id:raw.1,title:raw.2,document:validate_document(&value)?,plain_text:raw.4,content_hash:raw.5,revision:raw.6,is_favorite:raw.7,is_archived:raw.8,deleted_at:raw.9,mood:raw.10,created_at:raw.11,updated_at:raw.12 })
+            Ok(Note { id:raw.0,category_id:raw.1,title:raw.2,document:validate_document(&value)?,plain_text:raw.4,content_hash:raw.5,revision:raw.6,is_favorite:raw.7,is_pinned:raw.13,is_archived:raw.8,deleted_at:raw.9,mood:raw.10,created_at:raw.11,updated_at:raw.12 })
         })
     }
 
@@ -218,6 +230,8 @@ impl WorkspaceService {
         let now = Utc::now().to_rfc3339();
         self.database.with_write(|tx| {
             let sql = match action {
+                BatchAction::Pin => "UPDATE notes SET is_pinned=1 WHERE id=?1 AND deleted_at IS NULL",
+                BatchAction::Unpin => "UPDATE notes SET is_pinned=0 WHERE id=?1",
                 BatchAction::Favorite => "UPDATE notes SET is_favorite=1 WHERE id=?1 AND deleted_at IS NULL",
                 BatchAction::Unfavorite => "UPDATE notes SET is_favorite=0 WHERE id=?1",
                 BatchAction::Archive => "UPDATE notes SET is_archived=1 WHERE id=?1 AND deleted_at IS NULL",
@@ -402,13 +416,29 @@ impl WorkspaceService {
         let limit = limit.clamp(1, 50);
         self.database.with_read(|connection| {
             let mut results = Vec::new();
-            let mut notes = connection.prepare("SELECT id,title,substr(plain_text,1,180),updated_at FROM notes WHERE deleted_at IS NULL AND (title LIKE ?1 OR plain_text LIKE ?1) ORDER BY updated_at DESC LIMIT ?2")?;
-            for row in notes.query_map(params![like,limit], |row| Ok(SearchResult{id:row.get(0)?,kind:"note".into(),title:row.get(1)?,excerpt:row.get(2)?,updated_at:row.get(3)?}))? { results.push(row?); }
-            let remaining = (limit - results.len() as i64).max(0);
-            if remaining > 0 {
-                let mut jottings = connection.prepare("SELECT id,name,substr(content,1,180),updated_at FROM jottings WHERE name LIKE ?1 OR content LIKE ?1 ORDER BY updated_at DESC LIMIT ?2")?;
-                for row in jottings.query_map(params![like,remaining], |row| Ok(SearchResult{id:row.get(0)?,kind:"jotting".into(),title:row.get(1)?,excerpt:strip_markup(&row.get::<_,String>(2)?),updated_at:row.get(3)?}))? { results.push(row?); }
+            let map_note = |row: &rusqlite::Row<'_>| Ok(SearchResult{id:row.get(0)?,kind:"note".into(),title:row.get(1)?,excerpt:row.get(2)?,updated_at:row.get(3)?});
+            // A bounded recent-page probe handles frequent terms without sorting every FTS hit.
+            // Only use it as the complete result when it fills the limit: all older matches
+            // necessarily sort after this page. Otherwise query the full substring index.
+            let mut recent = connection.prepare("WITH recent AS MATERIALIZED (SELECT id,title,plain_text,updated_at FROM notes WHERE deleted_at IS NULL ORDER BY updated_at DESC,id ASC LIMIT 256) SELECT id,title,substr(plain_text,1,180),updated_at FROM recent WHERE title LIKE ?1 OR plain_text LIKE ?1 ORDER BY updated_at DESC,id ASC LIMIT ?2")?;
+            results.extend(recent.query_map(params![like,limit],map_note)?.collect::<Result<Vec<_>,_>>()?);
+            if results.len() < limit as usize {
+                results.clear();
+                // LIKE still owns matching semantics (including %/_). Boundary-padded
+                // trigrams also accelerate one- and two-character Chinese substrings.
+                let indexable = !query.contains(['%', '_']) && !query.contains('\0');
+                let sql = if indexable {
+                    "SELECT n.id,n.title,substr(n.plain_text,1,180),n.updated_at FROM notes_substring_fts JOIN notes n ON n.rowid=notes_substring_fts.rowid WHERE notes_substring_fts MATCH ?1 AND n.deleted_at IS NULL AND (n.title LIKE ?2 OR n.plain_text LIKE ?2) ORDER BY n.updated_at DESC,n.id ASC LIMIT ?3"
+                } else {
+                    "SELECT id,title,substr(plain_text,1,180),updated_at FROM notes WHERE ?1 IS NOT NULL AND deleted_at IS NULL AND (title LIKE ?2 OR plain_text LIKE ?2) ORDER BY updated_at DESC,id ASC LIMIT ?3"
+                };
+                let phrase = format!("\"{}\"", encode_substring_text(query).replace('"', "\"\""));
+                let mut notes = connection.prepare(sql)?;
+                results.extend(notes.query_map(params![phrase,like,limit],map_note)?.collect::<Result<Vec<_>,_>>()?);
             }
+            // Each kind gets its own bounded candidates before merging by time.
+            let mut jottings = connection.prepare("SELECT id,name,substr(content,1,180),updated_at FROM jottings WHERE name LIKE ?1 OR content LIKE ?1 ORDER BY updated_at DESC LIMIT ?2")?;
+            for row in jottings.query_map(params![like,limit], |row| Ok(SearchResult{id:row.get(0)?,kind:"jotting".into(),title:row.get(1)?,excerpt:strip_markup(&row.get::<_,String>(2)?),updated_at:row.get(3)?}))? { results.push(row?); }
             results.sort_by(|a,b| b.updated_at.cmp(&a.updated_at));
             results.truncate(limit as usize);
             Ok(results)
@@ -864,4 +894,176 @@ fn text_document(text: &str) -> Document {
         })
         .collect();
     doc
+}
+
+
+#[cfg(test)]
+mod pinning_tests {
+    use super::*;
+
+    fn query(category: &str, offset: i64, limit: i64) -> NoteQuery {
+        NoteQuery { view: "all".into(), category_id: Some(category.into()), search: None,
+            sort_by: "updatedAt".into(), sort_direction: "desc".into(), offset, limit }
+    }
+
+    #[test]
+    fn pinned_notes_sort_before_pagination_and_stay_in_their_category_after_reopening() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("notes.db");
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        let category = service.create_category("工作", None).unwrap();
+        let other = service.create_category("生活", None).unwrap();
+        let older = service.create_note(Some(&category.id), "旧笔记", None).unwrap();
+        let recent = service.create_note(Some(&category.id), "新笔记", None).unwrap();
+        let outside = service.create_note(Some(&other.id), "另一分类", None).unwrap();
+        database.with_write(|tx| {
+            tx.execute("UPDATE notes SET updated_at='2020-01-01' WHERE id=?1", [&older.id])?;
+            Ok(())
+        }).unwrap();
+        service.batch_action(&[older.id.clone(), outside.id.clone()], BatchAction::Pin).unwrap();
+        assert_eq!(service.list_notes(query(&category.id, 0, 1)).unwrap().items[0].id, older.id);
+        assert_eq!(service.list_notes(query(&category.id, 1, 1)).unwrap().items[0].id, recent.id);
+        assert_eq!(service.get_note(&older.id).unwrap().category_id, category.id);
+        drop(service);
+        drop(database);
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database, directory.path().join("attachments"));
+        assert!(service.get_note(&older.id).unwrap().is_pinned);
+        let page = service.list_notes(query(&category.id, 0, 80)).unwrap();
+        assert_eq!(page.total, 2);
+        assert!(page.items[0].is_pinned);
+        assert!(!page.items.iter().any(|note| note.id == outside.id));
+        service.batch_action(&[older.id.clone()], BatchAction::Unpin).unwrap();
+        assert_eq!(service.list_notes(query(&category.id, 0, 1)).unwrap().items[0].id, recent.id);
+        assert!(!service.get_note(&older.id).unwrap().is_pinned);
+    }
+
+    #[test]
+    fn version_fifteen_upgrades_without_changing_existing_note_content() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("notes.db");
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        let note = service.create_note(None, "保留标题", None).unwrap();
+        database.with_write(|tx| {
+            tx.execute_batch("DROP INDEX idx_notes_active_sort; DROP INDEX idx_notes_category_pinned_sort; ALTER TABLE notes DROP COLUMN is_pinned; PRAGMA user_version=15;")?;
+            Ok(())
+        }).unwrap();
+        drop(service);
+        drop(database);
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database, directory.path().join("attachments"));
+        let restored = service.get_note(&note.id).unwrap();
+        assert!(!restored.is_pinned);
+        assert_eq!(restored.title, note.title);
+        assert_eq!(restored.document, note.document);
+        assert_eq!(restored.revision, note.revision);
+    }
+    #[test]
+    fn built_in_guide_uses_normal_pinning_and_keeps_unpin_after_reopening() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("notes.db");
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        assert!(service.get_note(BUILT_IN_NOTE_ID).unwrap().is_pinned);
+        let recent = service.create_note(None, "普通笔记", None).unwrap();
+        service.batch_action(&[BUILT_IN_NOTE_ID.into()], BatchAction::Unpin).unwrap();
+        let page = service.list_notes(query(UNCATEGORIZED_ID, 0, 80)).unwrap();
+        assert_eq!(page.items[0].id, recent.id);
+        service.batch_action(&[BUILT_IN_NOTE_ID.into()], BatchAction::Trash).unwrap();
+        assert!(service.get_note(BUILT_IN_NOTE_ID).unwrap().deleted_at.is_none());
+        drop(service);
+        drop(database);
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database, directory.path().join("attachments"));
+        assert!(!service.get_note(BUILT_IN_NOTE_ID).unwrap().is_pinned);
+        service.batch_action(&[BUILT_IN_NOTE_ID.into()], BatchAction::Pin).unwrap();
+        assert_eq!(service.list_notes(query(UNCATEGORIZED_ID, 0, 1)).unwrap().items[0].id, BUILT_IN_NOTE_ID);
+    }
+
+}
+
+#[cfg(test)]
+mod search_performance_regressions {
+    use super::*;
+
+    #[test]
+    fn substring_search_preserves_chinese_partial_words_and_index_updates() {
+        let root = tempfile::tempdir().unwrap();
+        let database = Arc::new(Database::open(&root.path().join("test.db")).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        let note = service.create_note(None, "检索测试", Some(text_document("欢迎来到我的知识库 MiXeDSubstring 中文片段 😀😃😄"))).unwrap();
+        for needle in ["我的知识", "知", "知识", "中", "文片", "e", "eD", "edSub", "mixedsubstring", "😀", "😀😃😄"] {
+            assert!(service.global_search(needle, 50).unwrap().iter().any(|hit| hit.id == note.id), "{needle}");
+        }
+        for needle in ["不存在的词", "abc\" OR title:xyz", "NEAR(a b)"] {
+            assert!(service.global_search(needle, 50).unwrap().is_empty(), "{needle}");
+        }
+        assert!(service.global_search("%", 50).unwrap().iter().any(|hit| hit.id == note.id));
+        database.with_write(|tx| { tx.execute("UPDATE notes SET plain_text='更新后的内容' WHERE id=?1", [&note.id])?; Ok(()) }).unwrap();
+        assert!(service.global_search("我的知识", 50).unwrap().is_empty());
+        assert!(service.global_search("后的内", 50).unwrap().iter().any(|hit| hit.id == note.id));
+        service.batch_action(std::slice::from_ref(&note.id), BatchAction::Trash).unwrap();
+        assert!(service.global_search("后的内", 50).unwrap().is_empty());
+        service.batch_action(std::slice::from_ref(&note.id), BatchAction::DeletePermanently).unwrap();
+        assert!(service.global_search("后的内", 50).unwrap().is_empty());
+    }
+
+    #[test]
+    fn substring_migration_indexes_existing_documents_without_changing_them() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("test.db");
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        let note = service.create_note(None, "升级前", Some(text_document("迁移前保留的内容"))).unwrap();
+        database.with_write(|tx| { tx.execute_batch("DROP TRIGGER notes_substring_insert; DROP TRIGGER notes_substring_delete; DROP TRIGGER notes_substring_update; DROP TABLE notes_substring_fts; DROP INDEX idx_notes_category_pinned_sort; PRAGMA user_version=17;")?; Ok(()) }).unwrap();
+        drop(service); drop(database);
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        assert_eq!(database.user_version().unwrap(), 19);
+        assert_eq!(service.get_note(&note.id).unwrap().document, note.document);
+        assert_eq!(service.get_note(&note.id).unwrap().revision, note.revision);
+        assert!(service.global_search("前保留", 50).unwrap().iter().any(|hit| hit.id == note.id));
+    }
+
+    #[test]
+    fn recent_probe_keeps_older_matches_and_merges_newer_jottings() {
+        let root = tempfile::tempdir().unwrap();
+        let database = Arc::new(Database::open(&root.path().join("test.db")).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        database.with_write(|tx| {
+            for index in 0..300 {
+                tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,schema_version,content_hash,revision,is_favorite,is_archived,created_at,updated_at) VALUES(?1,?2,?3,'{}',?4,1,'audit',1,0,0,'2026-01-01',?5)",params![format!("audit-{index:04}"),UNCATEGORIZED_ID,"common search",if index==0 { "older-unique-needle" } else { "body" }, format!("2026-01-01T00:{:02}:{:02}Z",index/60,index%60)])?;
+            }
+            tx.execute("INSERT INTO jottings(id,name,content,sort_order,created_at,updated_at) VALUES('jot-search','common search','',0,'2026-10-15','2026-10-15')",[])?;
+            Ok(())
+        }).unwrap();
+        let older = service.global_search("unique-needle", 5).unwrap();
+        assert_eq!(older.len(), 1); assert_eq!(older[0].id, "audit-0000");
+        let common = service.global_search("common search", 5).unwrap();
+        assert_eq!(common.len(), 5); assert_eq!(common[0].id, "jot-search");
+        assert_eq!(common[1].id, "audit-0299");
+    }
+
+    #[test]
+    fn development_version_eighteen_index_upgrades_to_short_substring_search() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("test.db");
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        let note = service.create_note(None, "旧索引升级", Some(text_document("保留知识与单字查询"))).unwrap();
+        database.with_write(|tx| {
+            tx.execute_batch("DROP TRIGGER notes_substring_insert; DROP TRIGGER notes_substring_delete; DROP TRIGGER notes_substring_update; DROP TABLE notes_substring_fts; DROP VIEW notes_substring_content;
+                CREATE VIRTUAL TABLE notes_substring_fts USING fts5(title,plain_text,content='notes',content_rowid='rowid',tokenize='trigram');
+                INSERT INTO notes_substring_fts(notes_substring_fts) VALUES('rebuild'); PRAGMA user_version=18;")?;
+            Ok(())
+        }).unwrap();
+        drop(service); drop(database);
+        let database = Arc::new(Database::open(&path).unwrap());
+        let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
+        for needle in ["知","知识","查询"] { assert!(service.global_search(needle,50).unwrap().iter().any(|hit|hit.id==note.id)); }
+        assert_eq!(service.get_note(&note.id).unwrap().revision,note.revision);
+        database.with_write(|tx| { tx.execute("INSERT INTO notes_substring_fts(notes_substring_fts,rank) VALUES('integrity-check',1)",[])?; Ok(()) }).unwrap();
+    }
 }

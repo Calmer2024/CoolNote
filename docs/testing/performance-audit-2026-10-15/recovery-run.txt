@@ -1,0 +1,9 @@
+blocks=10 serialized_bytes=1903
+metric=current-unbuffered-recovery n=30 median_ms=4.01 p95_ms=4.68
+metric=buffered-recovery-same-fsync n=30 median_ms=2.00 p95_ms=3.92
+blocks=1000 serialized_bytes=158323
+metric=current-unbuffered-recovery n=30 median_ms=80.21 p95_ms=83.16
+metric=buffered-recovery-same-fsync n=30 median_ms=2.86 p95_ms=4.37
+blocks=5000 serialized_bytes=790323
+metric=current-unbuffered-recovery n=30 median_ms=648.05 p95_ms=734.28
+metric=buffered-recovery-same-fsync n=30 median_ms=5.78 p95_ms=6.86

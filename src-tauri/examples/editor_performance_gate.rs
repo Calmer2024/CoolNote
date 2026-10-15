@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 const LARGE_TEXT_CHARS: usize = 100_000;
 const LARGE_BLOCK_COUNT: usize = 5_000;
-const SAVE_THRESHOLD_MS: f64 = 750.0;
+const SAVE_THRESHOLD_MS: f64 = 100.0;
 const LOAD_THRESHOLD_MS: f64 = 500.0;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let library_id = "11111111-1111-4111-8111-111111111111";
     database.with_write(|tx| {
         tx.execute("INSERT INTO libraries(id,name,root_path,format_version,created_at,last_opened_at,last_clean_shutdown_at,settings_json,settings_revision) VALUES(?1,'Editor perf',?2,1,?3,?3,NULL,'{}',1)",params![library_id,root.path().to_string_lossy(),now])?;
-        tx.execute("INSERT INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at) VALUES(?1,NULL,'未分类','folder','#1687e8',0,?2,?2,NULL)",params![UNCATEGORIZED_ID,now])?;
+        tx.execute("INSERT OR IGNORE INTO categories(id,parent_id,name,icon_name,color,sort_order,created_at,updated_at,deleted_at) VALUES(?1,NULL,'未分类','folder','#1687e8',0,?2,?2,NULL)",params![UNCATEGORIZED_ID,now])?;
         Ok(())
     })?;
     std::fs::create_dir_all(root.path().join("attachments"))?;
@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         base_revision: text_note.revision,
         client_transaction_id: Uuid::new_v4().to_string(),
         title: "十万字".into(),
-        document_json: text_document,
+        document_json: text_document.clone(),
         markdown_snapshot: text_markdown.clone(),
     })?;
     report("save-100k-chars", started, SAVE_THRESHOLD_MS)?;
@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         base_revision: block_note.revision,
         client_transaction_id: Uuid::new_v4().to_string(),
         title: "五千块".into(),
-        document_json: block_document,
+        document_json: block_document.clone(),
         markdown_snapshot: block_markdown.clone(),
     })?;
     report("save-5000-blocks", started, SAVE_THRESHOLD_MS)?;
@@ -81,6 +81,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let loaded = workspace.get_note(&block_note.id)?;
     assert_eq!(loaded.document.content.len(), LARGE_BLOCK_COUNT);
     report("load-5000-blocks", started, LOAD_THRESHOLD_MS)?;
+
+    benchmark_repeated(&workspace,&saves,&text_note.id,&text_document,&text_markdown,"100k-chars")?;
+    benchmark_repeated(&workspace,&saves,&block_note.id,&block_document,&block_markdown,"5000-blocks")?;
 
     database.with_write(|tx| {
         tx.execute(
@@ -93,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(exported, block_markdown);
     assert!(workspace.get_note(&block_note.id).is_err());
     let version_count = database.query_i64("SELECT COUNT(*) FROM note_versions")?;
-    assert_eq!(version_count, 2);
+    assert_eq!(version_count, 62);
     println!("metric=independent-markdown-export status=passed versions={version_count}");
     Ok(())
 }
@@ -111,6 +114,20 @@ fn report(
     println!("metric={name} elapsed_ms={elapsed:.2} threshold_ms={threshold_ms:.2}");
     if elapsed > threshold_ms {
         return Err(format!("{name} {elapsed:.2}ms exceeds {threshold_ms:.2}ms").into());
+    }
+    Ok(())
+}
+
+fn benchmark_repeated(workspace:&WorkspaceService,saves:&SaveService,id:&str,document:&Value,markdown:&str,label:&str)->Result<(),Box<dyn std::error::Error>> {
+    let mut loads=Vec::new();let mut writes=Vec::new();
+    for sample in 0..30 {
+        let started=Instant::now();let note=workspace.get_note(id)?;loads.push(started.elapsed().as_secs_f64()*1000.0);
+        let request=SaveNoteRequest{note_id:id.into(),base_revision:note.revision,client_transaction_id:Uuid::new_v4().to_string(),title:format!("{label} sample {sample}"),document_json:document.clone(),markdown_snapshot:markdown.into()};
+        let started=Instant::now();saves.save_note(request)?;writes.push(started.elapsed().as_secs_f64()*1000.0);
+    }
+    for (name,values,threshold) in [("save",&mut writes,SAVE_THRESHOLD_MS),("load",&mut loads,LOAD_THRESHOLD_MS)] {
+        values.sort_by(f64::total_cmp);let p95=values[28];println!("metric={name}-{label}-repeated n=30 median_ms={:.2} p95_ms={p95:.2} threshold_ms={threshold:.2}",values[15]);
+        if p95>threshold {return Err(format!("{name}-{label} P95 exceeds {threshold}ms").into());}
     }
     Ok(())
 }

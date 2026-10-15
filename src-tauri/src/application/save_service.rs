@@ -191,6 +191,30 @@ mod tests {
     use crate::infrastructure::database::Database;
 
     #[test]
+    fn interrupted_large_save_keeps_a_complete_recoverable_draft_and_original_revision() {
+        let directory = tempfile::tempdir().unwrap();
+        let database = Arc::new(Database::open(&directory.path().join("coolnote.db")).unwrap());
+        let recovery = RecoveryStore::new(directory.path().join("recovery")).unwrap();
+        let workspace = WorkspaceService::new(database.clone(), directory.path().join("attachments"));
+        let note = workspace.create_note(None, "原稿", None).unwrap();
+        let service = SaveService::new(Uuid::new_v4().to_string(), database, recovery.clone());
+        let content=(0..5000).map(|_|serde_json::json!({"type":"paragraph","attrs":{"blockId":Uuid::new_v4().to_string()},"content":[{"type":"text","text":"完整的恢复内容"}]})).collect::<Vec<_>>();
+        let document=serde_json::json!({"schemaVersion":1,"type":"doc","content":content});
+        let request=SaveNoteRequest{note_id:note.id.clone(),base_revision:note.revision,client_transaction_id:Uuid::new_v4().to_string(),title:"修改后".into(),document_json:document.clone(),markdown_snapshot:"# 修改后\n\n完整的恢复内容\n".into()};
+        assert!(matches!(service.save_note_with_fault(request.clone(),SaveFault::BeforeCommit),Err(AppError::InjectedFailure)));
+        let draft=recovery.get(&note.id).unwrap().unwrap();
+        let restored=validate_document(&draft.document_json).unwrap();
+        assert_eq!(restored.content.len(),5000);
+        assert_eq!(draft.markdown_snapshot,request.markdown_snapshot);
+        assert_eq!(workspace.get_note(&note.id).unwrap().revision,note.revision);
+        assert_eq!(workspace.get_note(&note.id).unwrap().title,"原稿");
+        let saved=service.save_note(request).unwrap();
+        assert_eq!(saved.revision,note.revision+1);
+        assert!(recovery.get(&note.id).unwrap().is_none());
+        assert_eq!(workspace.get_note(&note.id).unwrap().document.content.len(),5000);
+    }
+
+    #[test]
     fn identical_save_keeps_revision_and_updated_at() {
         let directory = tempfile::tempdir().expect("temporary library");
         let database =

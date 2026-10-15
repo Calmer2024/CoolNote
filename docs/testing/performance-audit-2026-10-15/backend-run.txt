@@ -1,0 +1,22 @@
+   Compiling coolnote v1.0.20 (D:\Files\Github\CoolNote\src-tauri)
+    Finished `release` profile [optimized] target(s) in 1.65s
+     Running `src-tauri\.target\perf\release\examples\performance_audit.exe`
+plan=list-current-all SEARCH n USING INDEX idx_notes_active_sort (deleted_at=? AND is_archived=?) | LIST SUBQUERY 1 | SCAN notes_fts VIRTUAL TABLE INDEX 0:M2 | CREATE BLOOM FILTER | USE TEMP B-TREE FOR ORDER BY
+metric=list-current-all median_ms=19.59 p95_ms=21.73 threshold_ms=1000000.00
+plan=list-direct-pin-order SEARCH n USING INDEX idx_notes_active_sort (deleted_at=? AND is_archived=?) | LIST SUBQUERY 1 | SCAN notes_fts VIRTUAL TABLE INDEX 0:M2 | CREATE BLOOM FILTER
+metric=list-direct-pin-order median_ms=0.02 p95_ms=0.03 threshold_ms=1000000.00
+plan=list-current-category SEARCH n USING INDEX idx_notes_active_sort (deleted_at=? AND is_archived=?) | LIST SUBQUERY 1 | SCAN notes_fts VIRTUAL TABLE INDEX 0:M2 | CREATE BLOOM FILTER | USE TEMP B-TREE FOR ORDER BY
+metric=list-current-category median_ms=196.66 p95_ms=204.59 threshold_ms=1000000.00
+plan=global-like-miss SEARCH notes USING INDEX idx_notes_updated_at (deleted_at=?)
+metric=global-like-miss median_ms=196.87 p95_ms=202.30 threshold_ms=1000000.00
+plan=global-like-common SEARCH notes USING INDEX idx_notes_updated_at (deleted_at=?)
+metric=global-like-common median_ms=0.02 p95_ms=0.03 threshold_ms=1000000.00
+plan=fts-token-common SEARCH n USING INTEGER PRIMARY KEY (rowid=?) | LIST SUBQUERY 1 | SCAN notes_fts VIRTUAL TABLE INDEX 0:M2 | USE TEMP B-TREE FOR ORDER BY
+metric=fts-token-common median_ms=193.72 p95_ms=196.53 threshold_ms=1000000.00
+metric=service-list-all median_ms=32.88 p95_ms=34.88 threshold_ms=100.00
+metric=service-list-category median_ms=348.25 p95_ms=393.61 threshold_ms=100.00
+metric=service-search-miss median_ms=28.15 p95_ms=29.80 threshold_ms=100.00
+metric=list-100k median_ms=73.15 p95_ms=74.71 threshold_ms=100.00
+metric=load-10-block median_ms=0.13 p95_ms=0.16 threshold_ms=100.00
+metric=save-revision-safe median_ms=13.97 p95_ms=24.68 threshold_ms=150.00
+dataset notes=100000 blocks=1000000 samples=30 temporary=C:\Users\28109\AppData\Local\Temp\.tmp5SoMLX

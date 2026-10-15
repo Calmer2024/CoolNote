@@ -5,6 +5,14 @@ use rusqlite::{Connection, OpenFlags, Transaction};
 
 use crate::domain::error::AppError;
 
+// Pad character boundaries so even one character is a three-codepoint FTS phrase.
+pub fn encode_substring_text(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len() + (value.chars().count() + 1) * 3);
+    encoded.push('\u{e000}');
+    for ch in value.chars() { encoded.push(ch); encoded.push('\u{e000}'); }
+    encoded
+}
+
 const INITIAL_MIGRATION: &str = include_str!("../../migrations/0001_initial.sql");
 const LIBRARY_SETTINGS_REVISION_MIGRATION: &str =
     include_str!("../../migrations/0002_library_settings_revision.sql");
@@ -110,6 +118,13 @@ impl Database {
                 | OpenFlags::SQLITE_OPEN_FULL_MUTEX,
         )?;
         connection.busy_timeout(std::time::Duration::from_secs(5))?;
+        connection.create_scalar_function(
+            "coolnote_search_encode", 1,
+            rusqlite::functions::FunctionFlags::SQLITE_UTF8
+                | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+                | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS,
+            |context| Ok(encode_substring_text(&context.get::<String>(0)?)),
+        )?;
         connection.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;")?;
 
         let database = Self {
@@ -197,6 +212,18 @@ impl Database {
             transaction.pragma_update(None, "user_version", 15)?;
             transaction.commit()?;
         }
+        if self.user_version()? < 16 {
+            self.lock()?.execute_batch(include_str!("../../migrations/0016_note_pinning.sql"))?;
+        }
+        if self.user_version()? < 17 {
+            self.lock()?.execute_batch(include_str!("../../migrations/0017_unified_note_pinning.sql"))?;
+        }
+        if self.user_version()? < 18 {
+            self.lock()?.execute_batch(include_str!("../../migrations/0018_note_query_performance.sql"))?;
+        }
+        if self.user_version()? < 19 {
+            self.lock()?.execute_batch(include_str!("../../migrations/0019_short_substring_search.sql"))?;
+        }
         Ok(())
     }
 
@@ -263,13 +290,13 @@ mod tests {
         let database = Database::open(&directory.path().join("coolnote.db"))
             .expect("fresh database should open");
 
-        assert_eq!(database.user_version().expect("user version"), 15);
+        assert_eq!(database.user_version().expect("user version"), 19);
         assert!(column_exists(&database, "tasks", "importance"));
         assert!(column_exists(&database, "galleries", "introduction"));
         assert!(column_exists(&database, "galleries", "cover"));
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert!(!column_exists(&database, "categories", "is_pinned"));
-        assert!(!column_exists(&database, "notes", "is_pinned"));
+        assert!(column_exists(&database, "notes", "is_pinned"));
         assert!(column_exists(&database, "notes", "markdown_snapshot"));
         assert!(column_exists(&database, "notes", "mood"));
         assert!(column_exists(&database, "attachments", "content_hash"));
@@ -342,7 +369,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version five database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 15);
+        assert_eq!(database.user_version().expect("user version"), 19);
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert_eq!(
             database
@@ -402,7 +429,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version fourteen database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 15);
+        assert_eq!(database.user_version().expect("user version"), 19);
         assert_eq!(
             database
                 .query_i64(

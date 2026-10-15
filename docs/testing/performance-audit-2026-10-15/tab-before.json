@@ -1,0 +1,507 @@
+[
+  {
+    "environment": {
+      "production": true,
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+      "blocks": 1000,
+      "tasks": 30
+    }
+  },
+  {
+    "mode": "notes",
+    "ready": {
+      "n": 12,
+      "median_ms": 107.80000000074506,
+      "p95_ms": 129.79999999701977
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 318.30000000074506,
+      "p95_ms": 330.5
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 9
+  },
+  {
+    "mode": "jottings",
+    "ready": {
+      "n": 12,
+      "median_ms": 73.10000000149012,
+      "p95_ms": 159.19999999925494
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 277.69999999925494,
+      "p95_ms": 358
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 7
+  },
+  {
+    "mode": "tasks",
+    "ready": {
+      "n": 12,
+      "median_ms": 46.399999998509884,
+      "p95_ms": 72.30000000074506
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 227.10000000149012,
+      "p95_ms": 235.39999999850988
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 7
+  },
+  {
+    "mode": "gallery",
+    "ready": {
+      "n": 12,
+      "median_ms": 7.300000000745058,
+      "p95_ms": 8.900000002235174
+    },
+    "settled": {
+      "n": 12,
+      "median_ms": 211.40000000223517,
+      "p95_ms": 215.69999999925494
+    },
+    "editor_reuse_count": 0,
+    "finite_animation_max": 7
+  },
+  {
+    "samples": [
+      {
+        "cycle": 0,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 159.19999999925494,
+        "settled_ms": 358,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 0,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 72.30000000074506,
+        "settled_ms": 235.39999999850988,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 0,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 8.900000002235174,
+        "settled_ms": 215.10000000149012,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 0,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 128.10000000149012,
+        "settled_ms": 330.5,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 1,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 80.30000000074506,
+        "settled_ms": 277.6000000014901,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 1,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.399999998509884,
+        "settled_ms": 228,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 1,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.199999999254942,
+        "settled_ms": 214.09999999776483,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 1,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 118.90000000223517,
+        "settled_ms": 327.30000000074506,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 2,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 87.80000000074506,
+        "settled_ms": 294.4000000022352,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 2,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.19999999925494,
+        "settled_ms": 223.59999999776483,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 2,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.199999999254942,
+        "settled_ms": 211.40000000223517,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 2,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 129.79999999701977,
+        "settled_ms": 322.29999999701977,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 3,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 73.10000000149012,
+        "settled_ms": 277.1000000014901,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 3,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.399999998509884,
+        "settled_ms": 227.5,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 3,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 6.800000000745058,
+        "settled_ms": 207.39999999850988,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 3,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 117.30000000074506,
+        "settled_ms": 327.5999999977648,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 4,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 69.90000000223517,
+        "settled_ms": 276.20000000298023,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 4,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 48.100000001490116,
+        "settled_ms": 227.10000000149012,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 4,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 6.800000000745058,
+        "settled_ms": 213.80000000074506,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 4,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 108.79999999701977,
+        "settled_ms": 322.29999999701977,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 5,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 70.89999999850988,
+        "settled_ms": 276.19999999925494,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 5,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.30000000074506,
+        "settled_ms": 224.30000000074506,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 5,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.399999998509884,
+        "settled_ms": 209.89999999850988,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 5,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 107.80000000074506,
+        "settled_ms": 318.30000000074506,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 6,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 76.69999999925494,
+        "settled_ms": 278.3999999985099,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 6,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 48.19999999925494,
+        "settled_ms": 226,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 6,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.600000001490116,
+        "settled_ms": 209.69999999925494,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 6,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 102.30000000074506,
+        "settled_ms": 310.69999999925494,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 7,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 72.09999999776483,
+        "settled_ms": 274.0999999977648,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 7,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 45.30000000074506,
+        "settled_ms": 227.60000000149012,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 7,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.699999999254942,
+        "settled_ms": 214.09999999776483,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 7,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 104.5,
+        "settled_ms": 314.6000000014901,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 8,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 69.69999999925494,
+        "settled_ms": 273.80000000074506,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 8,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 48.30000000074506,
+        "settled_ms": 226.59999999776483,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 8,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 8,
+        "settled_ms": 210.80000000074506,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 8,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 100.80000000074506,
+        "settled_ms": 310.70000000298023,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 9,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 70.90000000223517,
+        "settled_ms": 277.69999999925494,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 9,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.80000000074506,
+        "settled_ms": 223.39999999850988,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 9,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.300000000745058,
+        "settled_ms": 215.69999999925494,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 9,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 106.39999999850988,
+        "settled_ms": 314.79999999701977,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 10,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 75.09999999776483,
+        "settled_ms": 281,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 10,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 46.19999999925494,
+        "settled_ms": 223.30000000074506,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 10,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.199999999254942,
+        "settled_ms": 211.19999999925494,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 10,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 107.80000000074506,
+        "settled_ms": 317.8999999985099,
+        "finite_animations": 9,
+        "editor_reused": false
+      },
+      {
+        "cycle": 11,
+        "from": "notes",
+        "to": "jottings",
+        "ready_ms": 71.19999999925494,
+        "settled_ms": 278.80000000074506,
+        "finite_animations": 7,
+        "editor_reused": false
+      },
+      {
+        "cycle": 11,
+        "from": "jottings",
+        "to": "tasks",
+        "ready_ms": 44.400000002235174,
+        "settled_ms": 231,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 11,
+        "from": "tasks",
+        "to": "gallery",
+        "ready_ms": 7.099999997764826,
+        "settled_ms": 210.80000000074506,
+        "finite_animations": 7,
+        "editor_reused": null
+      },
+      {
+        "cycle": 11,
+        "from": "gallery",
+        "to": "notes",
+        "ready_ms": 105.80000000074506,
+        "settled_ms": 311.19999999925494,
+        "finite_animations": 9,
+        "editor_reused": false
+      }
+    ],
+    "status": "complete"
+  }
+]

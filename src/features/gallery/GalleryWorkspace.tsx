@@ -1,3 +1,5 @@
+import { useWorkspaceVisibility } from '../../shared/workspaceVisibility'
+import { useWorkspaceMemory } from '../../shared/workspaceMemory'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -24,7 +26,8 @@ const fileDataUrl=(file:File)=>new Promise<string>((resolve,reject)=>{const read
 const writeImageToClipboard=async(dataUrl:string)=>{let blob=await(await fetch(dataUrl)).blob();if(blob.type!=='image/png'){const image=new Image();image.src=dataUrl;await image.decode();const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;canvas.getContext('2d')?.drawImage(image,0,0);blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('无法转换剪贴板图片')),'image/png'))}await navigator.clipboard.write([new ClipboardItem({'image/png':blob})])}
 
 export function GalleryWorkspace({collapsed,openGalleryId,onToggle,onToast,onError,onCountChange,onConfirm}:Props){
-  const [galleries,setGalleries]=useState<GallerySummaryDto[]>([]);const [selectedId,setSelectedId]=useState<string|null>(null)
+  const workspaceVisible=useWorkspaceVisibility()
+  const [galleries,setGalleries]=useState<GallerySummaryDto[]>([]);const [selectedId,setSelectedId]=useWorkspaceMemory<string|null>('gallery',null)
   const [items,setItems]=useState<GalleryItemDto[]>([]);const [total,setTotal]=useState(0);const [loading,setLoading]=useState(true);const [loadingMore,setLoadingMore]=useState(false)
   const [draftName,setDraftName]=useState<string|null>(null);const [renamingId,setRenamingId]=useState<string|null>(null);const [renameValue,setRenameValue]=useState('')
   const [name,setName]=useState('');const [introduction,setIntroduction]=useState('');const [cover,setCover]=useState<string|null>(null);const [coverMenu,setCoverMenu]=useState(false);const [saveState,setSaveState]=useState('已保存');const dirty=useRef(false);const coverButtonRef=useRef<HTMLButtonElement>(null);const coverUploadRef=useRef<HTMLInputElement>(null)
@@ -39,7 +42,7 @@ export function GalleryWorkspace({collapsed,openGalleryId,onToggle,onToast,onErr
   useEffect(()=>{if(openGalleryId&&galleries.some(x=>x.id===openGalleryId))setSelectedId(openGalleryId)},[openGalleryId,galleries])
   useEffect(()=>{if(!current){setItems([]);setTotal(0);setName('');setIntroduction('');setCover(null);return}setName(current.name);setIntroduction(current.introduction);setCover(current.cover);dirty.current=false;setSaveState('已保存');setSelected(new Set());setSelecting(false);void loadItems(current.id).catch(cause=>onError(cause instanceof Error?cause.message:'无法加载画廊图片'))},[current?.id])
   useEffect(()=>{if(!current||!dirty.current)return;setSaveState('保存中…');const timer=window.setTimeout(()=>{const base=current.revision;void updateGallery(current.id,base,name,introduction,cover).then(saved=>{setGalleries(values=>values.map(value=>value.id===saved.id?saved:value));dirty.current=false;setSaveState('已保存')}).catch(cause=>{setSaveState('保存失败');onError(cause instanceof Error?cause.message:'画廊保存失败')})},300);return()=>window.clearTimeout(timer)},[name,introduction,cover,current?.id,current?.revision,onError])
-  useEffect(()=>{if(!lightbox)return;const key=(event:KeyboardEvent)=>{if(event.key==='Escape')setLightbox(null);if(event.key==='ArrowLeft')void openAt(currentIndex-1);if(event.key==='ArrowRight')void openAt(currentIndex+1)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[lightbox,currentIndex,items])
+  useEffect(()=>{if(!lightbox||!workspaceVisible)return;const key=(event:KeyboardEvent)=>{if(event.key==='Escape')setLightbox(null);if(event.key==='ArrowLeft')void openAt(currentIndex-1);if(event.key==='ArrowRight')void openAt(currentIndex+1)};document.addEventListener('keydown',key);return()=>document.removeEventListener('keydown',key)},[lightbox,currentIndex,items,workspaceVisible])
   useEffect(()=>{const clearDropState=()=>setDropActive(false);window.addEventListener('drop',clearDropState,true);window.addEventListener('dragend',clearDropState,true);window.addEventListener('blur',clearDropState);return()=>{window.removeEventListener('drop',clearDropState,true);window.removeEventListener('dragend',clearDropState,true);window.removeEventListener('blur',clearDropState)}},[])
 
   const create=async()=>{const value=draftName?.trim();setDraftName(null);if(!value)return;try{const created=await createGallery(value);await refreshGalleries(created.id);onToast('画廊已新建')}catch(cause){onError(cause instanceof Error?cause.message:'创建画廊失败')}}

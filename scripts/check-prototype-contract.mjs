@@ -56,7 +56,7 @@ const categoryIconCount=(appSource.match(/const categoryIcons=\[([^\]]+)\]/)?.[1
 const designRules=[
   [/const moods\s*=\s*\[\s*"😀"/.test(noteEditorSource)&&noteEditorSource.includes('"今天修改"')&&uxSource.includes('grid-template-columns:repeat(6,minmax(0,1fr))')&&uxSource.includes('overflow:hidden'),'心情元信息必须使用相对日期、30 个 Emoji 的 6×5 网格且不得横向溢出'],
   [!appCss.includes('translateX(-50%)')&&noteEditorCompact.includes('left:slash.left,top:slash.top')&&noteEditorSource.includes('placement="bottom-start"'),'公式输入浮层必须位于触发点正下方并保持左对齐'],
-  [!appSource.includes("id:'pinned'")&&!appSource.includes('置顶')&&!notesPanelSource.includes('置顶'),'笔记与分类不得保留置顶入口或侧边栏视图'],
+  [!appSource.includes("id:'pinned'")&&notesPanelSource.includes('置顶'),'笔记置顶必须位于列表内，不得添加独立侧边栏分类'],
   [!/<strong>新建(?:笔记|小记|文件夹|分类)<\/strong>/.test(appSource+jottingSource),'新建菜单不得使用粗体标签'],
   [!appSource.includes('创建当前分类的子分类'),'分类菜单不得提供子分类入口'],
   [uxSource.includes('.note-editor-content .ProseMirror-selectednode')&&uxSource.includes('border-color:transparent!important'),'文本块选中态不得出现边框'],

@@ -1143,7 +1143,7 @@
 
       /* 小记：资源树与衬线 Markdown 工作区。 */
       .workspace[data-mode="jottings"] {
-        --notes-current-width: clamp(248px, 17vw, 310px);
+        --notes-current-width: var(--workspace-list-width);
         --accent: #8466c6;
         --accent-hover: #7355b8;
         --accent-soft: #f4f0ff;

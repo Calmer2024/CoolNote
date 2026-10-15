@@ -1,3 +1,4 @@
+import { useWorkspaceMemory } from '../../shared/workspaceMemory'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Icon } from '../../shared/components/Icon'
@@ -53,8 +54,8 @@ function TaskIconPicker({ anchor, icon, onIcon, onDismiss }:{ anchor:React.RefOb
 export function TaskWorkspace(props:Props) {
   const [data,setData]=useState<TaskSnapshotDto>(empty)
   const [loading,setLoading]=useState(true)
-  const [scope,setScope]=useState<Scope>('inbox')
-  const [view,setView]=useState<'table'|'calendar'>('table')
+  const [scope,setScope]=useWorkspaceMemory<Scope>('taskScope','inbox')
+  const [view,setView]=useWorkspaceMemory<'table'|'calendar'>('taskView','table')
   const [selected,setSelected]=useState<string|null>(null)
   const [expanded,setExpanded]=useState<Set<string>>(new Set())
   const [completing,setCompleting]=useState<Set<string>>(new Set())
@@ -80,7 +81,7 @@ export function TaskWorkspace(props:Props) {
   const newTaskInput=useRef<HTMLInputElement>(null)
   const taskDetailRef=useRef<HTMLElement>(null)
 
-  const refresh=async()=>{try{const next=await getTaskSnapshot();setData(next);props.onCountChange(next.tasks.filter(x=>!x.isCompleted).length)}catch(cause){props.onError(cause instanceof Error?cause.message:'无法加载任务')}finally{setLoading(false)}}
+  const refresh=async()=>{try{const next=await getTaskSnapshot();setData(next);setScope(current=>current.startsWith('list:')&&!next.lists.some(list=>list.id===current.slice(5))?'inbox':current);props.onCountChange(next.tasks.filter(x=>!x.isCompleted).length)}catch(cause){props.onError(cause instanceof Error?cause.message:'无法加载任务')}finally{setLoading(false)}}
   useEffect(()=>{void refresh()},[])
   useEffect(()=>{if(creatingTask)newTaskInput.current?.focus()},[creatingTask])
   useEffect(()=>{if(!selected)return;const close=(event:PointerEvent)=>{const target=event.target as Element|null;if(!target||taskDetailRef.current?.contains(target))return;setSelected(null)};document.addEventListener('pointerdown',close,true);return()=>document.removeEventListener('pointerdown',close,true)},[selected])

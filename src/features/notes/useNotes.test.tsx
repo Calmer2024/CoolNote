@@ -38,6 +38,7 @@ const note = {
 describe('useNotes list loading lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     commands.initializeLibrary.mockResolvedValue({ id: 'library', name: 'CoolNote' })
     commands.getWorkspaceSnapshot.mockResolvedValue({
       categories: [],
@@ -157,4 +158,39 @@ describe('useNotes list loading lifecycle', () => {
     expect(result.current.notes[0]?.id).toBe('archived-note')
     expect(result.current.isLoadingList).toBe(false)
   })
+  it('restores the last category and note after remounting', async () => {
+    commands.getWorkspaceSnapshot.mockResolvedValue({ categories:[{id:'category-1'}],systemCounts:{} })
+    commands.getWorkspaceNote.mockResolvedValue({...note,categoryId:'category-1'})
+    localStorage.setItem('coolnote.workspace.notes',JSON.stringify({view:'all',categoryId:'category-1',selectedNoteId:'note-1'}))
+    const first = renderHook(() => useNotes())
+    await waitFor(() => expect(first.result.current.status).toBe('ready'))
+    expect(first.result.current.categoryId).toBe('category-1')
+    expect(first.result.current.selectedNoteId).toBe('note-1')
+    expect(commands.queryNotes).toHaveBeenCalledWith(expect.objectContaining({categoryId:'category-1'}))
+    first.unmount()
+    const second = renderHook(() => useNotes())
+    await waitFor(() => expect(second.result.current.selectedNoteId).toBe('note-1'))
+    second.unmount()
+  })
+
+  it('falls back safely when the remembered category and note have been removed', async () => {
+    localStorage.setItem('coolnote.workspace.notes',JSON.stringify({view:'all',categoryId:'removed',selectedNoteId:'missing'}))
+    commands.getWorkspaceNote.mockRejectedValue(new Error('not found'))
+    const {result} = renderHook(() => useNotes())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.categoryId).toBeNull()
+    expect(result.current.selectedNote).toBeNull()
+    expect(result.current.notes).toHaveLength(1)
+  })
+
+  it('keeps a restored note beyond the first list page selected when refreshing', async () => {
+    localStorage.setItem('coolnote.workspace.notes',JSON.stringify({view:'all',categoryId:null,selectedNoteId:'note-2'}))
+    commands.getWorkspaceNote.mockResolvedValue({...note,id:'note-2'})
+    commands.queryNotes.mockResolvedValue({items:[summary],total:81})
+    const {result} = renderHook(() => useNotes())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    await act(async () => { await result.current.refresh() })
+    expect(result.current.selectedNoteId).toBe('note-2')
+  })
+
 })

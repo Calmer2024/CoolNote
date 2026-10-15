@@ -1,0 +1,17 @@
+
+> coolnote@1.0.20 perf:editor
+> node scripts/rust-build.mjs perf-editor
+
+    Blocking waiting for file lock on build directory
+   Compiling coolnote v1.0.20 (D:\Files\Github\CoolNote\src-tauri)
+    Finished `release` profile [optimized] target(s) in 1m 44s
+     Running `src-tauri\.target\perf\release\examples\editor_performance_gate.exe`
+metric=save-100k-chars elapsed_ms=21.18 threshold_ms=100.00
+metric=load-100k-chars elapsed_ms=0.73 threshold_ms=500.00
+metric=save-5000-blocks elapsed_ms=51.79 threshold_ms=100.00
+metric=load-5000-blocks elapsed_ms=16.92 threshold_ms=500.00
+metric=save-100k-chars-repeated n=30 median_ms=26.69 p95_ms=37.10 threshold_ms=100.00
+metric=load-100k-chars-repeated n=30 median_ms=0.55 p95_ms=0.84 threshold_ms=500.00
+metric=save-5000-blocks-repeated n=30 median_ms=34.41 p95_ms=45.36 threshold_ms=100.00
+metric=load-5000-blocks-repeated n=30 median_ms=15.20 p95_ms=17.89 threshold_ms=500.00
+metric=independent-markdown-export status=passed versions=62

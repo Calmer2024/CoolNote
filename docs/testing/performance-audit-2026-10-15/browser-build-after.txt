@@ -1,0 +1,147 @@
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2672 modules transformed.
+rendering chunks...
+computing gzip size...
+../../.perf-audit-dist/index.html                                                         0.33 kB │ gzip:   0.24 kB
+../../.perf-audit-dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff                           4.42 kB
+../../.perf-audit-dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2                          4.93 kB
+../../.perf-audit-dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2                          5.21 kB
+../../.perf-audit-dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2                          5.47 kB
+../../.perf-audit-dist/assets/google-sans-flex-syriac-wght-normal-CspMfZeP.woff2          5.48 kB
+../../.perf-audit-dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff                           5.98 kB
+../../.perf-audit-dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff                           6.19 kB
+../../.perf-audit-dist/assets/KaTeX_Size1-Regular-C195tn64.woff                           6.50 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2                    6.91 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2                       6.91 kB
+../../.perf-audit-dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf                            7.59 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff                     7.66 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff                        7.72 kB
+../../.perf-audit-dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2                         9.64 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2                     10.34 kB
+../../.perf-audit-dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf                           10.36 kB
+../../.perf-audit-dist/assets/KaTeX_Script-Regular-D5yQViql.woff                         10.59 kB
+../../.perf-audit-dist/assets/google-sans-flex-vietnamese-wght-normal-BYkxoBzi.woff2     11.11 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2                       11.32 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2                          11.35 kB
+../../.perf-audit-dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf                           11.51 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2                      12.03 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2                        12.22 kB
+../../.perf-audit-dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf                           12.23 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff                      12.32 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf                     12.34 kB
+../../.perf-audit-dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf                        12.37 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff                        13.21 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff                           13.30 kB
+../../.perf-audit-dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2                    13.57 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff                       14.11 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff                         14.41 kB
+../../.perf-audit-dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff                     16.03 kB
+../../.perf-audit-dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2                       16.40 kB
+../../.perf-audit-dist/assets/KaTeX_Math-Italic-t53AETM-.woff2                           16.44 kB
+../../.perf-audit-dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf                          16.65 kB
+../../.perf-audit-dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2                       16.78 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2                           16.99 kB
+../../.perf-audit-dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff                        18.67 kB
+../../.perf-audit-dist/assets/KaTeX_Math-Italic-DA0__PXp.woff                            18.75 kB
+../../.perf-audit-dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff                        19.41 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf                       19.44 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf                         19.57 kB
+../../.perf-audit-dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf                            19.58 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Italic-BMLOBm91.woff                            19.68 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf                        22.36 kB
+../../.perf-audit-dist/assets/google-sans-flex-nushu-wght-normal-BbUpkz49.woff2          24.02 kB
+../../.perf-audit-dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf                          24.50 kB
+../../.perf-audit-dist/assets/google-sans-flex-symbols-wght-normal-D5nm3B0V.woff2        24.86 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2                             25.32 kB
+../../.perf-audit-dist/assets/google-sans-flex-latin-ext-wght-normal-C0VXOeWd.woff2      25.58 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Regular-B22Nviop.woff2                          26.27 kB
+../../.perf-audit-dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf                      27.56 kB
+../../.perf-audit-dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2                           28.08 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff                              29.91 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff                           30.77 kB
+../../.perf-audit-dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf                         31.20 kB
+../../.perf-audit-dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf                             31.31 kB
+../../.perf-audit-dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf                         32.97 kB
+../../.perf-audit-dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff                            33.52 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf                             33.58 kB
+../../.perf-audit-dist/assets/google-sans-flex-math-wght-normal-D2ofpfms.woff2           38.84 kB
+../../.perf-audit-dist/assets/google-sans-flex-latin-wght-normal-CRMKv9uI.woff2          50.83 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf                               51.34 kB
+../../.perf-audit-dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf                            53.58 kB
+../../.perf-audit-dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf                             63.63 kB
+../../.perf-audit-dist/assets/ty-file-DHTR6xwx.woff                                     127.38 kB
+../../.perf-audit-dist/assets/index-B1cWlklf.css                                        214.43 kB │ gzip:  50.84 kB
+../../.perf-audit-dist/assets/channel-gNgMX7lj.js                                         0.12 kB │ gzip:   0.13 kB
+../../.perf-audit-dist/assets/init-Gi6I4Gst.js                                            0.15 kB │ gzip:   0.13 kB
+../../.perf-audit-dist/assets/chunk-2Q5K7J3B-jfIef6L8.js                                  0.19 kB │ gzip:   0.16 kB
+../../.perf-audit-dist/assets/chunk-JWPE2WC7-CldLpPv8.js                                  0.23 kB │ gzip:   0.17 kB
+../../.perf-audit-dist/assets/chunk-XXDRQBXY-BxuohJa_.js                                  0.24 kB │ gzip:   0.21 kB
+../../.perf-audit-dist/assets/chunk-5VM5RSS4-CjRhr8Ii.js                                  0.37 kB │ gzip:   0.27 kB
+../../.perf-audit-dist/assets/stateDiagram-v2-UEYNNEHI-BupxangN.js                        0.46 kB │ gzip:   0.32 kB
+../../.perf-audit-dist/assets/classDiagram-JCYQIIEL-D1TM3ssG.js                           0.50 kB │ gzip:   0.33 kB
+../../.perf-audit-dist/assets/classDiagram-v2-OCEON4UE-D1TM3ssG.js                        0.50 kB │ gzip:   0.33 kB
+../../.perf-audit-dist/assets/chunk-KBJHAD2P-BstomngC.js                                  0.51 kB │ gzip:   0.36 kB
+../../.perf-audit-dist/assets/swimlanesDiagram-ULZ7WXOC-DY9hoNNh.js                       0.58 kB │ gzip:   0.39 kB
+../../.perf-audit-dist/assets/infoDiagram-6WML65LV-BOAcK0GN.js                            0.61 kB │ gzip:   0.42 kB
+../../.perf-audit-dist/assets/sizeCapture-X5ZJPWSS-BdtNdeOl.js                            0.97 kB │ gzip:   0.55 kB
+../../.perf-audit-dist/assets/ordinal-Cboi1Yqb.js                                         1.19 kB │ gzip:   0.57 kB
+../../.perf-audit-dist/assets/railroadDiagram-AXF67PYL-B2VM9PHB.js                        1.64 kB │ gzip:   0.77 kB
+../../.perf-audit-dist/assets/abnfDiagram-N423BO3Z-CLy84YUT.js                            1.84 kB │ gzip:   0.91 kB
+../../.perf-audit-dist/assets/chunk-2GRJ4B5K-DFTXBPmb.js                                  1.88 kB │ gzip:   0.83 kB
+../../.perf-audit-dist/assets/pegDiagram-VL7TDLO6-C7Qzj81M.js                             1.99 kB │ gzip:   0.94 kB
+../../.perf-audit-dist/assets/ebnfDiagram-BXEA7PRR-DlBFsmOO.js                            2.04 kB │ gzip:   0.90 kB
+../../.perf-audit-dist/assets/arc-BS76xlTc.js                                             3.44 kB │ gzip:   1.49 kB
+../../.perf-audit-dist/assets/diagram-LBJQPF4R-BdIgaeEZ.js                                4.24 kB │ gzip:   1.85 kB
+../../.perf-audit-dist/assets/defaultLocale-DX6XiGOO.js                                   4.69 kB │ gzip:   2.18 kB
+../../.perf-audit-dist/assets/map-DxJ2ADlA.js                                             5.07 kB │ gzip:   2.07 kB
+../../.perf-audit-dist/assets/linear-CaFdPN85.js                                          5.66 kB │ gzip:   2.31 kB
+../../.perf-audit-dist/assets/diagram-UB23O5K3-yf-usdE1.js                                6.11 kB │ gzip:   2.64 kB
+../../.perf-audit-dist/assets/pieDiagram-7S7Q4E2Y-D-gAqeUi.js                             6.33 kB │ gzip:   2.64 kB
+../../.perf-audit-dist/assets/chunk-RYQCIY6F-C7P_RpC5.js                                  7.08 kB │ gzip:   2.72 kB
+../../.perf-audit-dist/assets/diagram-7IWD3JNH-OC4LYisP.js                                8.36 kB │ gzip:   3.73 kB
+../../.perf-audit-dist/assets/dagre-VZM6K2ZE-DdW7w8C6.js                                  8.60 kB │ gzip:   3.33 kB
+../../.perf-audit-dist/assets/cynefinDiagram-MW4NZA55-DxfFhObm.js                        10.13 kB │ gzip:   3.65 kB
+../../.perf-audit-dist/assets/stateDiagram-OKZ733FA-DkKyllVe.js                          10.45 kB │ gzip:   3.67 kB
+../../.perf-audit-dist/assets/diagram-B4RE2ZJO-CPJU6HtC.js                               10.75 kB │ gzip:   4.15 kB
+../../.perf-audit-dist/assets/chunk-6Q2QTUOP-1WBRh8oE.js                                 15.74 kB │ gzip:   4.41 kB
+../../.perf-audit-dist/assets/diagram-Q27KOJAE-g9eBpVWL.js                               15.99 kB │ gzip:   5.71 kB
+../../.perf-audit-dist/assets/ishikawaDiagram-WSZJBQD7-BLDVxRyA.js                       17.50 kB │ gzip:   6.66 kB
+../../.perf-audit-dist/assets/kanban-definition-27J2QSJJ-PMnDuJMo.js                     20.32 kB │ gzip:   7.22 kB
+../../.perf-audit-dist/assets/mindmap-definition-FAOFIHXS-Cx8pBN6B.js                    23.21 kB │ gzip:   7.84 kB
+../../.perf-audit-dist/assets/sankeyDiagram-W5VNT64P-pfc8TLH6.js                         23.23 kB │ gzip:   8.58 kB
+../../.perf-audit-dist/assets/journeyDiagram-NVQOT4AX-3oV6CBzI.js                        23.60 kB │ gzip:   8.37 kB
+../../.perf-audit-dist/assets/graph-DOmOIIwC.js                                          23.92 kB │ gzip:   8.32 kB
+../../.perf-audit-dist/assets/wardleyDiagram-T6FBY63Y-WBSR7YHO.js                        25.53 kB │ gzip:   6.81 kB
+../../.perf-audit-dist/assets/erDiagram-JOGREHBK-BLLVtVHj.js                             27.13 kB │ gzip:   9.44 kB
+../../.perf-audit-dist/assets/purify.es-Cz4mVeUR.js                                      28.98 kB │ gzip:  10.87 kB
+../../.perf-audit-dist/assets/gitGraphDiagram-DS77QQ5N-BUaeFnhP.js                       29.45 kB │ gzip:   8.72 kB
+../../.perf-audit-dist/assets/timeline-definition-Z64GVDOM-CS0q9949.js                   30.86 kB │ gzip:  10.17 kB
+../../.perf-audit-dist/assets/layout-D-LzfAck.js                                         31.00 kB │ gzip:  11.19 kB
+../../.perf-audit-dist/assets/requirementDiagram-LRYGKXZP-wUJtvEqe.js                    31.03 kB │ gzip:   9.76 kB
+../../.perf-audit-dist/assets/quadrantDiagram-CIZ2JOQS-CLDKeVfm.js                       34.04 kB │ gzip:   9.99 kB
+../../.perf-audit-dist/assets/chunk-5RXB4S5H-844w9fAL.js                                 38.15 kB │ gzip:  12.56 kB
+../../.perf-audit-dist/assets/xychartDiagram-ELKLHX3M-D39zMVnY.js                        41.98 kB │ gzip:  12.06 kB
+../../.perf-audit-dist/assets/vennDiagram-T6HMQDX7-xuaqWXcr.js                           41.99 kB │ gzip:  15.71 kB
+../../.perf-audit-dist/assets/chunk-GF5L2VYU-D7V-vbR5.js                                 49.21 kB │ gzip:  15.76 kB
+../../.perf-audit-dist/assets/flowDiagram-UKHOOZJN-DI4B5alh.js                           60.75 kB │ gzip:  19.54 kB
+../../.perf-audit-dist/assets/ganttDiagram-PKOTCBZU-C09m1TKb.js                          69.73 kB │ gzip:  23.57 kB
+../../.perf-audit-dist/assets/c4Diagram-5PPSVZJV-DPbgW6Ec.js                             69.98 kB │ gzip:  19.65 kB
+../../.perf-audit-dist/assets/blockDiagram-VBNYF7ZC-DxNB4ZIG.js                          73.77 kB │ gzip:  21.27 kB
+../../.perf-audit-dist/assets/cose-bilkent-JH36ORCC-XfU2p4VE.js                          81.73 kB │ gzip:  22.49 kB
+../../.perf-audit-dist/assets/sequenceDiagram-SI44F4Z6-B37KjeCn.js                      116.99 kB │ gzip:  31.15 kB
+../../.perf-audit-dist/assets/swimlanes-SLNWSIFB-D0hz9JBr.js                            118.88 kB │ gzip:  43.66 kB
+../../.perf-audit-dist/assets/architectureDiagram-T3A2C74G-BWelUsEU.js                  151.86 kB │ gzip:  43.17 kB
+../../.perf-audit-dist/assets/index.es-CByOdQQV.js                                      158.91 kB │ gzip:  53.03 kB
+../../.perf-audit-dist/assets/html2canvas.esm-DXEQVQnt.js                               201.04 kB │ gzip:  47.43 kB
+../../.perf-audit-dist/assets/katex-HP8lGamR.js                                         261.31 kB │ gzip:  77.57 kB
+../../.perf-audit-dist/assets/cytoscape.esm-yzknjiTM.js                                 443.04 kB │ gzip: 141.98 kB
+../../.perf-audit-dist/assets/mermaid.core-BTDyjO5z.js                                  593.25 kB │ gzip: 138.41 kB
+../../.perf-audit-dist/assets/cynefin-VYW2F7L2-CJFzNqE2.js                              687.89 kB │ gzip: 154.14 kB
+../../.perf-audit-dist/assets/index-Bmoi1vSI.js                                       2,445.06 kB │ gzip: 774.30 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 7.73s

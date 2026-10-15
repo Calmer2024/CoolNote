@@ -15,7 +15,7 @@ vi.mock('../../shared/tauri/commands',()=>({
 const renderWorkspace=()=>render(<TaskWorkspace collapsed={false} openTaskId={null} onToggle={vi.fn()} onToast={vi.fn()} onError={vi.fn()} onCountChange={vi.fn()} onConfirm={vi.fn()}/>)
 
 describe('TaskWorkspace',()=>{
-  beforeEach(()=>vi.clearAllMocks())
+  beforeEach(()=>{vi.clearAllMocks();localStorage.clear()})
   afterEach(()=>cleanup())
   it('renders system scopes, persistent notes, and light subtasks',async()=>{renderWorkspace();await screen.findByDisplayValue('整理验收清单');expect(screen.getAllByText('收集箱').length).toBeGreaterThan(0);expect(screen.getByText('全部任务')).toBeInTheDocument();expect(screen.getAllByText('今天').length).toBeGreaterThan(0);expect(screen.getAllByText('已完成').length).toBeGreaterThan(0);expect(screen.getByText('备注常驻显示')).toBeInTheDocument();fireEvent.click(screen.getByLabelText('展开子任务'));expect(screen.getByDisplayValue('验证日历')).toBeInTheDocument()})
   it('shows the list column only in global task scopes',async()=>{renderWorkspace();await screen.findByDisplayValue('整理验收清单');expect(screen.queryByText('所属清单')).not.toBeInTheDocument();fireEvent.click(screen.getByText('全部任务'));await waitFor(()=>expect(screen.getByText('所属清单')).toBeInTheDocument())})
@@ -26,4 +26,14 @@ describe('TaskWorkspace',()=>{
   it('creates a subtask when its draft input loses focus',async()=>{renderWorkspace();await screen.findByDisplayValue('整理验收清单');fireEvent.click(screen.getByLabelText('展开子任务'));const input=screen.getByPlaceholderText('添加子任务');fireEvent.change(input,{target:{value:'点击外部保存'}});fireEvent.blur(input);await waitFor(()=>expect(createTaskSubtask).toHaveBeenCalledWith('task-1','点击外部保存'))})
   it('persists task list drag ordering',async()=>{renderWorkspace();await screen.findByText('产品发布');const source=screen.getByText('产品发布').closest('[data-list-id]')!;const target=screen.getByText('日常维护').closest('[data-list-id]')!;const values=new Map<string,string>();const dataTransfer={effectAllowed:'none',dropEffect:'none',setData:(type:string,value:string)=>values.set(type,value),getData:(type:string)=>values.get(type)??''};fireEvent.dragStart(source,{dataTransfer});fireEvent.dragOver(target,{dataTransfer});fireEvent.drop(target,{dataTransfer});await waitFor(()=>expect(reorderTaskList).toHaveBeenCalledWith('list-1',null))})
   it('opens a task list from every non-action area of its draggable row',async()=>{renderWorkspace();const name=await screen.findByText('产品发布');const row=name.closest('[data-list-id]')!;fireEvent.click(row);await waitFor(()=>expect(row).toHaveClass('active'));const other=screen.getByText('日常维护').closest('[data-list-id]')!;fireEvent.click(other.querySelector('small')!);await waitFor(()=>expect(other).toHaveClass('active'))})
+  it('restores the last task list and calendar view after remounting',async()=>{
+    const first=renderWorkspace()
+    fireEvent.click((await screen.findByText('产品发布')).closest('[data-list-id]')!)
+    fireEvent.click(screen.getByText('日历视图'))
+    first.unmount()
+    renderWorkspace()
+    await waitFor(()=>expect(screen.getByText('产品发布').closest('[data-list-id]')).toHaveClass('active'))
+    expect(screen.getByText(/\d{4}年 \d{1,2}月/)).toBeInTheDocument()
+  })
+
 })

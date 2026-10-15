@@ -61,7 +61,7 @@ impl NoteService {
                 |row| row.get(0),
             )?;
             let mut statement = connection.prepare(
-                "SELECT id, title, substr(plain_text, 1, 240), revision, updated_at
+                "SELECT id, title, substr(plain_text, 1, 240), revision, updated_at, is_pinned
                  FROM notes WHERE deleted_at IS NULL
                  ORDER BY updated_at DESC, id ASC LIMIT ?1 OFFSET ?2",
             )?;
@@ -74,6 +74,7 @@ impl NoteService {
                         revision: row.get(3)?,
                         category_id: UNCATEGORIZED_ID.to_owned(),
                         is_favorite: false,
+                        is_pinned: row.get(5)?,
                         is_archived: false,
                         deleted_at: None,
                         mood: None,
@@ -90,7 +91,7 @@ impl NoteService {
             let raw = connection
                 .query_row(
                     "SELECT id, category_id, title, document_json, plain_text,
-                            content_hash, revision, created_at, updated_at
+                            content_hash, revision, created_at, updated_at, is_pinned
                      FROM notes WHERE id=?1 AND deleted_at IS NULL",
                     [note_id],
                     |row| {
@@ -104,6 +105,7 @@ impl NoteService {
                             row.get::<_, i64>(6)?,
                             row.get::<_, String>(7)?,
                             row.get::<_, String>(8)?,
+                            row.get::<_, bool>(9)?,
                         ))
                     },
                 )
@@ -122,6 +124,7 @@ impl NoteService {
                 content_hash: raw.5,
                 revision: raw.6,
                 is_favorite: false,
+                is_pinned: raw.9,
                 is_archived: false,
                 deleted_at: None,
                 mood: None,

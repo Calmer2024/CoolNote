@@ -38,6 +38,7 @@ export type NoteDto = {
   contentHash: string
   revision: number
   isFavorite: boolean
+  isPinned?: boolean
   isArchived: boolean
   deletedAt: string | null
   mood: string | null
@@ -52,6 +53,7 @@ export type NoteSummaryDto = {
   revision: number
   categoryId: string
   isFavorite: boolean
+  isPinned?: boolean
   isArchived: boolean
   deletedAt: string | null
   mood: string | null
@@ -110,7 +112,7 @@ export type NoteQuery = {
   offset: number
   limit: number
 }
-export type BatchAction = 'favorite' | 'unfavorite' | 'archive' | 'unarchive' | 'trash' | 'restore' | 'deletePermanently'
+export type BatchAction = 'pin' | 'unpin' | 'favorite' | 'unfavorite' | 'archive' | 'unarchive' | 'trash' | 'restore' | 'deletePermanently'
 
 export type Page<T> = { items: T[]; total: number }
 
