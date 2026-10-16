@@ -49,6 +49,7 @@ export class SaveCoordinator {
   private retryCount = 0
   private recoverySafeFailure = false
   private disposed = false
+  private inFlightDraft: SaveChange | null = null
 
   constructor(
     private readonly save: SaveFunction,
@@ -82,6 +83,31 @@ export class SaveCoordinator {
 
   get isRecoverySafeFailure() {
     return this.recoverySafeFailure
+  }
+
+  get hasUnsavedChanges() {
+    return this.pending !== null || this.inFlight !== null
+  }
+
+  getDraft(noteId: string): SaveChange | null {
+    if (this.pending?.noteId === noteId) return this.pending
+    return this.inFlightDraft?.noteId === noteId ? this.inFlightDraft : null
+  }
+
+  async waitForInFlight() {
+    if (this.inFlight) await this.inFlight
+  }
+
+  /** Only call after preserving the draft or explicit user-directed discard. */
+  discardDraft(noteId: string) {
+    if (this.inFlight) throw new Error('请等待保存完成')
+    this.clearTimer()
+    if (this.pending?.noteId === noteId) this.pending = null
+    this.revisions.delete(noteId)
+    this.retryCount = 0
+    this.recoverySafeFailure = false
+    this.lastFlushResult = 'committed'
+    this.setState('idle')
   }
 
   async flush(): Promise<FlushResult> {
@@ -118,8 +144,9 @@ export class SaveCoordinator {
     this.pending = null
     const batch = {
       ...pending,
-      baseRevision: this.revisions.get(pending.noteId) ?? pending.baseRevision,
+      baseRevision: Math.max(this.revisions.get(pending.noteId) ?? 0, pending.baseRevision),
     }
+    this.inFlightDraft = batch
     this.setState('saving')
 
     this.inFlight = this.save({
@@ -150,6 +177,7 @@ export class SaveCoordinator {
       })
       .finally(() => {
         this.inFlight = null
+        this.inFlightDraft = null
         if (this.pending && this.lastFlushResult === 'committed') this.schedule()
       })
   }

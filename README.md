@@ -175,6 +175,12 @@ npm run tauri build -- --bundles nsis
 
 ## 技术架构
 
+### MCP 集成
+
+右上角“设置”可启用原生 Rust MCP Server，管理笔记、任务、小记的独立读写权限，并复制客户端连接配置。安装版无需 Node、手动生成令牌或配置环境变量；支持 Markdown 写入、revision 冲突保护与事务幂等。
+
+安装与连接步骤、工具参数和隔离测试见 [integrations/mcp/README.md](integrations/mcp/README.md)。DSH 使用独立 patch 配置，无需修改插件源码。
+
 ```text
 React 19 + TypeScript + Tiptap
               │

@@ -1,10 +1,11 @@
 import { useWorkspaceVisibility } from '../../shared/workspaceVisibility'
+import { shouldShowSelectionToolbar } from './selectionToolbar'
 import { Extension, getText, getTextSerializersFromSchema } from "@tiptap/core";
 import Highlight from "@tiptap/extension-highlight";
 import Link from "@tiptap/extension-link";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import Placeholder from "@tiptap/extension-placeholder";
-import { EditingBehavior, tablePlainText } from "./editingBehavior";
+import { EditingBehavior } from "./editingBehavior";
 import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
@@ -37,7 +38,7 @@ import {
   toTiptapDocument,
 } from "./document";
 import { linkActivationFromPointerEvent, shouldAutoLink } from "./linkPolicy";
-import { noteToMarkdown } from "../export/markdownExport";
+import { blockMarkdown, noteToMarkdown } from "../export/markdownExport";
 import { createSnapshotSerializer } from "./editorSnapshot";
 import {
   PhycatCodeBlock,
@@ -69,6 +70,7 @@ export type EditorChange = {
 };
 export type NoteEditorHandle = {
   flushPendingChanges: () => Promise<void>;
+  hasPendingChanges: () => boolean;
   focusBlock: (blockId: string) => HTMLElement | null;
 };
 export const StableBlockIds = Extension.create({
@@ -199,14 +201,7 @@ type InputLayer = {
 function CodeLanguageIcon({ language }: { language: string }) {
   const icon = phycatLanguageIcon(language);
   return icon ? (
-    <span
-      className={`code-language-icon ty-file-icon ty-fi-${icon.name}`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: icon.layers }, (_, index) => (
-        <span className={`path${index + 1}`} key={index} />
-      ))}
-    </span>
+    <span className="code-language-icon" aria-hidden="true"><Icon name="code-xml" /></span>
   ) : null;
 }
 type FindPanel = {
@@ -563,8 +558,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       const { from, to, $from } = current.state.selection;
       try {
         const start = current.view.coordsAtPos(from);
-        const inCode = $from.parent.type.name === "codeBlock";
-        if (from !== to && !current.state.selection.node && !inCode) {
+        if (shouldShowSelectionToolbar(current.state.selection)) {
           const end = current.view.coordsAtPos(to);
           setSelection({
             left: start.left,
@@ -670,8 +664,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         updateLayers(current);
       });
     };
-    const beginLargePaste = (view: any, text: string) => {
-      const lines = text.replace(/\r\n?/g, "\n").split("\n");
+    const beginLargePaste = (view: any, blocks: readonly any[]) => {
       const originalDoc = view.state.doc;
       const originalSelection = {
         from: view.state.selection.from,
@@ -680,7 +673,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       pasteAbortRef.current = false;
       setPasteProgress({
         processed: 0,
-        total: lines.length,
+        total: blocks.length,
         status: "running",
       });
       view.dom.setAttribute("aria-busy", "true");
@@ -689,15 +682,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         try {
           let position = view.state.selection.from;
           let first = true;
-          for (let offset = 0; offset < lines.length; offset += 75) {
+          for (let offset = 0; offset < blocks.length; offset += 75) {
             if (pasteAbortRef.current) throw new Error("cancelled");
-            const values = lines.slice(offset, offset + 75);
-            const nodes = values.map((line) =>
-              view.state.schema.nodes.paragraph.create(
-                { blockId: crypto.randomUUID() },
-                line ? view.state.schema.text(line) : undefined,
-              ),
-            );
+            const nodes = blocks.slice(offset, offset + 75);
             let transaction = view.state.tr;
             if (first) {
               transaction = transaction.deleteSelection();
@@ -711,8 +698,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
             );
             view.dispatch(transaction);
             setPasteProgress({
-              processed: Math.min(offset + values.length, lines.length),
-              total: lines.length,
+              processed: Math.min(offset + nodes.length, blocks.length),
+              total: blocks.length,
               status: "running",
             });
             await nextFrame();
@@ -742,7 +729,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           else
             setPasteProgress({
               processed: 0,
-              total: lines.length,
+              total: blocks.length,
               status: "failed",
             });
         } finally {
@@ -755,6 +742,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       immediatelyRender: false,
       extensions: [
         StarterKit.configure({
+          dropcursor: { color: false, width: 1, class: 'editor-drop-guide' },
           heading: { levels: [1, 2, 3, 4, 5] },
           link: false,
           underline: false,
@@ -794,7 +782,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           "aria-label": "笔记正文",
           "aria-multiline": "true",
         },
-        handlePaste: (view, event) => {
+        handlePaste: (view, event, slice) => {
           const files = Array.from(event.clipboardData?.files ?? []);
           if (files.length) {
             event.preventDefault();
@@ -802,10 +790,11 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
             return true;
           }
           const text = event.clipboardData?.getData("text/plain") ?? "";
+          if (view.state.selection.$from.parent.type.spec.code) return false;
           const lines = (text.match(/\n/g)?.length ?? 0) + 1;
           if (text.length < 50_000 && lines < 500) return false;
           event.preventDefault();
-          beginLargePaste(view, text);
+          beginLargePaste(view, slice.content.content);
           return true;
         },
         handleDrop: (view, event) => {
@@ -959,6 +948,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       ref,
       () => ({
         flushPendingChanges: async () => serializePending(),
+          hasPendingChanges: () => dirtyRef.current,
         focusBlock: (blockId: string) => {
           if (!editor) return null;
           let targetPos: number | null = null;
@@ -1595,7 +1585,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
                               <Icon name={item.icon ?? "file-text"} />
                             )}
                             <span className="slash-copy">
-                              <strong>{item.name}</strong>
+                              <span className="slash-name">{item.name}</span>
                               <small>{item.copy}</small>
                             </span>
                           </button>
@@ -1625,7 +1615,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
                 const { $from } = editor.state.selection;
                 for (let depth = $from.depth; depth > 0; depth--) {
                   if ($from.node(depth).type.name === "table") {
-                    void navigator.clipboard.writeText(tablePlainText($from.node(depth))).then(() => onToast("表格已复制")).catch(() => onToast("复制表格失败"));
+                    void navigator.clipboard.writeText(blockMarkdown($from.node(depth).toJSON())).then(() => onToast("表格已复制为 Markdown")).catch(() => onToast("复制表格失败"));
                     break;
                   }
                 }

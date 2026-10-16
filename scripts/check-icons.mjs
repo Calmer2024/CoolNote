@@ -2,15 +2,18 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root=new URL('../',import.meta.url)
-const svg=readFileSync(new URL('../public/assets/lucide-icons.svg',import.meta.url),'utf8')
+const svg=readFileSync(new URL('../public/assets/hugeicons.svg',import.meta.url),'utf8')
 const sprite=[...svg.matchAll(/<symbol\s+id="([^"]+)"/g)].map(match=>match[1]).sort()
+const inlineIcons=JSON.parse(readFileSync(new URL('../src/shared/components/hugeicons.generated.json',import.meta.url),'utf8'))
+if(JSON.stringify(Object.keys(inlineIcons).sort())!==JSON.stringify(sprite)||Object.values(inlineIcons).some(nodes=>!nodes.length))throw new Error('Inline icon geometry must cover every sprite symbol')
 const registrySource=readFileSync(new URL('../src/shared/components/iconRegistry.ts',import.meta.url),'utf8')
 const registry=[...new Set([...registrySource.matchAll(/'([a-z0-9-]+)'/g)].map(match=>match[1]))].sort()
 
 function walk(path){return readdirSync(path).flatMap(name=>{const target=join(path,name);return statSync(target).isDirectory()?walk(target):target})}
 const sourceRoot=new URL('../src/',import.meta.url).pathname.replace(/^\/(.:)/,'$1')
-const used=walk(sourceRoot).filter(path=>/\.tsx?$/.test(path)).flatMap(path=>{
+const used=walk(sourceRoot).filter(path=>/\.tsx?$/.test(path)&&! /\.(test|spec)\.tsx?$/.test(path)).flatMap(path=>{
   const source=readFileSync(path,'utf8')
+  if(/(?:lucide-icons\.svg|ionicons|typora-file-icons\.css|ty-file-icon)/i.test(source))throw new Error(`Only Hugeicons may supply UI icons: ${path}`)
   return [...source.matchAll(/<Icon\s+[^>]*name=["']([^"']+)["']/g)].map(match=>({name:match[1],path}))
 })
 

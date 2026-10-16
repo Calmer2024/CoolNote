@@ -57,7 +57,7 @@ impl TaskService {
         let name = required(name, "任务清单名称不能为空")?;
         let now = Utc::now().to_rfc3339();
         self.check_revision("task_lists", id, base)?;
-        self.database.with_write(|tx|{tx.execute("UPDATE task_lists SET name=?1,icon_name=?2,notes=?3,revision=revision+1,updated_at=?4 WHERE id=?5 AND deleted_at IS NULL",params![name,icon,notes,now,id])?;Ok(())})?;
+        self.database.with_write(|tx|{tx.execute("UPDATE task_lists SET name=?1,icon_name=?2,notes=?3,revision=revision+1,updated_at=?4 WHERE id=?5 AND revision=?6 AND deleted_at IS NULL",params![name,icon,notes,now,id,base])?;ensure_revision(tx,"task_lists",id,base)?;Ok(())})?;
         self.get_list(id)
     }
     pub fn reorder_list(&self, id: &str, before: Option<&str>) -> Result<(), AppError> {
@@ -98,7 +98,7 @@ impl TaskService {
         self.check_revision("tasks", id, base)?;
         let current = self.get_task(id)?;
         let now = Utc::now().to_rfc3339();
-        self.database.with_write(|tx|{let mut order=current.sort_order;if current.task_list_id.as_deref()!=list_id{order=scope_next(tx,list_id)?;}tx.execute("UPDATE tasks SET task_list_id=?1,title=?2,notes=?3,start_value=?4,start_precision=?5,due_value=?6,due_precision=?7,importance=?8,sort_order=?9,revision=revision+1,updated_at=?10 WHERE id=?11 AND deleted_at IS NULL",params![list_id,title,notes,start,start_precision,due,due_precision,importance,order,now,id])?;Ok(())})?;
+        self.database.with_write(|tx|{let mut order=current.sort_order;if current.task_list_id.as_deref()!=list_id{order=scope_next(tx,list_id)?;}tx.execute("UPDATE tasks SET task_list_id=?1,title=?2,notes=?3,start_value=?4,start_precision=?5,due_value=?6,due_precision=?7,importance=?8,sort_order=?9,revision=revision+1,updated_at=?10 WHERE id=?11 AND revision=?12 AND deleted_at IS NULL",params![list_id,title,notes,start,start_precision,due,due_precision,importance,order,now,id,base])?;ensure_revision(tx,"tasks",id,base)?;Ok(())})?;
         self.get_task(id)
     }
     pub fn set_task_completed(&self, id: &str, completed: bool) -> Result<TaskItem, AppError> {
@@ -136,7 +136,7 @@ impl TaskService {
         let title = required(title, "子任务标题不能为空")?;
         self.check_revision("task_subtasks", id, base)?;
         let now = Utc::now().to_rfc3339();
-        self.database.with_write(|tx|{tx.execute("UPDATE task_subtasks SET title=?1,revision=revision+1,updated_at=?2 WHERE id=?3 AND deleted_at IS NULL",params![title,now,id])?;Ok(())})?;
+        self.database.with_write(|tx|{tx.execute("UPDATE task_subtasks SET title=?1,revision=revision+1,updated_at=?2 WHERE id=?3 AND revision=?4 AND deleted_at IS NULL",params![title,now,id,base])?;ensure_revision(tx,"task_subtasks",id,base)?;Ok(())})?;
         self.get_subtask(id)
     }
     pub fn set_subtask_completed(
@@ -196,7 +196,7 @@ impl TaskService {
     fn get_list(&self, id: &str) -> Result<TaskList, AppError> {
         self.database.with_read(|c|c.query_row("SELECT id,name,icon_name,notes,sort_order,revision,created_at,updated_at FROM task_lists WHERE id=?1 AND deleted_at IS NULL",[id],map_list).map_err(not_found(id)))
     }
-    fn get_task(&self, id: &str) -> Result<TaskItem, AppError> {
+    pub fn get_task(&self, id: &str) -> Result<TaskItem, AppError> {
         self.database.with_read(|c|c.query_row("SELECT id,task_list_id,title,notes,start_value,start_precision,due_value,due_precision,importance,is_completed,completed_at,sort_order,revision,created_at,updated_at FROM tasks WHERE id=?1 AND deleted_at IS NULL",[id],map_task).map_err(not_found(id)))
     }
     fn get_subtask(&self, id: &str) -> Result<TaskSubtask, AppError> {
@@ -246,6 +246,15 @@ impl TaskService {
     }
 }
 
+fn ensure_revision(tx: &Transaction<'_>, table: &str, id: &str, base: i64) -> Result<(), AppError> {
+    if tx.changes() == 1 { return Ok(()); }
+    let current = tx.query_row(
+        &format!("SELECT revision FROM {table} WHERE id=?1 AND deleted_at IS NULL"),
+        [id], |row| row.get(0),
+    ).map_err(not_found(id))?;
+    Err(AppError::RevisionConflict { note_id: id.into(), expected: base, current })
+}
+
 fn required<'a>(value: &'a str, message: &str) -> Result<&'a str, AppError> {
     let v = value.trim();
     if v.is_empty() {
@@ -254,7 +263,7 @@ fn required<'a>(value: &'a str, message: &str) -> Result<&'a str, AppError> {
         Ok(v)
     }
 }
-fn validate_date(value: Option<&str>, precision: Option<&str>) -> Result<(), AppError> {
+pub(crate) fn validate_date(value: Option<&str>, precision: Option<&str>) -> Result<(), AppError> {
     match (value, precision) {
         (None, None) => Ok(()),
         (Some(v), Some("date")) => NaiveDate::parse_from_str(v, "%Y-%m-%d")
@@ -283,7 +292,7 @@ fn boundary(value: &str, precision: &str, end: bool) -> Result<i64, AppError> {
     .and_utc()
     .timestamp())
 }
-fn validate_range(
+pub(crate) fn validate_range(
     start: Option<&str>,
     sp: Option<&str>,
     due: Option<&str>,
@@ -296,7 +305,7 @@ fn validate_range(
     }
     Ok(())
 }
-fn scope_next(tx: &Transaction<'_>, list: Option<&str>) -> Result<i64, AppError> {
+pub(crate) fn scope_next(tx: &Transaction<'_>, list: Option<&str>) -> Result<i64, AppError> {
     let value=match list{Some(id)=>tx.query_row("SELECT COALESCE(MAX(sort_order),-1)+1 FROM tasks WHERE task_list_id=?1 AND deleted_at IS NULL",[id],|r|r.get(0))?,None=>tx.query_row("SELECT COALESCE(MAX(sort_order),-1)+1 FROM tasks WHERE task_list_id IS NULL AND deleted_at IS NULL",[],|r|r.get(0))?};
     Ok(value)
 }
@@ -347,7 +356,7 @@ fn map_list(r: &rusqlite::Row<'_>) -> rusqlite::Result<TaskList> {
         updated_at: r.get(7)?,
     })
 }
-fn map_task(r: &rusqlite::Row<'_>) -> rusqlite::Result<TaskItem> {
+pub(crate) fn map_task(r: &rusqlite::Row<'_>) -> rusqlite::Result<TaskItem> {
     Ok(TaskItem {
         id: r.get(0)?,
         task_list_id: r.get(1)?,

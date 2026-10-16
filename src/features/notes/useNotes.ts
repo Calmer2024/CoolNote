@@ -270,6 +270,29 @@ export function useNotes() {
     setSelectedNoteId(restored.id); setSelectedNote(restored); setNotes((current) => current.map((note) => note.id === restored.id ? toSummary(restored) : note))
   }, [])
 
+  const refreshExternal = useCallback(async (noteId: string, revision: number, isClean: () => boolean) => {
+    // Updating a list must not clear the selected editor or its unsaved draft.
+    const token = ++listRequestToken.current
+    const page = await queryNotes(makeQuery())
+    if (token === listRequestToken.current) {
+      setNotes(page.items); setTotal(page.total)
+    }
+    await refreshWorkspace()
+    const current = selectedNoteRef.current
+    if (current?.id !== noteId || current.revision >= revision) return 'unchanged' as const
+    if (!isClean()) return 'conflict' as const
+    const selection = selectionToken.current
+    const note = await getWorkspaceNote(noteId)
+    if (selection !== selectionToken.current || selectedNoteIdRef.current !== noteId) return 'unchanged' as const
+    // Typing may have started while the backend read was in flight.
+    if (!isClean()) return 'conflict' as const
+    const normalized = { ...note, document: normalizeDocument(note.document) }
+    selectedNoteRef.current = normalized
+    resolvedSelectionRef.current = { id: noteId, note: normalized }
+    setSelectedNote(normalized)
+    return 'reloaded' as const
+  }, [makeQuery, refreshWorkspace])
+
   const toggleSelected = useCallback((id: string) => setSelectedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next }), [])
   const selectAll = useCallback(() => setSelectedIds((current) => current.size === notes.length ? new Set() : new Set(notes.map((note) => note.id))), [notes])
   const performBatch = useCallback(async (action: BatchAction, ids = [...selectedIds]) => {
@@ -293,7 +316,7 @@ export function useNotes() {
   return {
     status, library, notes, categories, systemCounts, total, selectedNote, selectedNoteId, selectedIds,
     view, categoryId, search, sortBy, sortDirection, error, isCreating, isLoadingNote, isLoadingMore, isLoadingList,
-    create, select, loadMore, updateDraft, applySaved, applyRecoveredDraft, toggleSelected, selectAll, performBatch, clearTrash, moveSelected, updateMood,
+    create, select, loadMore, updateDraft, applySaved, applyRecoveredDraft, refreshExternal, toggleSelected, selectAll, performBatch, clearTrash, moveSelected, updateMood,
     clearSelection: () => setSelectedIds(new Set()),
     setView: (next: NoteView) => {
       if (view === next && categoryId === null) return

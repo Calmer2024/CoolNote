@@ -32,7 +32,6 @@ impl CommandError {
             AppError::Database(_)
                 | AppError::Io(_)
                 | AppError::PoisonedLock
-                | AppError::RevisionConflict { .. }
                 | AppError::InjectedFailure
         );
         let mut command_error = Self::from(error);

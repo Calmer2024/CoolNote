@@ -46,7 +46,7 @@ const required = [
   [workspace, "renamingId!==gallery.id&&<span className=\"gallery-list-actions\">", '画廊重命名时必须隐藏操作图标'],
   [galleryCss, '.gallery-cover-actions{position:absolute;top:14px;right:14px;display:flex;gap:1px;width:max-content;max-width:calc(100% - 28px);padding:4px;border:0;border-radius:10px', '画廊封面操作卡片必须使用紧凑尺寸'],
   [galleryCss, '.gallery-heading-copy input{', '画廊标题样式不得覆盖隐藏的封面文件输入框'],
-  [galleryCss, '/1.4 "Noto Serif SC"', '画廊标题行高必须为英文下伸字形保留足够空间'],
+  [galleryCss, '/1.4 var(--font-sans)', '画廊标题行高必须为英文下伸字形保留足够空间'],
   [galleryCss, '--gallery-content-gutter:', '画廊标题、介绍与图片墙必须共用左侧间距'],
   [galleryCss, 'grid-template-columns:repeat(3,minmax(0,1fr))', '画廊图片墙必须每行最多三张'],
   [galleryCss, 'overflow-x:hidden', '画廊新建条目不得触发横向滚动条'],

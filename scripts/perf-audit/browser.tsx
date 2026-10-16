@@ -10,7 +10,7 @@ import { normalizeDocument } from '../../src/features/editor/document'
 import { noteToMarkdown } from '../../src/features/export/export'
 import '../../src/app/app.css'
 import '../../src/app/prototype-exact.css'
-import '../../src/app/typora-file-icons.css'
+import '../../src/app/motion.css'
 import '../../src/app/ux-fixes.css'
 
 const output:any[]=[]

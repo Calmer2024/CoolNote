@@ -1,0 +1,101 @@
+:root {
+  --panel-motion-duration: 280ms;
+  --panel-motion-easing: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* The grid tracks and their contents move together in both directions. */
+.workspace[data-panel-motion="true"],
+.reading-layout {
+  transition: grid-template-columns var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+.workspace .notes-panel,
+.workspace .jotting-tree-panel,
+.workspace .task-list-panel,
+.workspace .gallery-list-panel {
+  overflow: hidden;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 160ms ease, visibility 0s linear;
+}
+
+.workspace[data-mode="notes"][data-notes-collapsed="true"] .notes-panel,
+.workspace[data-mode="jottings"][data-jotting-tree-collapsed="true"] .jotting-tree-panel,
+.workspace[data-mode="tasks"][data-task-list-collapsed="true"] .task-list-panel,
+.workspace[data-mode="gallery"][data-gallery-list-collapsed="true"] .gallery-list-panel {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, var(--panel-motion-duration);
+}
+
+/* Delay hiding until the grid has finished shrinking, rather than using display:none. */
+.reading-layout .outline {
+  transition: padding var(--panel-motion-duration) var(--panel-motion-easing);
+}
+.reading-layout .outline-title-toggle span,
+.reading-layout .outline nav {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 160ms ease, visibility 0s linear;
+}
+.reading-layout[data-outline-collapsed="true"] .outline-title-toggle span {
+  display: block;
+  position: absolute;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, var(--panel-motion-duration);
+}
+.reading-layout[data-outline-collapsed="true"] .outline nav {
+  display: grid;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, var(--panel-motion-duration);
+}
+
+.collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows var(--panel-motion-duration) var(--panel-motion-easing),
+    opacity 160ms ease, visibility 0s linear var(--panel-motion-duration);
+}
+.collapsible[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.collapsible-content {
+  min-height: 0;
+  overflow: hidden;
+}
+.collapsible .subtask-list {
+  animation: none;
+}
+.task-row-wrap .subtask-toggle .icon {
+  transition: transform var(--panel-motion-duration) var(--panel-motion-easing);
+  transform: rotate(0deg);
+}
+.task-row-wrap .subtask-toggle[aria-expanded="true"] .icon {
+  transform: rotate(90deg);
+}
+.task-row-wrap .subtask-toggle[aria-expanded="false"] .icon {
+  transform: rotate(0deg);
+}
+.tree-chevron {
+  transition: transform var(--panel-motion-duration) var(--panel-motion-easing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace, .reading-layout, .reading-layout .outline,
+  .workspace .notes-panel, .workspace .jotting-tree-panel,
+  .workspace .task-list-panel, .workspace .gallery-list-panel,
+  .reading-layout .outline-title-toggle span, .reading-layout .outline nav,
+  .collapsible, .tree-chevron, .subtask-toggle .icon {
+    transition: none !important;
+  }
+}

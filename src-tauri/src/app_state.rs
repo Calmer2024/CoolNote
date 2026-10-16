@@ -10,6 +10,7 @@ use crate::application::workspace_service::WorkspaceService;
 use crate::domain::error::AppError;
 use crate::domain::note::Library;
 use crate::infrastructure::recovery_store::RecoveryStore;
+use crate::integration::service::IntegrationService;
 
 #[derive(Debug, Clone)]
 pub struct AppServices {
@@ -21,6 +22,7 @@ pub struct AppServices {
     pub galleries: GalleryService,
     pub tasks: TaskService,
     pub workspace: WorkspaceService,
+    pub integration: IntegrationService,
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +77,8 @@ impl AppState {
             ),
             recovery,
             galleries,
-            tasks: TaskService::new(context.database),
+            tasks: TaskService::new(context.database.clone()),
+            integration: IntegrationService::new(context.database),
             workspace,
         };
         *slot = Some(services.clone());

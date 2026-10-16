@@ -49,7 +49,7 @@ export function NotesPanel(props: Props) {
   }
   const act = (note: NoteSummaryDto, action: BatchAction) => { setMenu(null); props.onAction([note.id], action) }
   const selected = [...selectedIds]
-  return <section ref={panelRef} className="notes-panel" aria-label="笔记列表" data-collapsed={props.collapsed} data-selecting={selectedIds.size > 0}>
+  return <section ref={panelRef} className="notes-panel" aria-label="笔记列表" data-collapsed={props.collapsed} inert={props.collapsed} data-selecting={selectedIds.size > 0}>
     <div className="notes-header">
       {selectedIds.size ? <div className="selection-bar"><strong>已选择 {selectedIds.size} 项</strong>
         <button className="select-all-action" aria-label={selectedIds.size===notes.length?'取消全选':'全选'} onClick={props.onSelectAll}><Icon name="check-square" /></button>

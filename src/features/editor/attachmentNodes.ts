@@ -1,6 +1,7 @@
 import { Node as TiptapNode, mergeAttributes } from '@tiptap/core'
 import Image from '@tiptap/extension-image'
 import { NodeSelection } from '@tiptap/pm/state'
+import { createIconElement } from '../../shared/components/iconElement'
 
 import { openAttachment, openExternalResource, revealAttachment } from '../../shared/tauri/commands'
 import { loadWhenNear, resolveAttachmentSource } from './attachmentResources'
@@ -10,7 +11,7 @@ const actionButton = (icon: string, label: string, action: () => void) => {
   button.type = 'button'
   button.className = 'editor-media-action'
   button.setAttribute('aria-label', label)
-  button.innerHTML = `<svg class="icon" aria-hidden="true"><use href="./assets/lucide-icons.svg#${icon}"></use></svg>`
+  button.append(createIconElement(icon))
   button.onclick = action
   return button
 }
@@ -85,24 +86,31 @@ export const ResizableImage = Image.extend({
 
       let current = node
       let loadVersion = 0
+      let resourceKey: string | null = null
+      let resizing = false
+      let stopResizing: () => void = () => undefined
       let stopLoading: () => void = () => undefined
       const position = () => typeof getPos === 'function' ? getPos() : null
       const render = (value: typeof node) => {
-        const version = ++loadVersion
-        stopLoading()
-        image.removeAttribute('src')
         image.alt = value.attrs.alt ?? ''
         image.removeAttribute('title')
         const description = String(value.attrs.title ?? value.attrs.alt ?? '').trim()
         if (description) dom.setAttribute('data-tooltip', description)
         else dom.removeAttribute('data-tooltip')
-        image.style.width = value.attrs.width ? `${value.attrs.width}px` : ''
+        if (!resizing) image.style.width = value.attrs.width ? `${value.attrs.width}px` : ''
         dom.dataset.layout = value.attrs.layout ?? 'single'
         dom.dataset.galleryIndex = String(value.attrs.galleryIndex ?? 0)
         dom.dataset.gallerySize = String(value.attrs.gallerySize ?? 1)
         actions.replaceChildren()
         if (value.attrs.attachmentId) actions.append(actionButton('folder-open', '在资源管理器中显示', () => { void revealAttachment(String(value.attrs.attachmentId)) }))
         dom.setAttribute('aria-label', value.attrs.layout === 'gallery' ? `并排图片 ${Number(value.attrs.galleryIndex) + 1}/${value.attrs.gallerySize}` : '图片')
+        // Width and layout transactions must retain the decoded bitmap and its intrinsic height.
+        const nextResourceKey = JSON.stringify([value.attrs.src, value.attrs.attachmentId])
+        if (resourceKey === nextResourceKey) return
+        resourceKey = nextResourceKey
+        const version = ++loadVersion
+        stopLoading()
+        image.removeAttribute('src')
         stopLoading = loadWhenNear(dom, () => {
           void resolveAttachmentSource(String(value.attrs.src ?? ''), value.attrs.attachmentId).then(src => {
             if (version !== loadVersion) return
@@ -161,32 +169,53 @@ export const ResizableImage = Image.extend({
       }, 0))
       handle.onpointerdown = event => {
         event.preventDefault()
+        if (event.button !== 0 || resizing) return
+        dom.getAnimations?.().forEach(animation => animation.cancel())
+        resizing = true
+        dom.draggable = false
         const startX = event.clientX
         const start = image.getBoundingClientRect().width
         const move = (pointer: PointerEvent) => { image.style.width = `${Math.max(120, Math.round(start + pointer.clientX - startX))}px` }
-        const end = () => {
+        const cleanup = () => {
+          resizing = false
+          dom.draggable = true
           window.removeEventListener('pointermove', move)
-          const pos = position()
-          if (typeof pos === 'number') editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, width: Math.round(image.getBoundingClientRect().width) }))
           window.removeEventListener('pointerup', end)
+          window.removeEventListener('pointercancel', cancel)
+          stopResizing = () => undefined
         }
+        const end = () => {
+          const width = Math.round(image.getBoundingClientRect().width)
+          cleanup()
+          const pos = position()
+          if (typeof pos === 'number') editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, width }))
+        }
+        const cancel = () => {
+          cleanup()
+          image.style.width = current.attrs.width ? `${current.attrs.width}px` : ''
+        }
+        stopResizing = cleanup
         window.addEventListener('pointermove', move)
         window.addEventListener('pointerup', end)
+        window.addEventListener('pointercancel', cancel)
       }
       return {
         dom,
         selectNode: () => { dom.classList.add('is-selected'); dom.setAttribute('aria-selected', 'true') },
         deselectNode: () => { dom.classList.remove('is-selected'); dom.setAttribute('aria-selected', 'false') },
         stopEvent: event => event.target === handle || actions.contains(event.target as globalThis.Node),
+        // This atom owns its DOM; preview styles are not document edits.
+        ignoreMutation: mutation => mutation.type !== 'selection',
         update: next => {
           if (next.type.name !== 'image') return false
+          const layoutChanged = ['layout', 'galleryGroup', 'galleryIndex', 'gallerySize'].some(key => current.attrs[key] !== next.attrs[key])
           const before = dom.getBoundingClientRect()
           current = next
           render(current)
-          animateImageLayout(dom, before)
+          if (layoutChanged && !resizing) animateImageLayout(dom, before)
           return true
         },
-        destroy: () => { loadVersion += 1; stopLoading() },
+        destroy: () => { loadVersion += 1; stopLoading(); stopResizing() },
       }
     }
   },
@@ -261,7 +290,7 @@ export const MediaNode = TiptapNode.create({
         }
         if(isWeb){
           const card=document.createElement('div');card.className='editor-web-card';card.tabIndex=0;card.setAttribute('role','link');card.setAttribute('aria-label',`打开 ${String(value.attrs.webTitle??fileName)}`)
-          const preview=document.createElement('div');preview.className='editor-web-preview';const imageUrl=String(value.attrs.webImageUrl??'');if(imageUrl){const image=document.createElement('img');image.src=imageUrl;image.alt='';image.loading='lazy';preview.append(image)}else{preview.innerHTML='<svg class="icon" aria-hidden="true"><use href="./assets/lucide-icons.svg#monitor"></use></svg>'}card.append(preview)
+          const preview=document.createElement('div');preview.className='editor-web-preview';const imageUrl=String(value.attrs.webImageUrl??'');if(imageUrl){const image=document.createElement('img');image.src=imageUrl;image.alt='';image.loading='lazy';preview.append(image)}else{preview.append(createIconElement('monitor'))}card.append(preview)
           const copy=document.createElement('div');copy.className='editor-web-copy';const siteRow=document.createElement('div');siteRow.className='editor-web-site';const iconUrl=String(value.attrs.webIconUrl??'');if(iconUrl){const logo=document.createElement('img');logo.src=iconUrl;logo.alt='';logo.loading='lazy';siteRow.append(logo)}const site=document.createElement('small');site.textContent=String(value.attrs.webSiteName??new URL(source).hostname);siteRow.append(site);const pageType=String(value.attrs.webType??'');if(pageType){const typeLabel=document.createElement('span');typeLabel.textContent=pageType;siteRow.append(typeLabel)}const title=document.createElement('strong');title.textContent=String(value.attrs.webTitle??fileName);const description=document.createElement('p');description.textContent=String(value.attrs.webDescription??'该网页没有提供摘要，点击卡片可在浏览器中查看。');copy.append(siteRow,title,description);card.append(copy)
           const open=()=>{void openExternalResource(source)};card.addEventListener('click',event=>{event.stopPropagation();open()});card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();open()}});dom.append(card)
         }
@@ -282,7 +311,8 @@ export const MediaNode = TiptapNode.create({
         meta.className = 'editor-media-meta'
         const label = document.createElement('span')
         label.className = 'editor-media-name'
-        label.innerHTML = `<svg class="icon" aria-hidden="true"><use href="./assets/lucide-icons.svg#${isHtml || isWeb ? 'monitor' : type.startsWith('audio/') ? 'music' : type.startsWith('video/') ? 'video' : 'paperclip'}"></use></svg><span>${fileName.replace(/[<>&]/g, character => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[character]!))}</span>`
+        const nameLabel = document.createElement('span'); nameLabel.textContent = fileName
+        label.append(createIconElement(isHtml || isWeb ? 'monitor' : type.startsWith('audio/') ? 'music' : type.startsWith('video/') ? 'video' : 'paperclip'), nameLabel)
         const actions = document.createElement('span')
         actions.className = 'editor-media-actions'
         if (isHtml && attachmentId) actions.append(actionButton('share-2', '打开资源', () => { void openAttachment(attachmentId) }))

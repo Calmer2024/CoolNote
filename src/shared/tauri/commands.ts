@@ -3,6 +3,7 @@ import * as web from './webStore'
 import { parseMarkdownDocument } from '../../features/editor/markdown'
 
 const native = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+export const listSystemFonts = () => native ? invoke<string[]>('list_system_fonts') : Promise.reject(new Error('请在 CoolNote 桌面端检测本地字体。'))
 const call = <T>(command: string, args?: Record<string, unknown>, fallback?: () => T) => native ? invoke<T>(command, args) : Promise.resolve(fallback ? fallback() : (() => { throw new Error(`Web 版暂不支持命令：${command}`) })())
 
 import type {
@@ -139,3 +140,7 @@ export const deleteTaskSubtask=(id:string)=>call<string>('delete_task_subtask',{
 export const deleteTaskList=(id:string)=>call<string>('delete_task_list',{id},()=>web.webDeleteTaskList(id))
 export const undoTaskDelete=(token:string)=>call<boolean>('undo_task_delete',{token},()=>web.webUndoTaskDelete(token))
 export type {TaskDatePrecision,TaskImportance}
+
+export const getIntegrationStatus = () => native ? invoke<import('./contracts').IntegrationStatusDto>('get_integration_status') : Promise.reject(new Error('请在 CoolNote 桌面端管理 MCP 服务。'))
+export const updateIntegrationSettings = (request: import('./contracts').IntegrationSettingsRequest) => invoke<import('./contracts').IntegrationStatusDto>('update_integration_settings', { request })
+export const getIntegrationClientConfig = (kind: string) => invoke<string>('get_integration_client_config', { kind })

@@ -1,0 +1,401 @@
+{
+  "library": "ionicons@8.1.0",
+  "status": "proposal-only",
+  "icons": [
+    {
+      "current": "align-left",
+      "proposed": "menu-outline",
+      "meaning": "对齐文本"
+    },
+    {
+      "current": "arrow-down",
+      "proposed": "arrow-down-outline",
+      "meaning": "下移"
+    },
+    {
+      "current": "arrow-down-narrow-wide",
+      "proposed": "funnel-outline",
+      "meaning": "排序与筛选"
+    },
+    {
+      "current": "arrow-up",
+      "proposed": "arrow-up-outline",
+      "meaning": "上移"
+    },
+    {
+      "current": "book-image",
+      "proposed": "albums-outline",
+      "meaning": "画册"
+    },
+    {
+      "current": "book-open",
+      "proposed": "book-outline",
+      "meaning": "归档与阅读"
+    },
+    {
+      "current": "book-open-text",
+      "proposed": "reader-outline",
+      "meaning": "文本阅读"
+    },
+    {
+      "current": "briefcase-business",
+      "proposed": "briefcase-outline",
+      "meaning": "工作"
+    },
+    {
+      "current": "calendar-days",
+      "proposed": "calendar-outline",
+      "meaning": "日历"
+    },
+    {
+      "current": "camera",
+      "proposed": "camera-outline",
+      "meaning": "相机"
+    },
+    {
+      "current": "check",
+      "proposed": "checkmark-outline",
+      "meaning": "勾选"
+    },
+    {
+      "current": "check-square",
+      "proposed": "checkbox-outline",
+      "meaning": "确认与完成"
+    },
+    {
+      "current": "chevron-down",
+      "proposed": "chevron-down-outline",
+      "meaning": "向下展开"
+    },
+    {
+      "current": "chevron-right",
+      "proposed": "chevron-forward-outline",
+      "meaning": "向右展开"
+    },
+    {
+      "current": "chevrons-up",
+      "proposed": "chevron-up-outline",
+      "meaning": "收起"
+    },
+    {
+      "current": "circle",
+      "proposed": "ellipse-outline",
+      "meaning": "状态圆圈"
+    },
+    {
+      "current": "code",
+      "proposed": "code-slash-outline",
+      "meaning": "代码块"
+    },
+    {
+      "current": "code-xml",
+      "proposed": "code-outline",
+      "meaning": "行内代码"
+    },
+    {
+      "current": "columns-2",
+      "proposed": "grid-outline",
+      "meaning": "双列布局"
+    },
+    {
+      "current": "copy",
+      "proposed": "copy-outline",
+      "meaning": "复制"
+    },
+    {
+      "current": "download",
+      "proposed": "download-outline",
+      "meaning": "下载与导出"
+    },
+    {
+      "current": "ellipsis",
+      "proposed": "ellipsis-horizontal-outline",
+      "meaning": "更多操作"
+    },
+    {
+      "current": "feather",
+      "proposed": "create-outline",
+      "meaning": "小记"
+    },
+    {
+      "current": "file",
+      "proposed": "document-outline",
+      "meaning": "文件"
+    },
+    {
+      "current": "file-plus",
+      "proposed": "document-outline",
+      "meaning": "新建文件"
+    },
+    {
+      "current": "file-text",
+      "proposed": "document-text-outline",
+      "meaning": "笔记"
+    },
+    {
+      "current": "flask-conical",
+      "proposed": "flask-outline",
+      "meaning": "实验"
+    },
+    {
+      "current": "flower-2",
+      "proposed": "flower-outline",
+      "meaning": "花朵"
+    },
+    {
+      "current": "folder",
+      "proposed": "folder-outline",
+      "meaning": "分类与文件夹"
+    },
+    {
+      "current": "folder-open",
+      "proposed": "folder-open-outline",
+      "meaning": "打开文件夹"
+    },
+    {
+      "current": "folder-plus",
+      "proposed": "folder-outline",
+      "meaning": "新建文件夹"
+    },
+    {
+      "current": "gem",
+      "proposed": "diamond-outline",
+      "meaning": "灵感收藏"
+    },
+    {
+      "current": "graduation-cap",
+      "proposed": "school-outline",
+      "meaning": "学习"
+    },
+    {
+      "current": "gallery-thumbnails",
+      "proposed": "images-outline",
+      "meaning": "图集缩略图"
+    },
+    {
+      "current": "grip-vertical",
+      "proposed": "reorder-three-outline",
+      "meaning": "拖动排序"
+    },
+    {
+      "current": "highlighter",
+      "proposed": "color-fill-outline",
+      "meaning": "高亮"
+    },
+    {
+      "current": "history",
+      "proposed": "time-outline",
+      "meaning": "历史记录"
+    },
+    {
+      "current": "image",
+      "proposed": "image-outline",
+      "meaning": "画廊与图片"
+    },
+    {
+      "current": "images",
+      "proposed": "images-outline",
+      "meaning": "多张图片"
+    },
+    {
+      "current": "image-up",
+      "proposed": "cloud-upload-outline",
+      "meaning": "上传图片"
+    },
+    {
+      "current": "lightbulb",
+      "proposed": "bulb-outline",
+      "meaning": "灵感"
+    },
+    {
+      "current": "link",
+      "proposed": "link-outline",
+      "meaning": "链接"
+    },
+    {
+      "current": "list",
+      "proposed": "list-outline",
+      "meaning": "无序列表"
+    },
+    {
+      "current": "list-checks",
+      "proposed": "list-outline",
+      "meaning": "任务工作区"
+    },
+    {
+      "current": "list-ordered",
+      "proposed": "list-outline",
+      "meaning": "有序列表"
+    },
+    {
+      "current": "list-tree",
+      "proposed": "git-branch-outline",
+      "meaning": "大纲层级"
+    },
+    {
+      "current": "list-todo",
+      "proposed": "checkbox-outline",
+      "meaning": "待办清单"
+    },
+    {
+      "current": "inbox",
+      "proposed": "file-tray-outline",
+      "meaning": "收集箱"
+    },
+    {
+      "current": "message-square",
+      "proposed": "chatbox-outline",
+      "meaning": "消息与注释"
+    },
+    {
+      "current": "minus",
+      "proposed": "remove-outline",
+      "meaning": "减少"
+    },
+    {
+      "current": "monitor",
+      "proposed": "desktop-outline",
+      "meaning": "演示与桌面"
+    },
+    {
+      "current": "moon",
+      "proposed": "moon-outline",
+      "meaning": "深色模式"
+    },
+    {
+      "current": "music",
+      "proposed": "musical-notes-outline",
+      "meaning": "音乐"
+    },
+    {
+      "current": "notebook-tabs",
+      "proposed": "journal-outline",
+      "meaning": "笔记本"
+    },
+    {
+      "current": "palette",
+      "proposed": "color-palette-outline",
+      "meaning": "配色"
+    },
+    {
+      "current": "panel-left-close",
+      "proposed": "chevron-back-outline",
+      "meaning": "收起左侧栏"
+    },
+    {
+      "current": "panel-left-open",
+      "proposed": "chevron-forward-outline",
+      "meaning": "展开左侧栏"
+    },
+    {
+      "current": "panel-right-close",
+      "proposed": "chevron-forward-outline",
+      "meaning": "收起右侧栏"
+    },
+    {
+      "current": "panel-right-open",
+      "proposed": "chevron-back-outline",
+      "meaning": "展开右侧栏"
+    },
+    {
+      "current": "panels-top-left",
+      "proposed": "browsers-outline",
+      "meaning": "工作区布局"
+    },
+    {
+      "current": "paperclip",
+      "proposed": "attach-outline",
+      "meaning": "附件"
+    },
+    {
+      "current": "pencil",
+      "proposed": "pencil-outline",
+      "meaning": "编辑与重命名"
+    },
+    {
+      "current": "pin",
+      "proposed": "pin-outline",
+      "meaning": "置顶"
+    },
+    {
+      "current": "plus",
+      "proposed": "add-outline",
+      "meaning": "新建"
+    },
+    {
+      "current": "quote",
+      "proposed": "chatbox-ellipses-outline",
+      "meaning": "引用块"
+    },
+    {
+      "current": "rotate-ccw",
+      "proposed": "arrow-undo-outline",
+      "meaning": "撤销"
+    },
+    {
+      "current": "search",
+      "proposed": "search-outline",
+      "meaning": "搜索"
+    },
+    {
+      "current": "settings",
+      "proposed": "settings-outline",
+      "meaning": "设置"
+    },
+    {
+      "current": "share-2",
+      "proposed": "share-social-outline",
+      "meaning": "分享"
+    },
+    {
+      "current": "sort-asc",
+      "proposed": "arrow-up-outline",
+      "meaning": "升序"
+    },
+    {
+      "current": "sort-desc",
+      "proposed": "arrow-down-outline",
+      "meaning": "降序"
+    },
+    {
+      "current": "star",
+      "proposed": "star-outline",
+      "meaning": "收藏"
+    },
+    {
+      "current": "sun",
+      "proposed": "sunny-outline",
+      "meaning": "浅色模式"
+    },
+    {
+      "current": "table",
+      "proposed": "grid-outline",
+      "meaning": "表格"
+    },
+    {
+      "current": "tag",
+      "proposed": "pricetag-outline",
+      "meaning": "标签"
+    },
+    {
+      "current": "tags",
+      "proposed": "pricetags-outline",
+      "meaning": "多个标签"
+    },
+    {
+      "current": "trash-2",
+      "proposed": "trash-outline",
+      "meaning": "删除"
+    },
+    {
+      "current": "upload",
+      "proposed": "push-outline",
+      "meaning": "导入"
+    },
+    {
+      "current": "x",
+      "proposed": "close-outline",
+      "meaning": "关闭与取消"
+    }
+  ]
+}

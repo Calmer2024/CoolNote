@@ -207,16 +207,28 @@ impl WorkspaceService {
         title: &str,
         document: Option<Document>,
     ) -> Result<Note, AppError> {
-        let id = Uuid::new_v4().to_string();
         let document = document.unwrap_or_else(empty_document);
-        let document_json = serde_json::to_string(&document)?;
-        let plain_text = derive_plain_text(&document);
-        let hash = hash_document(&document);
+        let id = self.database.with_write(|tx| {
+            Self::insert_note(tx, category_id, title, &document)
+        })?;
+        self.get_note(&id)
+    }
+
+    pub(crate) fn insert_note(
+        tx: &rusqlite::Transaction<'_>,
+        category_id: Option<&str>,
+        title: &str,
+        document: &Document,
+    ) -> Result<String, AppError> {
+        let id = Uuid::new_v4().to_string();
+        let document_json = serde_json::to_string(document)?;
+        let plain_text = derive_plain_text(document);
+        let hash = hash_document(document);
         let now = Utc::now().to_rfc3339();
         let category_id = category_id.unwrap_or(UNCATEGORIZED_ID);
         let markdown_snapshot = format!("# {title}\n\n{plain_text}\n");
-        self.database.with_write(|tx| { tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,markdown_snapshot,schema_version,content_hash,revision,is_favorite,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7,1,0,0,?8,?8,NULL)",params![id,category_id,title,document_json,plain_text,markdown_snapshot,hash,now])?; Ok(()) })?;
-        self.get_note(&id)
+        tx.execute("INSERT INTO notes(id,category_id,title,document_json,plain_text,markdown_snapshot,schema_version,content_hash,revision,is_favorite,is_archived,created_at,updated_at,deleted_at) VALUES(?1,?2,?3,?4,?5,?6,1,?7,1,0,0,?8,?8,NULL)",params![id,category_id,title,document_json,plain_text,markdown_snapshot,hash,now])?;
+        Ok(id)
     }
 
     pub fn batch_action(
@@ -934,7 +946,7 @@ mod pinning_tests {
         assert_eq!(page.total, 2);
         assert!(page.items[0].is_pinned);
         assert!(!page.items.iter().any(|note| note.id == outside.id));
-        service.batch_action(&[older.id.clone()], BatchAction::Unpin).unwrap();
+        service.batch_action(std::slice::from_ref(&older.id), BatchAction::Unpin).unwrap();
         assert_eq!(service.list_notes(query(&category.id, 0, 1)).unwrap().items[0].id, recent.id);
         assert!(!service.get_note(&older.id).unwrap().is_pinned);
     }
@@ -1021,7 +1033,7 @@ mod search_performance_regressions {
         drop(service); drop(database);
         let database = Arc::new(Database::open(&path).unwrap());
         let service = WorkspaceService::new(database.clone(), root.path().join("attachments"));
-        assert_eq!(database.user_version().unwrap(), 19);
+        assert_eq!(database.user_version().unwrap(), 20);
         assert_eq!(service.get_note(&note.id).unwrap().document, note.document);
         assert_eq!(service.get_note(&note.id).unwrap().revision, note.revision);
         assert!(service.global_search("前保留", 50).unwrap().iter().any(|hit| hit.id == note.id));

@@ -1,4 +1,7 @@
+import { createElement } from 'react'
 import { isIconName, type IconName } from './iconRegistry'
+import icons from './hugeicons.generated.json'
+import './hugeicons-headings.generated.css'
 
 type IconProps = {
   name: string
@@ -11,12 +14,13 @@ export function Icon({ name, className = 'icon', testId }: IconProps) {
   return (
     <svg
       className={className}
+      viewBox="0 0 24 24"
       aria-hidden="true"
       data-icon={resolvedName}
       data-invalid-icon={resolvedName===name?undefined:name}
       data-testid={testId}
     >
-      <use href={`./assets/lucide-icons.svg#${resolvedName}`} />
+      {icons[resolvedName].map(({ tag, attrs }, index) => createElement(tag, { ...attrs, key: index }))}
     </svg>
   )
 }

@@ -1,0 +1,11 @@
+# Development checkout only. For an installed app, copy DSH config from its settings.
+- insert:
+    - id: mcp-coolnote
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: coolnote
+        transport: stdio
+        command: D:/Files/Github/CoolNote/src-tauri/.target/dev/debug/coolnote.exe
+        args: ['--mcp']
+        toolCallTimeoutMs: 20000
+        failOnStartupError: true

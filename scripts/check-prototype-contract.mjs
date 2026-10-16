@@ -34,6 +34,7 @@ const appCss=readFileSync(new URL('../src/app/app.css',import.meta.url),'utf8')
 const prototypeCss=readFileSync(new URL('../src/app/prototype-exact.css',import.meta.url),'utf8')
 const tauriSource=readFileSync(new URL('../src-tauri/tauri.conf.json',import.meta.url),'utf8')
 const noteEditorSource=readFileSync(new URL('../src/features/editor/NoteEditor.tsx',import.meta.url),'utf8')
+const selectionToolbarSource=readFileSync(new URL('../src/features/editor/selectionToolbar.ts',import.meta.url),'utf8')
 const attachmentNodeSource=readFileSync(new URL('../src/features/editor/attachmentNodes.ts',import.meta.url),'utf8')
 const phycatCodeSource=readFileSync(new URL('../src/features/editor/phycatCode.ts',import.meta.url),'utf8')
 const notesPanelSource=readFileSync(new URL('../src/features/notes/NotesPanel.tsx',import.meta.url),'utf8')
@@ -82,7 +83,7 @@ const designRules=[
   [noteEditorSource.includes('boundary={editorSurfaceRef}')&&noteEditorSource.includes('codeLayerPoint')&&overlaySource.includes('boundary?: RefObject<HTMLElement | null>'),'代码语言选择器必须限制在笔记编辑层边界内'],
   [uxSource.includes('border-color:var(--accent)')&&uxSource.includes('background:var(--accent-soft)')&&uxSource.includes('color:var(--accent)')&&!uxSource.includes('#008145')&&!uxSource.includes('#6cb19125'),'代码语言选择器状态色必须使用主题蓝色令牌'],
   [!phycatCodeSource.includes('new MutationObserver(()=>sync(node))')&&phycatCodeSource.includes("mutation.target===contentDOM&&mutation.attributeName==='class'"),'代码块行号与语言 class 不得通过 DOM 观察器反写编辑器，避免语言切换更新循环'],
-  [noteEditorCompact.includes('constinCode=$from.parent.type.name==="codeBlock"')&&noteEditorCompact.includes('&&!inCode'),'代码块文本选区不得打开一般文本选区工具条'],
+  [noteEditorSource.includes('shouldShowSelectionToolbar(current.state.selection)')&&selectionToolbarSource.includes("node.type.name === 'codeBlock'")&&selectionToolbarSource.includes('node.type.spec.tableRole'),'代码块及表格选区不得打开一般文本选区工具条'],
   [appCss.includes('.reading-layout > .outline')&&appCss.includes('grid-column: 2'),'大纲必须固定在阅读布局右列，编辑器初始化时不得跳到左侧'],
   [uxSource.includes('hr[data-block-id]')&&uxSource.includes('height:1px!important')&&uxSource.includes('.ProseMirror-selectednode'),'水平分隔线必须保持静态细线样式并提供选中态'],
   [overlaySource.includes("addEventListener('pointerdown',dismiss,true)")&&overlaySource.includes('hide(null)'),'Tooltip 必须在外部按下时立即清理当前目标'],

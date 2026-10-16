@@ -129,11 +129,11 @@ function blockNodes(tokens: MarkdownToken[] = []): DocumentNode[] {
   })
 }
 
-export function parseMarkdownDocument(content: string): { title: string; document: VersionedDocument } {
+export function parseMarkdownDocument(content: string, options: { preserveTitle?: boolean } = {}): { title: string; document: VersionedDocument } {
   const tokens = marked.lexer(content.replace(/\r\n?/g, '\n'), { gfm: true, breaks: false }) as MarkdownToken[]
   const firstHeading = tokens.findIndex(token => token.type === 'heading' && token.depth === 1)
   const titleToken = firstHeading >= 0 ? tokens[firstHeading] : undefined
-  const bodyTokens = firstHeading >= 0 ? tokens.filter((_, index) => index !== firstHeading) : tokens
+  const bodyTokens = firstHeading >= 0 && !options.preserveTitle ? tokens.filter((_, index) => index !== firstHeading) : tokens
   const contentNodes = blockNodes(bodyTokens).map(node => ({
     ...node,
     attrs: { ...node.attrs, blockId: crypto.randomUUID() },

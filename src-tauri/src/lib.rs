@@ -3,6 +3,7 @@ pub mod application;
 pub mod commands;
 pub mod domain;
 pub mod infrastructure;
+pub mod integration;
 
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -17,6 +18,14 @@ pub fn run() {
         .setup(|app| {
             let library_root = app.path().app_data_dir()?.join("library");
             app.manage(app_state::AppState::new(library_root));
+            let state=app.state::<app_state::AppState>().inner().clone();
+            let handle=app.handle().clone();
+            let manager=integration::settings::IntegrationManager::open(
+                app.path().app_data_dir()?.join("mcp-connection.json"),state,move|change|{
+                    if let Err(error)=handle.emit("coolnote-data-changed",change){eprintln!("CoolNote MCP event: {error}");}
+                },
+            )?;
+            app.manage(manager);
             if let Some(path) = std::env::args()
                 .skip(1)
                 .find(|value| !value.starts_with('-'))
@@ -30,6 +39,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::fonts::list_system_fonts,
+            commands::integration::get_integration_status,
+            commands::integration::update_integration_settings,
+            commands::integration::get_integration_client_config,
             commands::library::initialize_library,
             commands::library::update_library_settings,
             commands::notes::list_notes,

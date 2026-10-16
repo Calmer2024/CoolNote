@@ -24,6 +24,9 @@ export type LibraryDto = {
   settingsRevision: number
 }
 
+export type IntegrationStatusDto = { enabled: boolean; running: boolean; port: number; scopes: string[]; revision: number; error: string | null; executable: string }
+export type IntegrationSettingsRequest = { enabled: boolean; port: number; scopes: string[]; baseRevision: number; rotateToken: boolean }
+
 export type UpdateLibrarySettingsRequest = {
   baseSettingsRevision: number
   settingsJson: string

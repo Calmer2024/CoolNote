@@ -1,0 +1,107 @@
+{
+  "status": "proposal-only",
+  "hugeicons": "@hugeicons/core-free-icons@4.3.5",
+  "phosphor": "@phosphor-icons/core@2.1.1",
+  "icons": [
+    {
+      "label": "笔记",
+      "hugeicons": "Note01Icon",
+      "phosphor": "file-text"
+    },
+    {
+      "label": "小记",
+      "hugeicons": "NoteEditIcon",
+      "phosphor": "note-pencil"
+    },
+    {
+      "label": "画廊",
+      "hugeicons": "Image01Icon",
+      "phosphor": "image"
+    },
+    {
+      "label": "任务",
+      "hugeicons": "Task01Icon",
+      "phosphor": "list-checks"
+    },
+    {
+      "label": "设置",
+      "hugeicons": "Settings01Icon",
+      "phosphor": "gear-six"
+    },
+    {
+      "label": "搜索",
+      "hugeicons": "Search01Icon",
+      "phosphor": "magnifying-glass"
+    },
+    {
+      "label": "文件夹",
+      "hugeicons": "Folder01Icon",
+      "phosphor": "folder"
+    },
+    {
+      "label": "画册",
+      "hugeicons": "Album02Icon",
+      "phosphor": "images"
+    },
+    {
+      "label": "新建",
+      "hugeicons": "Add01Icon",
+      "phosphor": "plus"
+    },
+    {
+      "label": "编辑",
+      "hugeicons": "Edit02Icon",
+      "phosphor": "pencil-simple"
+    },
+    {
+      "label": "收藏",
+      "hugeicons": "StarIcon",
+      "phosphor": "star"
+    },
+    {
+      "label": "删除",
+      "hugeicons": "Delete02Icon",
+      "phosphor": "trash"
+    },
+    {
+      "label": "日历",
+      "hugeicons": "Calendar03Icon",
+      "phosphor": "calendar-blank"
+    },
+    {
+      "label": "附件",
+      "hugeicons": "AttachmentIcon",
+      "phosphor": "paperclip"
+    },
+    {
+      "label": "分享",
+      "hugeicons": "Share08Icon",
+      "phosphor": "share-network"
+    },
+    {
+      "label": "深色模式",
+      "hugeicons": "Moon02Icon",
+      "phosphor": "moon"
+    },
+    {
+      "label": "浅色模式",
+      "hugeicons": "Sun03Icon",
+      "phosphor": "sun"
+    },
+    {
+      "label": "更多",
+      "hugeicons": "MoreHorizontalIcon",
+      "phosphor": "dots-three"
+    },
+    {
+      "label": "收起侧栏",
+      "hugeicons": "ArrowLeft01Icon",
+      "phosphor": "caret-left"
+    },
+    {
+      "label": "展开侧栏",
+      "hugeicons": "ArrowRight01Icon",
+      "phosphor": "caret-right"
+    }
+  ]
+}

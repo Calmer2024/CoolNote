@@ -12,7 +12,7 @@ const registry=read('src/shared/components/iconRegistry.ts')
 
 const required=[
   [app,"id:'tasks',label:'任务',icon:'list-checks'",'侧边栏缺少独立任务入口或未使用统一任务图标'],
-  [app,"active={mode==='tasks'}><TaskWorkspace",'任务入口未接入工作区'],
+  [app,"active={!settingsOpen&&mode==='tasks'}><TaskWorkspace",'任务入口未接入工作区，或进入设置时未暂停任务工作区'],
   [workspace,"nav('inbox','收集箱'",'缺少收集箱'],
   [workspace,"nav('all','全部任务'",'缺少全部任务'],
   [workspace,"nav('today','今天'",'缺少今天'],

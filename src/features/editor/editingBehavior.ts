@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { MarkdownClipboard } from './markdownClipboard'
 import { EditorState, Plugin } from '@tiptap/pm/state'
 import { liftListItem } from '@tiptap/pm/schema-list'
 import { isHistoryTransaction } from '@tiptap/pm/history'
@@ -22,17 +23,11 @@ export function tablePlainText(table: ProseMirrorNode): string {
 
 export const EditingBehavior = Extension.create({
   name: 'editingBehavior',
+  addExtensions() { return [MarkdownClipboard] },
   addProseMirrorPlugins() {
     return [new Plugin({
       props: {
         handleDOMEvents: {
-          copy(view, event) {
-            if (view.state.selection.empty || !event.clipboardData) return false
-            event.clipboardData.clearData()
-            event.clipboardData.setData('text/plain', view.state.doc.textBetween(view.state.selection.from, view.state.selection.to, '\n', leafText))
-            event.preventDefault()
-            return true
-          },
           dragstart(view, event) {
             const target = event.target instanceof Element ? event.target : null
             const { $from } = view.state.selection

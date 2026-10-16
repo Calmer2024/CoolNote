@@ -81,13 +81,14 @@ export function Outline({ items, collapsed = false, onToggle, onNavigate }: Outl
           className="outline-title-toggle"
           type="button"
           aria-label={collapsed ? '展开大纲' : '收起大纲'}
+          aria-expanded={!collapsed}
           onClick={onToggle}
         >
           <Icon name="list-tree" testId="outline-toggle-icon" />
           <span>文章大纲</span>
         </button>
       </div>
-      <nav aria-label="大纲导航">
+      <nav aria-label="大纲导航" inert={collapsed} aria-hidden={collapsed}>
         {items.map((item) => (
           <button
             className="outline-link"

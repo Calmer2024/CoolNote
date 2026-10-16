@@ -4,10 +4,10 @@ export const ICON_NAMES = [
   'code','code-xml','columns-2','copy','download','ellipsis','feather','file','file-plus',
   'file-text','flask-conical','flower-2','folder','folder-open','folder-plus','gem','graduation-cap',
   'gallery-thumbnails','grip-vertical','highlighter','history','image','images','image-up','lightbulb','link','list',
-  'list-checks','list-ordered','list-tree','list-todo','inbox','message-square','minus','monitor','moon','music','notebook-tabs',
+  'list-checks','list-ordered','list-tree','list-todo','inbox','message-square','message-square-warning','minus','monitor','moon','music','notebook-tabs',
   'palette','panel-left-close','panel-left-open','panel-right-close','panel-right-open',
   'panels-top-left','paperclip','pencil','pin','plus','quote','rotate-ccw','search',
-  'share-2','sort-asc','sort-desc','star','sun','table','tag','tags','trash-2','upload','x',
+  'settings','share-2','sort-asc','sort-desc','star','sun','table','tag','tags','trash-2','upload','video','x',
 ] as const
 
 export type IconName = typeof ICON_NAMES[number]

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
 use rusqlite::params;
@@ -41,6 +41,7 @@ pub struct SaveService {
     library_id: String,
     database: Arc<Database>,
     recovery: RecoveryStore,
+    save_lock: Arc<Mutex<()>>,
 }
 
 impl SaveService {
@@ -49,6 +50,7 @@ impl SaveService {
             library_id,
             database,
             recovery,
+            save_lock: Arc::new(Mutex::new(())),
         }
     }
 
@@ -65,9 +67,9 @@ impl SaveService {
         request: SaveNoteRequest,
         fault: SaveFault,
     ) -> Result<SaveNoteResult, AppError> {
+        let _guard = self.save_lock.lock().map_err(|_| AppError::PoisonedLock)?;
         let document = validate_document(&request.document_json)?;
         let document_json = serde_json::to_value(&document)?;
-        let serialized = serde_json::to_string(&document)?;
         let plain_text = derive_plain_text(&document);
         let markdown_snapshot = if request.markdown_snapshot.trim().is_empty() {
             format!("# {}\n\n{}\n", request.title, plain_text)
@@ -132,7 +134,31 @@ impl SaveService {
         }
 
         let result = self.database.with_write(|transaction| {
-            let changed = transaction.execute(
+            save_in_transaction(transaction, &request)
+        })?;
+
+        self.recovery.remove(&request.note_id)?;
+        Ok(result)
+    }
+}
+
+/// Save an already prepared request inside its caller's transaction.
+/// Integration operation receipts commit in the same transaction as the note.
+pub(crate) fn save_in_transaction(
+    transaction: &rusqlite::Transaction<'_>,
+    request: &SaveNoteRequest,
+) -> Result<SaveNoteResult, AppError> {
+    let document = validate_document(&request.document_json)?;
+    let serialized = serde_json::to_string(&document)?;
+    let plain_text = derive_plain_text(&document);
+    let content_hash = hash_document(&document);
+    let markdown_snapshot = if request.markdown_snapshot.trim().is_empty() {
+        format!("# {}\n\n{}\n", request.title, plain_text)
+    } else {
+        request.markdown_snapshot.clone()
+    };
+    let updated_at = Utc::now().to_rfc3339();
+    let changed = transaction.execute(
                 "UPDATE notes SET title=?1, document_json=?2, plain_text=?3,
                  content_hash=?4, markdown_snapshot=?5, schema_version=1, revision=revision+1, updated_at=?6
                  WHERE id=?7 AND revision=?8 AND deleted_at IS NULL",
@@ -147,40 +173,33 @@ impl SaveService {
                     request.base_revision,
                 ],
             )?;
-            if changed != 1 {
-                let current = transaction
-                    .query_row(
-                        "SELECT revision FROM notes WHERE id=?1 AND deleted_at IS NULL",
-                        [&request.note_id],
-                        |row| row.get(0),
-                    )
-                    .map_err(|error| match error {
-                        rusqlite::Error::QueryReturnedNoRows => {
-                            AppError::NotFound(request.note_id.clone())
-                        }
-                        other => AppError::Database(other),
-                    })?;
-                return Err(AppError::RevisionConflict {
-                    note_id: request.note_id.clone(),
-                    expected: request.base_revision,
-                    current,
-                });
-            }
-            transaction.execute(
+    if changed != 1 {
+        let current = transaction
+            .query_row(
+                "SELECT revision FROM notes WHERE id=?1 AND deleted_at IS NULL",
+                [&request.note_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| match error {
+                rusqlite::Error::QueryReturnedNoRows => AppError::NotFound(request.note_id.clone()),
+                other => AppError::Database(other),
+            })?;
+        return Err(AppError::RevisionConflict {
+            note_id: request.note_id.clone(),
+            expected: request.base_revision,
+            current,
+        });
+    }
+    transaction.execute(
                 "INSERT INTO note_versions(id,note_id,revision,title,markdown_snapshot,created_at) VALUES(?1,?2,?3,?4,?5,?6)",
                 params![Uuid::new_v4().to_string(),request.note_id,request.base_revision+1,request.title,markdown_snapshot,updated_at],
             )?;
-            Ok(SaveNoteResult {
-                note_id: request.note_id.clone(),
-                revision: request.base_revision + 1,
-                updated_at: updated_at.clone(),
-                content_hash: content_hash.clone(),
-            })
-        })?;
-
-        self.recovery.remove(&request.note_id)?;
-        Ok(result)
-    }
+    Ok(SaveNoteResult {
+        note_id: request.note_id.clone(),
+        revision: request.base_revision + 1,
+        updated_at: updated_at.clone(),
+        content_hash: content_hash.clone(),
+    })
 }
 
 #[cfg(test)]

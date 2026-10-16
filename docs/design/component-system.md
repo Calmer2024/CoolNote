@@ -93,7 +93,7 @@
 
 - 可基于 Radix primitives 或等价无样式基础设施实现，视觉必须由 CoolNote tokens 控制。
 - 系统文件选择器可使用原生能力；应用内菜单、选择、确认、输入不得回退到浏览器原生弹窗。
-- Lucide 仅作为图标来源，图标尺寸和颜色由组件控制。
+- Hugeicons Stroke Rounded 是唯一的界面图标来源；React 组件和编辑器 DOM 节点统一使用内联 SVG，尺寸与颜色由组件控制。
 - 禁止使用 Unicode 字符或 Emoji 充当图标；缺失图标必须先加入统一图标库。
 
 ## 10. 验收

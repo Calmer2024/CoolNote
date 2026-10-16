@@ -224,6 +224,9 @@ impl Database {
         if self.user_version()? < 19 {
             self.lock()?.execute_batch(include_str!("../../migrations/0019_short_substring_search.sql"))?;
         }
+        if self.user_version()? < 20 {
+            self.lock()?.execute_batch(include_str!("../../migrations/0020_integration_operations.sql"))?;
+        }
         Ok(())
     }
 
@@ -290,7 +293,7 @@ mod tests {
         let database = Database::open(&directory.path().join("coolnote.db"))
             .expect("fresh database should open");
 
-        assert_eq!(database.user_version().expect("user version"), 19);
+        assert_eq!(database.user_version().expect("user version"), 20);
         assert!(column_exists(&database, "tasks", "importance"));
         assert!(column_exists(&database, "galleries", "introduction"));
         assert!(column_exists(&database, "galleries", "cover"));
@@ -369,7 +372,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version five database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 19);
+        assert_eq!(database.user_version().expect("user version"), 20);
         assert!(column_exists(&database, "jottings", "is_favorite"));
         assert_eq!(
             database
@@ -429,7 +432,7 @@ mod tests {
         drop(connection);
 
         let database = Database::open(&path).expect("version fourteen database should upgrade");
-        assert_eq!(database.user_version().expect("user version"), 19);
+        assert_eq!(database.user_version().expect("user version"), 20);
         assert_eq!(
             database
                 .query_i64(

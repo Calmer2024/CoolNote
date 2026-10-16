@@ -193,4 +193,38 @@ describe('useNotes list loading lifecycle', () => {
     expect(result.current.selectedNoteId).toBe('note-2')
   })
 
+  it('refreshes external content only when the selected editor is clean', async () => {
+    const { result } = renderHook(() => useNotes())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    await act(async () => { await result.current.select('note-1') })
+    act(() => result.current.updateDraft('note-1', '本地草稿', result.current.selectedNote!.document))
+    commands.getWorkspaceNote.mockResolvedValue({ ...note, title: '外部修改', revision: 2 })
+    let outcome: unknown
+    await act(async () => { outcome = await result.current.refreshExternal('note-1', 2, () => false) })
+    expect(outcome).toBe('conflict')
+    expect(result.current.selectedNote?.title).toBe('本地草稿')
+    expect(result.current.selectedNote?.revision).toBe(1)
+    await act(async () => { outcome = await result.current.refreshExternal('note-1', 2, () => true) })
+    expect(outcome).toBe('reloaded')
+    expect(result.current.selectedNote?.title).toBe('外部修改')
+    expect(result.current.selectedNote?.revision).toBe(2)
+  })
+
+  it('preserves edits that start while an external reload is in flight', async () => {
+    const { result } = renderHook(() => useNotes())
+    await waitFor(() => expect(result.current.status).toBe('ready'))
+    await act(async () => { await result.current.select('note-1') })
+    let resolveRead!: (value: unknown) => void
+    let dirty = false
+    commands.getWorkspaceNote.mockImplementationOnce(() => new Promise(resolve => { resolveRead = resolve }))
+    let pending!: ReturnType<typeof result.current.refreshExternal>
+    act(() => { pending = result.current.refreshExternal('note-1', 2, () => !dirty) })
+    await waitFor(() => expect(resolveRead).toBeDefined())
+    dirty = true
+    act(() => result.current.updateDraft('note-1', '读取途中输入', result.current.selectedNote!.document))
+    await act(async () => { resolveRead({ ...note, title: '外部修改', revision: 2 }); expect(await pending).toBe('conflict') })
+    expect(result.current.selectedNote?.title).toBe('读取途中输入')
+    expect(result.current.selectedNote?.revision).toBe(1)
+  })
+
 })

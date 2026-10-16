@@ -3,7 +3,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import '../../src/app/app.css'
 import '../../src/app/prototype-exact.css'
-import '../../src/app/typora-file-icons.css'
+import '../../src/app/motion.css'
 import '../../src/app/ux-fixes.css'
 
 const result:any[]=[]
