@@ -340,6 +340,7 @@
 }
 
 /* Typora Phycat Forest code block geometry and token palette. */
+:root { --font-code: CascadiaCode,"Cascadia Code","Lucida Console",Consolas,Courier,monospace; }
 .note-editor-content pre.phycat-code {
   position:relative;
   margin:24px 0;
@@ -351,7 +352,7 @@
   color:#4f5467!important;
   background:#f8f8f8!important;
   box-shadow:none!important;
-  font:14px/1.8rem CascadiaCode,"Cascadia Code","Lucida Console",Consolas,Courier,monospace!important;
+  font:14px/1.8rem var(--font-code)!important;
   tab-size:4;
 }
 .note-editor-content .phycat-code-gutter { position:absolute; z-index:1; top:37px; bottom:12px; left:0; box-sizing:border-box; width:60px; padding:0 18px 0 5px; border-right:1px solid #9d9d9d52; color:#a3a3a3; line-height:1.8rem; text-align:right; user-select:none; pointer-events:none; }
@@ -374,9 +375,10 @@
   background-repeat:no-repeat!important;
   background-size:40px auto!important;
   text-align:right;
-  font:14px/32px CascadiaCode,"Cascadia Code","Lucida Console",Consolas,Courier,monospace;
+  font:14px/32px var(--font-code);
 }
 .note-editor-content pre code { color:inherit; }
+.note-editor-content pre.phycat-code > code { font-family:var(--font-code); }
 .note-editor-content .hljs-comment,
 .note-editor-content .hljs-quote,
 .note-editor-content .hljs-doctag { color:#9a9a9a!important; }
@@ -419,7 +421,7 @@
 .note-editor-content .hljs-deletion { color:#b45858; background:#f8e8e7; }
 :root[data-theme="dark"] .note-editor-content pre.phycat-code { color:#4f5467!important; background:#f8f8f8!important; }
 
-.code-language-picker { position:fixed; z-index:41; width:160px; color:#4f5467; background:#f8f8f8; border-radius:0 0 3px 3px; box-shadow:0 1px 1px rgba(0,28,36,.2); font:12px/1 CascadiaCode,"Cascadia Code","Lucida Console",Consolas,Courier,monospace; }
+.code-language-picker { position:fixed; z-index:41; width:160px; color:#4f5467; background:#f8f8f8; border-radius:0 0 3px 3px; box-shadow:0 1px 1px rgba(0,28,36,.2); font:12px/1 var(--font-code); }
 .code-language-control { position:relative; width:100%; }
 .code-language-control > input { display:block; width:100%; min-width:140px; height:27px; margin:0; padding:2px 4px; border:1px solid transparent; border-radius:3px; color:#4f5467; background:transparent; outline:0; text-align:center; line-height:1.5; }
 .code-language-control > input::placeholder { color:#8d919c; opacity:1; }

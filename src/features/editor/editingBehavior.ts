@@ -23,38 +23,19 @@ export function tablePlainText(table: ProseMirrorNode): string {
 
 export const EditingBehavior = Extension.create({
   name: 'editingBehavior',
+  priority: 110,
   addExtensions() { return [MarkdownClipboard] },
-  addProseMirrorPlugins() {
-    return [new Plugin({
-      props: {
-        handleDOMEvents: {
-          dragstart(view, event) {
-            const target = event.target instanceof Element ? event.target : null
-            const { $from } = view.state.selection
-            const inTable = Array.from({ length: $from.depth }, (_, index) => $from.node(index + 1).type.name).includes('table')
-            if (!target?.closest('table') && !inTable) return false
-            event.preventDefault()
-            return true
-          },
-        },
-      },
-      appendTransaction(transactions, oldState, state) {
-        if (transactions.some(isHistoryTransaction)) return null
-        let deletedContent = false
-        transactions.forEach(transaction => transaction.steps.forEach(step => step.getMap().forEach((oldStart, oldEnd, newStart, newEnd) => {
-          if (oldEnd - oldStart > newEnd - newStart) deletedContent = true
-        })))
-        if (!deletedContent || !state.selection.empty) return null
-        const { $from } = state.selection
-        if (!$from.depth || !$from.parent.isTextblock || $from.parent.content.size) return null
-        const mapping = new Mapping()
-        transactions.forEach(transaction => mapping.appendMapping(transaction.mapping))
-        const pos = $from.before()
-        const previous = oldState.doc.resolve(mapping.invert().map(pos + 1, -1)).parent
-        if (!previous.isTextblock || !previous.content.size) return null
-        const tr = state.tr
-        if ($from.parent.type.name !== 'paragraph') tr.setNodeMarkup(pos, state.schema.nodes.paragraph, { blockId: $from.parent.attrs.blockId })
-        // Lift just the emptied line, preserving surrounding list items and table cells.
+  addKeyboardShortcuts() {
+    return {
+      Backspace: () => {
+        const { state, view } = this.editor
+        const { $from, empty } = state.selection
+        if (view.composing || !empty || !$from.depth || !$from.parent.isTextblock || $from.parent.content.size) return false
+        const wrappers = ['listItem', 'taskItem', 'blockquote', 'highlightBlock']
+        const hasWrapper = $from.depth > 1 && wrappers.includes($from.node($from.depth - 1).type.name)
+        if ($from.parent.type.name === 'paragraph' && !hasWrapper && !state.storedMarks?.length) return false
+        const tr = state.tr.setNodeMarkup($from.before(), state.schema.nodes.paragraph, { blockId: $from.parent.attrs.blockId })
+        // Lift only this line, leaving sibling blocks and table cells intact.
         for (let remaining = $from.depth; remaining > 1; remaining--) {
           const cursor = tr.selection.$from
           const wrapper = cursor.node(cursor.depth - 1)
@@ -71,7 +52,56 @@ export const EditingBehavior = Extension.create({
             tr.lift(range, target)
           } else break
         }
-        return tr.setStoredMarks([])
+        view.dispatch(tr.setStoredMarks([]))
+        return true
+      },
+    }
+  },
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      filterTransaction(transaction, state) {
+        const { $from, $to } = state.selection
+        const next = transaction.selection
+        // Tiptap also clears a document when all its text was selected. Keep a
+        // single emptied textblock formatted for the same Backspace behavior.
+        if (transaction.docChanged && $from.sameParent($to) && $from.parent.isTextblock &&
+            next.empty && next.$from.parent.isTextblock && !next.$from.parent.content.size &&
+            next.$from.parent.type === $from.parent.type) {
+          transaction.setMeta('preventClearDocument', true)
+        }
+        return true
+      },
+      props: {
+        handleDOMEvents: {
+          dragstart(view, event) {
+            const target = event.target instanceof Element ? event.target : null
+            const { $from } = view.state.selection
+            const inTable = Array.from({ length: $from.depth }, (_, index) => $from.node(index + 1).type.name).includes('table')
+            if (!target?.closest('table') && !inTable) return false
+            event.preventDefault()
+            return true
+          },
+        },
+      },
+      appendTransaction(transactions, oldState, state) {
+        if (transactions.some(isHistoryTransaction)) return null
+        // Do not carry delimiter marks across Markdown input rules.
+        const inputRules = state.plugins.filter(plugin => plugin.spec.isInputRules)
+        if (transactions.some(transaction => inputRules.some(plugin => transaction.getMeta(plugin)))) return null
+        let deletedContent = false
+        transactions.forEach(transaction => transaction.steps.forEach(step => step.getMap().forEach((oldStart, oldEnd, newStart, newEnd) => {
+          if (oldEnd - oldStart > newEnd - newStart) deletedContent = true
+        })))
+        if (!deletedContent || !state.selection.empty) return null
+        const { $from } = state.selection
+        if (!$from.depth || !$from.parent.isTextblock || $from.parent.content.size) return null
+        const mapping = new Mapping()
+        transactions.forEach(transaction => mapping.appendMapping(transaction.mapping))
+        const previous = oldState.doc.resolve(mapping.invert().map($from.start(), -1)).parent
+        if (!previous.isTextblock || !previous.content.size) return null
+        const marks = oldState.storedMarks ?? oldState.selection.$from.marks()
+        if (!marks.length || state.storedMarks !== null || !$from.parent.type.allowsMarks(marks)) return null
+        return state.tr.setStoredMarks(marks)
       },
     })]
   },

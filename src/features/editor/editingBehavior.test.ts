@@ -2,12 +2,16 @@
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { TableKit } from '@tiptap/extension-table'
+import { TaskList } from '@tiptap/extension-task-list'
+import { TaskItem } from '@tiptap/extension-task-item'
+import { HighlightBlock } from './highlightBlock'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EditingBehavior, tablePlainText } from './editingBehavior'
 import { MarkdownClipboard, markdownClipboardBlocks } from './markdownClipboard'
 
 let editor: Editor
-const create = (content: string) => editor = new Editor({ extensions: [StarterKit.configure({ trailingNode: false }), TableKit, EditingBehavior], content })
+const create = (content: string) => editor = new Editor({ extensions: [StarterKit.configure({ trailingNode: false }), TableKit, TaskList, TaskItem, HighlightBlock, EditingBehavior], content })
+const backspace = (active: Editor) => active.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }))
 const paste = (active: Editor, text: string) => {
   const event = new Event('paste', { bubbles: true, cancelable: true })
   Object.defineProperty(event, 'clipboardData', { value: { getData: (type: string) => type === 'text/plain' ? text : '', files: [] } })
@@ -16,10 +20,44 @@ const paste = (active: Editor, text: string) => {
 afterEach(() => editor?.destroy())
 
 describe('note editing behavior', () => {
-  it('resets a heading and its marks when the final character is deleted, including undo/redo', () => {
+  it.each([
+    ['-', '<ul><li><p></p></li></ul>'],
+    ['1.', '<ol><li><p></p></li></ol>'],
+    ['>', '<blockquote><p></p></blockquote>'],
+    ['##', '<h2></h2>'],
+    ['```', '<pre><code></code></pre>'],
+  ])('preserves the block created by typing "%s "', (prefix, html) => {
+    const active = create('<p></p>')
+    active.commands.insertContent(prefix)
+    const { from, to } = active.state.selection
+    const handled = active.view.someProp('handleTextInput', handler => handler(active.view, from, to, ' ', () => active.state.tr.insertText(' ')))
+    expect(handled).toBe(true)
+    expect(active.getHTML()).toBe(html)
+    active.commands.insertContent('正文')
+    expect(active.getHTML()).toBe(html.replace('</p>', '正文</p>').replace('</h2>', '正文</h2>').replace('</code>', '正文</code>'))
+    const { $from } = active.state.selection
+    active.commands.deleteRange({ from: $from.start(), to: $from.end() })
+    expect(active.getHTML()).toBe(html)
+    backspace(active)
+    expect(active.getHTML()).toBe('<p></p>')
+  })
+
+  it.each(['-', '1.', '>'])('can undo the "%s " input rule back to literal text', prefix => {
+    const active = create('<p></p>')
+    active.commands.insertContent(prefix)
+    const { from, to } = active.state.selection
+    active.view.someProp('handleTextInput', handler => handler(active.view, from, to, ' ', () => active.state.tr.insertText(' ')))
+    expect(active.commands.undoInputRule()).toBe(true)
+    expect(active.getJSON().content?.[0]).toMatchObject({ type: 'paragraph', content: [{ type: 'text', text: `${prefix} ` }] })
+  })
+
+  it('preserves an emptied heading and its marks until another Backspace, including undo/redo', () => {
     const active = create('<h3><strong>字</strong></h3>')
     active.commands.setTextSelection(2)
     active.commands.deleteRange({ from: 1, to: 2 })
+    expect(active.getHTML()).toBe('<h3></h3>')
+    expect(active.isActive('bold')).toBe(true)
+    backspace(active)
     expect(active.getHTML()).toBe('<p></p>')
     active.commands.insertContent('新的正文')
     expect(active.getHTML()).toBe('<p>新的正文</p>')
@@ -29,10 +67,12 @@ describe('note editing behavior', () => {
     expect(active.getHTML()).toBe('<p>新的正文</p>')
   })
 
-  it('clears stored inline formatting on an emptied paragraph', () => {
+  it('keeps inline formatting on an emptied paragraph until another Backspace', () => {
     const active = create('<p><em>字</em></p>')
     active.commands.setTextSelection(2)
     active.commands.deleteRange({ from: 1, to: 2 })
+    expect(active.isActive('italic')).toBe(true)
+    backspace(active)
     active.commands.insertContent('正文')
     expect(active.getHTML()).toBe('<p>正文</p>')
   })
@@ -45,14 +85,72 @@ describe('note editing behavior', () => {
     expect(active.getHTML()).toBe('<h4></h4>')
   })
 
-  it('removes the emptied line from lists and quotes while preserving its siblings', () => {
+  it('continues typing in the same heading and inline style after deleting its text', () => {
+    const active = create('<h2><strong>字</strong></h2>')
+    active.commands.setTextSelection(2)
+    active.commands.deleteRange({ from: 1, to: 2 })
+    active.commands.insertContent('新标题')
+    expect(active.getHTML()).toBe('<h2><strong>新标题</strong></h2>')
+  })
+
+  it('preserves a heading when its selected text is deleted', () => {
+    const active = create('<h2>标题</h2>')
+    active.commands.setTextSelection({ from: 1, to: 3 })
+    active.commands.deleteSelection()
+    expect(active.getHTML()).toBe('<h2></h2>')
+    backspace(active)
+    expect(active.getHTML()).toBe('<p></p>')
+  })
+
+  it('clears an empty heading before merging it with the preceding paragraph', () => {
+    const active = create('<p>保留</p><h2></h2>')
+    active.commands.setTextSelection(5)
+    backspace(active)
+    expect(active.getHTML()).toBe('<p>保留</p><p></p>')
+    backspace(active)
+    expect(active.getHTML()).toBe('<p>保留</p>')
+  })
+
+  it.each([
+    '<blockquote><h2>字</h2></blockquote>',
+    '<aside data-type="highlight-block"><h2>字</h2></aside>',
+    '<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>字</p></li></ul>',
+    '<blockquote><ul><li><p>字</p></li></ul></blockquote>',
+  ])('clears all formatting on the empty line in %s on Backspace', content => {
+    const active = create(content)
+    let from = 0
+    active.state.doc.descendants((node, pos) => { if (node.isText) from = pos })
+    const original = active.getHTML().replace('字', '')
+    active.commands.setTextSelection(from + 1)
+    active.commands.deleteRange({ from, to: from + 1 })
+    expect(active.getHTML()).toBe(original)
+    backspace(active)
+    expect(active.getHTML()).toBe('<p></p>')
+  })
+
+  it('keeps an empty heading inside its table cell when clearing formatting', () => {
+    const active = create('<table><tr><td><h2>字</h2></td><td><p>保留</p></td></tr></table>')
+    active.commands.setTextSelection(5)
+    active.commands.deleteRange({ from: 4, to: 5 })
+    expect(active.isActive('heading')).toBe(true)
+    backspace(active)
+    expect(active.state.doc.firstChild!.firstChild!.firstChild!.firstChild!.type.name).toBe('paragraph')
+    expect(active.getText()).toContain('保留')
+    expect(active.state.doc.firstChild!.firstChild!.childCount).toBe(2)
+  })
+
+  it('only removes an empty line from lists and quotes on another Backspace, preserving siblings', () => {
     const active = create('<ul><li><p>字</p></li><li><p>保留</p></li></ul>')
     active.commands.setTextSelection(4)
     active.commands.deleteRange({ from: 3, to: 4 })
+    expect(active.getHTML()).toBe('<ul><li><p></p></li><li><p>保留</p></li></ul>')
+    backspace(active)
     expect(active.getHTML()).toBe('<p></p><ul><li><p>保留</p></li></ul>')
     active.commands.setContent('<blockquote><p>字</p><p>保留</p></blockquote>')
     active.commands.setTextSelection(3)
     active.commands.deleteRange({ from: 2, to: 3 })
+    expect(active.getHTML()).toBe('<blockquote><p></p><p>保留</p></blockquote>')
+    backspace(active)
     expect(active.getHTML()).toBe('<p></p><blockquote><p>保留</p></blockquote>')
   })
 
