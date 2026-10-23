@@ -1217,6 +1217,7 @@ a {
 
 .outline-header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -1225,6 +1226,7 @@ a {
 
 .outline-title-toggle {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   margin: 0 0 19px;
@@ -1319,8 +1321,9 @@ a {
 
 .reading-layout[data-outline-collapsed="true"] .outline {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 18px 4px;
   overflow: hidden;
 }
@@ -1606,8 +1609,9 @@ a {
 
   .outline {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 18px 4px;
   }
 

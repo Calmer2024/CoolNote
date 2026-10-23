@@ -7,7 +7,7 @@ export function useVirtualNotes(notes: NoteSummaryDto[], hasPinned: boolean, loa
   const listRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ top: 0, height: 800 })
   const [sizes, setSizes] = useState<Map<string, number>>(() => new Map())
-  const virtual = notes.length > 160
+  const virtual = notes.length > 40
   const layout = useMemo(() => {
     const offsets = [0]
     notes.forEach((note, index) => {
@@ -34,18 +34,31 @@ export function useVirtualNotes(notes: NoteSummaryDto[], hasPinned: boolean, loa
     if (!el) return
     readViewport()
     let width = el.clientWidth
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
     const observer = new ResizeObserver(() => {
-      if (el.clientWidth !== width) { width = el.clientWidth; setSizes(new Map()) }
+      if (el.clientWidth !== width) {
+        width = el.clientWidth
+        // Visible row observers keep current heights accurate during animation.
+        // Invalidate offscreen estimates once the width settles, not every frame.
+        if (virtual) {
+          clearTimeout(settleTimer)
+          if (width > 0) settleTimer = setTimeout(() => {
+            const measured = Array.from(el.querySelectorAll<HTMLElement>('[data-virtual-note-id]'))
+              .map(row => [row.dataset.virtualNoteId!, row.getBoundingClientRect().height] as const)
+              .filter(([, height]) => height > 0)
+            setSizes(old => old.size === measured.length && measured.every(([id, height]) => Math.abs((old.get(id) ?? 0) - height) < 0.5) ? old : new Map(measured))
+          }, 100)
+        }
+      }
       readViewport()
     })
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => { observer.disconnect(); clearTimeout(settleTimer) }
   }, [loading, virtual])
   useLayoutEffect(() => {
     if (!virtual) return
     const elements = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[data-virtual-note-id]') ?? [])
-    const measure = () => {
-      const measured = elements.map(el => [el.dataset.virtualNoteId!, el.getBoundingClientRect().height] as const).filter(([,height]) => height > 0)
+    const updateSizes = (measured: ReadonlyArray<readonly [string, number]>) => {
       setSizes(old => {
         if (measured.every(([id,height]) => Math.abs((old.get(id) ?? 0) - height) < 0.5)) return old
         const next = new Map(old)
@@ -53,8 +66,13 @@ export function useVirtualNotes(notes: NoteSummaryDto[], hasPinned: boolean, loa
         return next
       })
     }
-    measure()
-    const observer = new ResizeObserver(measure)
+    updateSizes(elements.map(el => [el.dataset.virtualNoteId!, el.getBoundingClientRect().height] as const).filter(([,height]) => height > 0))
+    const observer = new ResizeObserver(entries => {
+      updateSizes(entries.map(entry => [
+        (entry.target as HTMLElement).dataset.virtualNoteId!,
+        entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height,
+      ] as const).filter(([, height]) => height > 0))
+    })
     elements.forEach(el => observer.observe(el))
     return () => observer.disconnect()
   }, [virtual, first, end, notes, hasPinned, loading])

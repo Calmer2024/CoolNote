@@ -84,7 +84,7 @@ export function Outline({ items, collapsed = false, onToggle, onNavigate }: Outl
           aria-expanded={!collapsed}
           onClick={onToggle}
         >
-          <Icon name="list-tree" testId="outline-toggle-icon" />
+          <Icon name="list-ordered" testId="outline-toggle-icon" />
           <span>文章大纲</span>
         </button>
       </div>

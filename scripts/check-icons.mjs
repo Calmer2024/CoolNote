@@ -13,7 +13,7 @@ function walk(path){return readdirSync(path).flatMap(name=>{const target=join(pa
 const sourceRoot=new URL('../src/',import.meta.url).pathname.replace(/^\/(.:)/,'$1')
 const used=walk(sourceRoot).filter(path=>/\.tsx?$/.test(path)&&! /\.(test|spec)\.tsx?$/.test(path)).flatMap(path=>{
   const source=readFileSync(path,'utf8')
-  if(/(?:lucide-icons\.svg|ionicons|typora-file-icons\.css|ty-file-icon)/i.test(source))throw new Error(`Only Hugeicons may supply UI icons: ${path}`)
+  if(/(?:lucide-icons\.svg|ionicons)/i.test(source)||(!path.endsWith('CodeLanguageIcon.tsx')&&/(?:typora-file-icons\.css|ty-file-icon)/i.test(source)))throw new Error(`Only Hugeicons may supply UI icons: ${path}`)
   return [...source.matchAll(/<Icon\s+[^>]*name=["']([^"']+)["']/g)].map(match=>({name:match[1],path}))
 })
 

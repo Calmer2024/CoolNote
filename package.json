@@ -1,7 +1,7 @@
 {
   "name": "coolnote",
   "private": true,
-  "version": "1.0.24",
+  "version": "1.0.25",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173",
@@ -12,7 +12,7 @@
     "check:tasks": "node scripts/check-task-contract.mjs",
     "test:tasks": "vitest run src/features/tasks/TaskWorkspace.test.tsx",
     "test:gallery": "vitest run src/features/gallery/galleryDragDrop.test.ts src/features/gallery/GalleryWorkspace.test.tsx",
-    "test:editor": "vitest run src/features/editor/imageResize.test.ts src/features/theme/interfaceFonts.test.ts src/features/editor/selectionToolbar.test.ts src/features/settings/SettingsPage.test.tsx src/shared/components/Icon.test.tsx src/features/integration/McpSettings.test.tsx src/features/save/SaveCoordinator.test.ts src/features/editor/editorSnapshot.test.ts src/shared/LatestSearchQueue.test.ts src/features/editor/editingBehavior.test.ts src/shared/workspaceMemory.test.tsx src/features/notes/NotesPanel.test.tsx src/features/editor/markdownShortcuts.test.ts src/features/editor/editorShortcuts.test.ts src/features/editor/mermaidNode.test.ts src/features/editor/imageLayout.test.ts src/features/editor/editorSizing.test.ts src/features/editor/stableBlockIds.test.ts src/features/editor/highlightBlock.test.ts src/features/editor/attachmentResources.test.ts src/features/editor/linkPolicy.test.ts src/features/editor/webResource.test.ts src/features/editor/document.test.ts src/features/outline/Outline.test.ts src/features/export/export.test.ts src/features/jottings/shareTemplate.test.ts src/features/jottings/jottingDragDrop.test.ts src/shared/components/Overlay.test.tsx src/shared/components/RetainedWorkspace.test.tsx src/app/navigationShortcuts.test.ts src/features/notes/useNotes.test.tsx",
+    "test:editor": "vitest run src/features/editor/codeLineMeasurements.test.ts src/features/notes/useVirtualNotes.test.tsx src/features/editor/resourceReference.test.tsx src/features/editor/imageResize.test.ts src/features/theme/interfaceFonts.test.ts src/features/editor/selectionToolbar.test.ts src/features/settings/SettingsPage.test.tsx src/shared/components/Icon.test.tsx src/features/integration/McpSettings.test.tsx src/features/save/SaveCoordinator.test.ts src/features/editor/editorSnapshot.test.ts src/shared/LatestSearchQueue.test.ts src/features/editor/editingBehavior.test.ts src/shared/workspaceMemory.test.tsx src/features/notes/NotesPanel.test.tsx src/features/editor/markdownShortcuts.test.ts src/features/editor/editorShortcuts.test.ts src/features/editor/mermaidNode.test.ts src/features/editor/imageLayout.test.ts src/features/editor/editorSizing.test.ts src/features/editor/stableBlockIds.test.ts src/features/editor/highlightBlock.test.ts src/features/editor/attachmentResources.test.ts src/features/editor/linkPolicy.test.ts src/features/editor/webResource.test.ts src/features/editor/document.test.ts src/features/outline/Outline.test.ts src/features/export/export.test.ts src/features/jottings/shareTemplate.test.ts src/features/jottings/jottingDragDrop.test.ts src/shared/components/Overlay.test.tsx src/shared/components/RetainedWorkspace.test.tsx src/app/navigationShortcuts.test.ts src/features/notes/useNotes.test.tsx",
     "build": "npm run check:icons && npm run check:prototype && npm run check:editor-performance && npm run check:gallery && npm run check:tasks && npm run test:tasks && npm run test:gallery && npm run test:editor && tsc && vite build",
     "preview": "vite preview",
     "perf:gate": "node scripts/rust-build.mjs perf-gate",

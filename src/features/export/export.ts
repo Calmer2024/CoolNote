@@ -1,3 +1,4 @@
+import { resourceHref, type ResourceKind } from '../editor/resourceTarget'
 import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 import '@fontsource-variable/google-sans-flex'
@@ -33,6 +34,7 @@ const blockHtml=(node:DocumentNode):string=>{
   const content=node.content??[]
   if(node.type==='paragraph')return `<p>${inlineHtml(content)||'<br>'}</p>`
   if(node.type==='heading')return `<h${node.attrs?.level??1}>${inlineHtml(content)}</h${node.attrs?.level??1}>`
+  if(node.type==='resourceReference')return `<a data-type="resource-reference" data-resource-kind="${escapeHtml(String(node.attrs?.kind))}" data-resource-id="${escapeHtml(String(node.attrs?.id))}" data-resource-title="${escapeHtml(String(node.attrs?.title))}" data-resource-path="${escapeHtml(String(node.attrs?.path??''))}" href="${escapeHtml(resourceHref(node.attrs?.kind as ResourceKind,String(node.attrs?.id)))}">${escapeHtml(String(node.attrs?.title??'无标题'))}</a>`
   if(node.type==='blockquote')return `<blockquote>${content.map(blockHtml).join('')}</blockquote>`
   if(node.type==='highlightBlock')return `<aside class="highlight-block" data-emoji="${escapeHtml(String(node.attrs?.emoji??'💡'))}"><span class="highlight-emoji">${escapeHtml(String(node.attrs?.emoji??'💡'))}</span><div>${content.map(blockHtml).join('')}</div></aside>`
   if(node.type==='codeBlock')return `<pre data-language="${escapeHtml(String(node.attrs?.language??''))}"><code>${escapeHtml(content.map(child=>child.text??'').join(''))}</code></pre>`
@@ -435,6 +437,7 @@ export function htmlToMarkdown(html:string){
     if(tag==='s'||tag==='del')return `~~${inner}~~`
     if(tag==='code'&&node.parentElement?.tagName.toLowerCase()!=='pre')return `\`${inner}\``
     if(tag==='pre')return `\`\`\`${node.dataset.language??''}\n${node.textContent??''}\n\`\`\`\n\n`
+    if(tag==='a'&&node.dataset.type==='resource-reference')return `[${inner}](${node.getAttribute('href')??''})\n\n`
     if(tag==='a')return `[${inner}](${node.getAttribute('href')??''})`
     if(tag==='img')return `![${node.getAttribute('alt')??''}](${node.getAttribute('src')??''})`
     if(tag==='blockquote')return inner.trim().split('\n').map(line=>`> ${line}`).join('\n')+'\n\n'

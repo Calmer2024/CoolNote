@@ -23,6 +23,7 @@ const ALLOWED_TOP_LEVEL_NODES: &[&str] = &[
     "media",
     "horizontalRule",
     "highlightBlock",
+    "resourceReference",
 ];
 
 const ALLOWED_NESTED_NODES: &[&str] = &[
@@ -48,6 +49,7 @@ const ALLOWED_NESTED_NODES: &[&str] = &[
     "media",
     "horizontalRule",
     "highlightBlock",
+    "resourceReference",
 ];
 
 const ALLOWED_MARKS: &[&str] = &[
@@ -216,6 +218,7 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "codeBlock"
                 | "image"
                 | "blockMath"
+                | "resourceReference"
         ),
         "listItem" | "taskItem" | "blockquote" | "highlightBlock" => matches!(
             child,
@@ -226,6 +229,7 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
                 | "taskList"
                 | "blockquote"
                 | "codeBlock"
+                | "resourceReference"
         ),
         "text" | "hardBreak" | "image" | "media" | "blockMath" | "inlineMath" | "mermaid"
         | "horizontalRule" => false,
@@ -234,6 +238,17 @@ fn is_allowed_child(parent: &str, child: &str) -> bool {
 }
 
 fn validate_node_attributes(node: &DocumentNode) -> Result<(), AppError> {
+    if node.node_type == "resourceReference" {
+        let kind = node.attrs.extra.get("kind").and_then(|v| v.as_str());
+        let id = node.attrs.extra.get("id").and_then(|v| v.as_str());
+        if !matches!(kind, Some("note" | "jotting" | "gallery"))
+            || id.is_none_or(str::is_empty)
+            || node.attrs.title.is_none()
+            || node.attrs.extra.get("path").and_then(|v| v.as_str()).is_none()
+        {
+            return Err(AppError::InvalidDocument("invalid resource reference".to_owned()));
+        }
+    }
     if node.node_type != "heading" && node.attrs.level.is_some() {
         return Err(AppError::InvalidDocument(format!(
             "node {} does not accept level",
@@ -258,7 +273,7 @@ fn validate_node_attributes(node: &DocumentNode) -> Result<(), AppError> {
             node.node_type
         )));
     }
-    if !matches!(node.node_type.as_str(), "image" | "media")
+    if !matches!(node.node_type.as_str(), "image" | "media" | "resourceReference")
         && (node.attrs.src.is_some() || node.attrs.alt.is_some() || node.attrs.title.is_some())
     {
         return Err(AppError::InvalidDocument(format!(
@@ -298,6 +313,9 @@ pub fn derive_plain_text(document: &Document) -> String {
 
 fn node_plain_text(node: &DocumentNode) -> String {
     let mut output = node.text.clone().unwrap_or_default();
+    if node.node_type == "resourceReference" {
+        output.push_str(node.attrs.title.as_deref().unwrap_or_default());
+    }
     if node.node_type == "mermaid" {
         output.push_str(
             node.attrs
@@ -343,6 +361,30 @@ pub fn empty_document() -> Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resource_references_survive_validation_and_contribute_search_text() {
+        for kind in ["note", "jotting", "gallery"] {
+            let mut value = serde_json::json!({
+                "schemaVersion": 1, "type": "doc", "content": [{
+                    "type": "resourceReference", "attrs": {
+                        "blockId": Uuid::new_v4().to_string(), "kind": kind,
+                        "id": "target-id", "title": "研究笔记", "path": "工作 / 研究"
+                    }
+                }]
+            });
+            let document = validate_document(&value).expect("reference should validate");
+            assert_eq!(derive_plain_text(&document), "研究笔记");
+            let saved = serde_json::to_value(&document).unwrap();
+            assert_eq!(saved["content"][0]["attrs"]["kind"], kind);
+            assert_eq!(saved["content"][0]["attrs"]["id"], "target-id");
+            value["content"][0]["attrs"]["kind"] = serde_json::json!("task");
+            assert!(validate_document(&value).is_err());
+            value["content"][0]["attrs"]["kind"] = serde_json::json!(kind);
+            value["content"][0]["attrs"]["id"] = serde_json::json!("");
+            assert!(validate_document(&value).is_err());
+        }
+    }
 
     #[test]
     fn mermaid_nodes_validate_and_contribute_search_text() {

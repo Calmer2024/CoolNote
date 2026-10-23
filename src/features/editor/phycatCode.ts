@@ -1,6 +1,7 @@
 import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { all, createLowlight } from 'lowlight'
+import { cancelCodeLineMeasurement, scheduleCodeLineMeasurement } from './codeLineMeasurements'
 
 const lowlight=createLowlight(all)
 
@@ -47,27 +48,41 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
       lineMeasure.className='phycat-code-line-measure'
       lineMeasure.contentEditable='false'
       lineMeasure.setAttribute('aria-hidden','true')
+      lineMeasure.style.contain='layout style'
       dom.append(gutter,contentDOM,lineMeasure)
       let renderedLines=0
       let logicalLines=['']
-      let measureFrame=0
-      const syncLogicalLineHeights=()=>{
-        measureFrame=0
-        if(!dom.isConnected||contentDOM.clientWidth<=0)return
+      let renderedText: string | null=null
+      let textRevision=0
+      let measuredKey=''
+      let disposed=false
+      const measurement={prepare:()=>{
+        if(disposed||!dom.isConnected||contentDOM.clientWidth<=0)return
         const style=getComputedStyle(contentDOM)
         const lineHeight=Number.parseFloat(style.lineHeight)||28.8
         const contentWidth=Math.max(1,contentDOM.clientWidth-Number.parseFloat(style.paddingLeft)-Number.parseFloat(style.paddingRight))
-        if(contentWidth<32){Array.from(gutter.children).forEach(element=>{if(element instanceof HTMLElement)element.style.height=`${lineHeight}px`});return}
-        lineMeasure.style.width=`${contentWidth}px`
-        Array.from(gutter.children).forEach((element,index)=>{
-          if(!(element instanceof HTMLElement))return
-          lineMeasure.textContent=logicalLines[index]||'\u200b'
-          const visualLines=Math.max(1,Math.round(lineMeasure.getBoundingClientRect().height/lineHeight))
-          element.style.height=`${visualLines*lineHeight}px`
-        })
-        lineMeasure.textContent=''
-      }
-      const scheduleLineMeasure=()=>{if(measureFrame)cancelAnimationFrame(measureFrame);measureFrame=requestAnimationFrame(syncLogicalLineHeights)}
+        const key=JSON.stringify([contentWidth,lineHeight,style.font,textRevision])
+        if(key===measuredKey)return
+        measuredKey=key
+        // One probe per logical line allows every height to be read in one pass.
+        const probes=Array.from(lineMeasure.children) as HTMLElement[]
+        return ()=>{
+          lineMeasure.style.width=`${contentWidth}px`
+          return ()=>{
+            const heights=probes.map(probe=>contentWidth<32?lineHeight:Math.max(1,Math.round(probe.getBoundingClientRect().height/lineHeight))*lineHeight)
+            return ()=>{
+              if(disposed)return
+              Array.from(gutter.children).forEach((element,index)=>{
+                const height=`${heights[index]}px`
+                if(element instanceof HTMLElement&&element.style.height!==height)element.style.height=height
+              })
+            }
+          }
+        }
+      }}
+      const scheduleLineMeasure=()=>scheduleCodeLineMeasurement(measurement)
+      // Height changes can also indicate a font/line-height change. The cached
+      // measurement key filters feedback without missing those updates.
       const resizeObserver=new ResizeObserver(scheduleLineMeasure)
       resizeObserver.observe(contentDOM)
       const sync=(current:any)=>{
@@ -77,7 +92,17 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
         if(current.attrs.blockId)dom.dataset.blockId=current.attrs.blockId
         else delete dom.dataset.blockId
         contentDOM.className=language?`language-${language}`:''
-        logicalLines=String(current.textContent??'').split('\n')
+        const text=String(current.textContent??'')
+        if(text===renderedText){scheduleLineMeasure();return}
+        renderedText=text
+        textRevision++
+        logicalLines=text.split('\n')
+        lineMeasure.replaceChildren(...logicalLines.map(text=>{
+          const probe=document.createElement('span')
+          probe.style.display='block'
+          probe.textContent=text||'\u200b'
+          return probe
+        }))
         const lines=Math.max(1,logicalLines.length)
         if(lines!==renderedLines){
           renderedLines=lines
@@ -91,6 +116,9 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
         scheduleLineMeasure()
       }
       sync(node)
+      const fontsChanged=()=>{if(!disposed){measuredKey='';scheduleLineMeasure()}}
+      void document.fonts?.ready.then(fontsChanged)
+      document.fonts?.addEventListener('loadingdone',fontsChanged)
       return{
         dom,
         contentDOM,
@@ -100,7 +128,7 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
           return true
         },
         ignoreMutation:mutation=>mutation.target===gutter||gutter.contains(mutation.target)||mutation.target===lineMeasure||lineMeasure.contains(mutation.target)||(mutation.type==='attributes'&&mutation.target===contentDOM&&mutation.attributeName==='class'),
-        destroy:()=>{resizeObserver.disconnect();if(measureFrame)cancelAnimationFrame(measureFrame)},
+        destroy:()=>{disposed=true;resizeObserver.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);cancelCodeLineMeasurement(measurement)},
       }
     }
   },

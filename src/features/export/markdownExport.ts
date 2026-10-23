@@ -1,3 +1,4 @@
+import { resourceHref, type ResourceKind } from '../editor/resourceTarget'
 import type { DocumentNode, VersionedDocument } from '../../shared/tauri/contracts'
 
 export const escapeMarkdown=(value:string)=>value.replace(/([\\`*_[\]<>])/g,'\\$1')
@@ -21,6 +22,7 @@ const inlineMarkdown=(nodes:DocumentNode[]=[]):string=>nodes.map(node=>{
 
 export const blockMarkdown=(node:DocumentNode,depth=0):string=>{
   const content=node.content??[]
+  if(node.type==='resourceReference')return `[${String(node.attrs?.title??'无标题').replace(/[\[\]\\]/g,'\\$&')}](${resourceHref(node.attrs?.kind as ResourceKind,String(node.attrs?.id??''))})`
   if(node.type==='paragraph')return inlineMarkdown(content)
   if(node.type==='heading')return `${'#'.repeat(Number(node.attrs?.level)||1)} ${inlineMarkdown(content)}`
   if(node.type==='blockquote')return content.map(child=>blockMarkdown(child,depth)).join('\n\n').split('\n').map(line=>`> ${line}`).join('\n')

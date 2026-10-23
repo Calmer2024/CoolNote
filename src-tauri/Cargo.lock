@@ -484,7 +484,7 @@ dependencies = [
 
 [[package]]
 name = "coolnote"
-version = "1.0.24"
+version = "1.0.25"
 dependencies = [
  "axum",
  "base64 0.22.1",

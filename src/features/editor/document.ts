@@ -21,6 +21,7 @@ export const SUPPORTED_TOP_LEVEL_NODES = new Set([
   'mermaid',
   'media',
   'horizontalRule',
+  'resourceReference',
   'highlightBlock',
 ])
 
@@ -40,6 +41,7 @@ const SUPPORTED_NODES = new Set([
   'mermaid',
   'media',
   'horizontalRule',
+  'resourceReference',
   'highlightBlock',
 ])
 
@@ -54,8 +56,8 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   taskList: new Set(['taskItem']),
   table: new Set(['tableRow']),
   tableRow: new Set(['tableHeader', 'tableCell']),
-  tableHeader: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath']),
-  tableCell: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath']),
+  tableHeader: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath', 'resourceReference']),
+  tableCell: new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'taskList', 'blockquote', 'codeBlock', 'image', 'blockMath', 'resourceReference']),
   listItem: new Set([
     'paragraph',
     'heading',
@@ -64,6 +66,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
     'taskList',
     'blockquote',
     'codeBlock',
+    'resourceReference',
   ]),
   taskItem: new Set([
     'paragraph',
@@ -73,6 +76,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
     'taskList',
     'blockquote',
     'codeBlock',
+    'resourceReference',
   ]),
   blockquote: new Set([
     'paragraph',
@@ -82,6 +86,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
     'taskList',
     'blockquote',
     'codeBlock',
+    'resourceReference',
   ]),
   highlightBlock: new Set([
     'paragraph',
@@ -91,6 +96,7 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
     'taskList',
     'blockquote',
     'codeBlock',
+    'resourceReference',
   ]),
   text: new Set(),
   hardBreak: new Set(),
@@ -100,9 +106,11 @@ const ALLOWED_CHILDREN: Record<string, Set<string>> = {
   mermaid: new Set(),
   media: new Set(),
   horizontalRule: new Set(),
+  resourceReference: new Set(),
 }
 
 function validateNode(node: DocumentNode) {
+  if (node.type === 'resourceReference' && (!['note', 'jotting', 'gallery'].includes(String(node.attrs?.kind)) || typeof node.attrs?.id !== 'string' || !node.attrs.id || typeof node.attrs?.title !== 'string' || typeof node.attrs?.path !== 'string')) throw new Error('无效的引用资源')
   if (!SUPPORTED_NODES.has(node.type)) {
     throw new Error(`不支持的文档节点：${node.type}`)
   }

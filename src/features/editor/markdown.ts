@@ -2,6 +2,7 @@ import { marked } from 'marked'
 
 import type { DocumentNode, VersionedDocument } from '../../shared/tauri/contracts'
 import { normalizeDocument } from './document'
+import { parseResourceHref } from './resourceTarget'
 
 type MarkdownToken = Record<string, any>
 type Mark = NonNullable<DocumentNode['marks']>[number]
@@ -104,6 +105,10 @@ function blockNodes(tokens: MarkdownToken[] = []): DocumentNode[] {
       case 'heading':
         return [{ type: 'heading', attrs: { level: Math.min(5, Math.max(1, token.depth)) }, content: inlineNodes(token.tokens) }]
       case 'paragraph': {
+        const link = token.tokens?.length === 1 && token.tokens[0].type === 'link' ? token.tokens[0] : null
+        const target = link && parseResourceHref(link.href)
+        if (target) return [{ type: 'resourceReference', attrs: { ...target, title: link.text || '无标题', path: '' } }]
+
         const math = token.text?.match(/^\s*\$\$([\s\S]+)\$\$\s*$/)
         return math ? [{ type: 'blockMath', attrs: { latex: math[1].trim() } }] : [paragraph(token.tokens)]
       }

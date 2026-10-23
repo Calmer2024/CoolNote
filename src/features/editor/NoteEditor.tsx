@@ -1,3 +1,4 @@
+import "./resourceReference.css";
 import { useWorkspaceVisibility } from '../../shared/workspaceVisibility'
 import { shouldShowSelectionToolbar } from './selectionToolbar'
 import { Extension, getText, getTextSerializersFromSchema } from "@tiptap/core";
@@ -43,11 +44,14 @@ import { createSnapshotSerializer } from "./editorSnapshot";
 import {
   PhycatCodeBlock,
   phycatCodeLanguages,
-  phycatLanguageIcon,
 } from "./phycatCode";
 import { MarkdownSyntaxNormalizer } from "./markdownShortcuts";
 import { applyHeadingShortcut } from "./editorShortcuts";
 import { MermaidNode } from "./mermaidNode";
+import { ResourceReference, type ResourceTarget } from "./resourceReference";
+import { ResourcePicker } from "./ResourcePicker";
+import type { CategoryDto } from "../../shared/tauri/contracts";
+import { CodeLanguageIcon } from "./CodeLanguageIcon";
 import { HighlightBlock } from "./highlightBlock";
 import { findWebCardPosition } from "./webResource";
 import {
@@ -184,6 +188,8 @@ const ImageGalleryLayout = Extension.create({
 });
 type Props = {
   note: NoteDto;
+  categories?: CategoryDto[];
+  onOpenReference?: (target: ResourceTarget) => void;
   focusTitle?: boolean;
   onToast?: (message: string) => void;
   onChange: (change: EditorChange) => void;
@@ -198,12 +204,6 @@ type InputLayer = {
   point?: Point;
   anchor?: HTMLElement;
 } | null;
-function CodeLanguageIcon({ language }: { language: string }) {
-  const icon = phycatLanguageIcon(language);
-  return icon ? (
-    <span className="code-language-icon" aria-hidden="true"><Icon name="code-xml" /></span>
-  ) : null;
-}
 type FindPanel = {
   replace: boolean;
   query: string;
@@ -382,13 +382,14 @@ const slashItems: SlashItem[] = [
   {
     id: "blockquote",
     section: "基础块",
-    name: "引用",
-    copy: "引用或强调内容",
+    name: "注释",
+    copy: "补充说明或摘录内容",
     icon: "quote",
     keywords: "quote",
-    pinyin: "yinyong yy",
+    pinyin: "zhushi zs",
     run: (e) => setTextBlock(e, "blockquote"),
   },
+  { id: "resource-reference", section: "基础块", name: "引用", copy: "链接到笔记、小记或画廊", icon: "link", keywords: "笔记引用 reference note jotting gallery", pinyin: "yinyong yy bijiyinyong bjyy" },
   {
     id: "code-block",
     section: "基础块",
@@ -470,11 +471,17 @@ const textMatches = (editor: any, query: string): TextMatch[] => {
   return matches;
 };
 
+const EMPTY_CATEGORIES: CategoryDto[] = [];
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
   function NoteEditor(
-    { note, focusTitle = false, onChange, onMoodChange, onAddAttachment, onToast = () => {} },
+    { note, categories = EMPTY_CATEGORIES, onOpenReference, focusTitle = false, onChange, onMoodChange, onAddAttachment, onToast = () => {} },
     ref,
   ) {
+    const referenceAnchor = useRef<HTMLElement | null>(null);
+    const referencePosition = useRef<number | null>(null);
+    const [referenceOpen, setReferenceOpen] = useState(false);
+    const openReferenceRef = useRef(onOpenReference);
+    openReferenceRef.current = onOpenReference;
     const titleRef = useRef<HTMLTextAreaElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const slashRef = useRef<HTMLDivElement>(null);
@@ -503,6 +510,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
     const pasteAbortRef = useRef(false);
     const [localTitle, setLocalTitle] = useState(note.title);
     const workspaceVisible = useWorkspaceVisibility();
+    useEffect(() => { if (!workspaceVisible) setReferenceOpen(false) }, [workspaceVisible]);
     const [selection, setSelection] = useState<Point | null>(null);
     const [slash, setSlash] = useState<SlashState | null>(null);
     const [slashIndex, setSlashIndex] = useState(0);
@@ -761,6 +769,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         ImageGalleryLayout,
         MediaNode,
         HighlightBlock,
+        ResourceReference.configure({ onOpen: target => openReferenceRef.current?.(target) }),
         TableKit.configure({ table: { resizable: false } }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -1057,17 +1066,20 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       if (!editor || !workspaceVisible) return;
       const total = filteredSlashItems.length;
       const handler = (event: KeyboardEvent) => {
-        if (!slash) return;
+        if (!slash || event.isComposing || event.keyCode === 229) return;
         if (event.key === "ArrowDown" && total) {
           event.preventDefault();
+          event.stopPropagation();
           setSlashIndex((index) => (index + 1) % total);
         }
         if (event.key === "ArrowUp" && total) {
           event.preventDefault();
+          event.stopPropagation();
           setSlashIndex((index) => (index - 1 + total) % total);
         }
         if (event.key === "Enter" && total) {
           event.preventDefault();
+          event.stopPropagation();
           runSlash(filteredSlashItems[Math.min(slashIndex, total - 1)]);
         }
         if (event.key === "Escape") setSlash(null);
@@ -1172,12 +1184,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         ? editor.view.nodeDOM($from.before(1))
         : null;
       const inputAnchor = anchorNode instanceof HTMLElement ? anchorNode : undefined;
-      editor
-        .chain()
-        .focus()
-        .deleteRange({ from: $from.start(), to: from })
-        .run();
-      if (item.run) item.run(editor);
+      const command = editor.chain();
+      if (item.id !== "resource-reference") command.focus();
+      command.deleteRange({ from: $from.start(), to: from }).run();
+      if (item.id === "resource-reference") {
+        editor.view.dom.blur();
+        referenceAnchor.current = inputAnchor ?? editorSurfaceRef.current;
+        referencePosition.current = editor.state.selection.from;
+        setInputLayer(null); setSelection(null); setCodeControl(null); setTableControl(null);
+        setReferenceOpen(true);
+      }
+      else if (item.run) item.run(editor);
       else if (item.id === "highlight-block")
         editor
           .chain()
@@ -1541,6 +1558,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
             </div>
           )}
         </FloatingLayer>
+        {referenceOpen && <ResourcePicker anchor={referenceAnchor} categories={categories} onDismiss={() => { setReferenceOpen(false); editor?.commands.focus() }} onChoose={target => {
+          if (!editor || referencePosition.current === null) return;
+          const { kind, id, title, path } = target;
+          editor.chain().focus().insertContentAt(referencePosition.current, [{ type: "resourceReference", attrs: { kind, id, title, path } }, { type: "paragraph" }]).run();
+          setReferenceOpen(false);
+        }} />}
         <FloatingLayer
           open={!!slash}
           point={slash ?? undefined}
