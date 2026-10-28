@@ -7,7 +7,7 @@ export function applyHeadingShortcut(editor:Editor,event:HeadingShortcutEvent) {
   if (event.target instanceof Element&&event.target.closest('input,textarea,select,[data-editor-shortcuts="ignore"]')) return false
   event.preventDefault()
   const level=Number(event.key)
-  if(level<=5)editor.chain().focus().setHeading({level:level as 1|2|3|4|5}).run()
+  if(level<=5)editor.chain().focus().toggleHeading({level:level as 1|2|3|4|5}).run()
   else editor.chain().focus().setParagraph().run()
   return true
 }

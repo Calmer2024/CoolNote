@@ -25,4 +25,16 @@ describe('applyHeadingShortcut',()=>{
     expect(applyHeadingShortcut(active,event('2',textarea))).toBe(false)
     expect(active.isActive('paragraph')).toBe(true)
   })
+  it('toggles the same heading back to body text and switches between heading levels',()=>{
+    const active=makeEditor()
+    for(const level of ['1','2','3','4','5']){
+      applyHeadingShortcut(active,event(level))
+      expect(active.isActive('heading',{level:Number(level)})).toBe(true)
+      applyHeadingShortcut(active,event(level))
+      expect(active.isActive('paragraph')).toBe(true)
+    }
+    applyHeadingShortcut(active,event('2'));applyHeadingShortcut(active,event('4'))
+    expect(active.isActive('heading',{level:4})).toBe(true)
+    expect(active.getText().trim()).toBe('快捷键正文')
+  })
 })

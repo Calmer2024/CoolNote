@@ -448,9 +448,15 @@ impl WorkspaceService {
                 let mut notes = connection.prepare(sql)?;
                 results.extend(notes.query_map(params![phrase,like,limit],map_note)?.collect::<Result<Vec<_>,_>>()?);
             }
+            // Keep the body substring index intact; supplement it with title pinyin.
+            if crate::infrastructure::search_match::pinyin_query(query).is_some() {
+                let mut names = connection.prepare("SELECT id,title,substr(plain_text,1,180),updated_at FROM notes WHERE deleted_at IS NULL AND coolnote_pinyin_match(title,?1) ORDER BY updated_at DESC,id ASC LIMIT ?2")?;
+                let matches = names.query_map(params![query,limit],map_note)?.collect::<Result<Vec<_>,_>>()?;
+                for item in matches { if !results.iter().any(|existing| existing.id == item.id) { results.push(item); } }
+            }
             // Each kind gets its own bounded candidates before merging by time.
-            let mut jottings = connection.prepare("SELECT id,name,substr(content,1,180),updated_at FROM jottings WHERE name LIKE ?1 OR content LIKE ?1 ORDER BY updated_at DESC LIMIT ?2")?;
-            for row in jottings.query_map(params![like,limit], |row| Ok(SearchResult{id:row.get(0)?,kind:"jotting".into(),title:row.get(1)?,excerpt:strip_markup(&row.get::<_,String>(2)?),updated_at:row.get(3)?}))? { results.push(row?); }
+            let mut jottings = connection.prepare("SELECT id,name,substr(content,1,180),updated_at FROM jottings WHERE name LIKE ?1 OR content LIKE ?1 OR coolnote_pinyin_match(name,?3) ORDER BY updated_at DESC LIMIT ?2")?;
+            for row in jottings.query_map(params![like,limit,query], |row| Ok(SearchResult{id:row.get(0)?,kind:"jotting".into(),title:row.get(1)?,excerpt:strip_markup(&row.get::<_,String>(2)?),updated_at:row.get(3)?}))? { results.push(row?); }
             results.sort_by(|a,b| b.updated_at.cmp(&a.updated_at));
             results.truncate(limit as usize);
             Ok(results)

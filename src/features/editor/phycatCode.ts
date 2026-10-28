@@ -2,6 +2,7 @@ import { mergeAttributes } from '@tiptap/core'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { all, createLowlight } from 'lowlight'
 import { cancelCodeLineMeasurement, scheduleCodeLineMeasurement } from './codeLineMeasurements'
+import { createIconElement } from '../../shared/components/iconElement'
 
 const lowlight=createLowlight(all)
 
@@ -42,6 +43,18 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
       const gutter=document.createElement('div')
       const contentDOM=document.createElement('code')
       const lineMeasure=document.createElement('span')
+      const copyButton=document.createElement('button')
+      copyButton.type='button'
+      copyButton.className='phycat-code-copy'
+      copyButton.contentEditable='false'
+      copyButton.setAttribute('aria-live','polite')
+      const setCopyState=(state:'idle'|'success'|'error')=>{
+        copyButton.dataset.state=state
+        copyButton.setAttribute('aria-label',state==='success'?'已复制':state==='error'?'复制失败，点击重试':'复制代码')
+        copyButton.replaceChildren(createIconElement(state==='success'?'check':state==='error'?'x':'copy'))
+      }
+      setCopyState('idle')
+      copyButton.addEventListener('mousedown',event=>event.preventDefault())
       gutter.className='phycat-code-gutter'
       gutter.contentEditable='false'
       gutter.setAttribute('aria-hidden','true')
@@ -49,13 +62,30 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
       lineMeasure.contentEditable='false'
       lineMeasure.setAttribute('aria-hidden','true')
       lineMeasure.style.contain='layout style'
-      dom.append(gutter,contentDOM,lineMeasure)
+      dom.append(gutter,contentDOM,lineMeasure,copyButton)
       let renderedLines=0
       let logicalLines=['']
       let renderedText: string | null=null
       let textRevision=0
       let measuredKey=''
       let disposed=false
+      let feedbackTimer:ReturnType<typeof setTimeout>|undefined
+      let copyRevision=0
+      copyButton.addEventListener('click',async event=>{
+        event.preventDefault();event.stopPropagation()
+        const revision=++copyRevision
+        clearTimeout(feedbackTimer)
+        try{
+          // Read the model text, never the highlighted DOM or gutter/title UI.
+          await navigator.clipboard.writeText(renderedText??'')
+          if(disposed||revision!==copyRevision)return
+          setCopyState('success')
+        }catch{
+          if(disposed||revision!==copyRevision)return
+          setCopyState('error')
+        }
+        feedbackTimer=setTimeout(()=>setCopyState('idle'),2000)
+      })
       const measurement={prepare:()=>{
         if(disposed||!dom.isConnected||contentDOM.clientWidth<=0)return
         const style=getComputedStyle(contentDOM)
@@ -94,6 +124,9 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
         contentDOM.className=language?`language-${language}`:''
         const text=String(current.textContent??'')
         if(text===renderedText){scheduleLineMeasure();return}
+        copyRevision++
+        clearTimeout(feedbackTimer)
+        setCopyState('idle')
         renderedText=text
         textRevision++
         logicalLines=text.split('\n')
@@ -127,8 +160,9 @@ export const PhycatCodeBlock=CodeBlockLowlight.extend({
           sync(next)
           return true
         },
-        ignoreMutation:mutation=>mutation.target===gutter||gutter.contains(mutation.target)||mutation.target===lineMeasure||lineMeasure.contains(mutation.target)||(mutation.type==='attributes'&&mutation.target===contentDOM&&mutation.attributeName==='class'),
-        destroy:()=>{disposed=true;resizeObserver.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);cancelCodeLineMeasurement(measurement)},
+        stopEvent:event=>copyButton.contains(event.target as Node),
+        ignoreMutation:mutation=>copyButton.contains(mutation.target)||mutation.target===gutter||gutter.contains(mutation.target)||mutation.target===lineMeasure||lineMeasure.contains(mutation.target)||(mutation.type==='attributes'&&mutation.target===contentDOM&&mutation.attributeName==='class'),
+        destroy:()=>{disposed=true;copyRevision++;clearTimeout(feedbackTimer);resizeObserver.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);cancelCodeLineMeasurement(measurement)},
       }
     }
   },

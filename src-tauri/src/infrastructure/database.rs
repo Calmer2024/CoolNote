@@ -125,6 +125,13 @@ impl Database {
                 | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS,
             |context| Ok(encode_substring_text(&context.get::<String>(0)?)),
         )?;
+        connection.create_scalar_function(
+            "coolnote_pinyin_match", 2,
+            rusqlite::functions::FunctionFlags::SQLITE_UTF8
+                | rusqlite::functions::FunctionFlags::SQLITE_DETERMINISTIC
+                | rusqlite::functions::FunctionFlags::SQLITE_INNOCUOUS,
+            |context| Ok(super::search_match::pinyin_matches(&context.get::<String>(0)?, &context.get::<String>(1)?)),
+        )?;
         connection.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;")?;
 
         let database = Self {

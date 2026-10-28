@@ -356,7 +356,7 @@ impl GalleryService {
         if query.trim().is_empty() {
             return Ok(vec![]);
         }
-        self.database.with_read(|connection| { let mut statement=connection.prepare("SELECT id,name,substr(introduction,1,240),updated_at FROM galleries WHERE deleted_at IS NULL AND (name LIKE ?1 OR introduction LIKE ?1) ORDER BY updated_at DESC LIMIT ?2")?; let values=statement.query_map(params![needle,limit.clamp(1,100)],|row|Ok(SearchResult{id:row.get(0)?,kind:"gallery".into(),title:row.get(1)?,excerpt:row.get(2)?,updated_at:row.get(3)?}))?.collect::<Result<Vec<_>,_>>()?; Ok(values) })
+        self.database.with_read(|connection| { let mut statement=connection.prepare("SELECT id,name,substr(introduction,1,240),updated_at FROM galleries WHERE deleted_at IS NULL AND (name LIKE ?1 OR introduction LIKE ?1 OR coolnote_pinyin_match(name,?3)) ORDER BY updated_at DESC LIMIT ?2")?; let values=statement.query_map(params![needle,limit.clamp(1,100),query],|row|Ok(SearchResult{id:row.get(0)?,kind:"gallery".into(),title:row.get(1)?,excerpt:row.get(2)?,updated_at:row.get(3)?}))?.collect::<Result<Vec<_>,_>>()?; Ok(values) })
     }
 
     fn item_by_id(&self, id: &str) -> Result<GalleryItem, AppError> {

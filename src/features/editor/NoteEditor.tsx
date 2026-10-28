@@ -1,4 +1,6 @@
 import "./resourceReference.css";
+import { matchesSearch } from '../../shared/searchMatch'
+import { useReadingPosition } from '../../shared/readingPosition'
 import { useWorkspaceVisibility } from '../../shared/workspaceVisibility'
 import { shouldShowSelectionToolbar } from './selectionToolbar'
 import { Extension, getText, getTextSerializersFromSchema } from "@tiptap/core";
@@ -489,6 +491,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
     const codeLanguageInputRef = useRef<HTMLInputElement>(null);
     const editorSurfaceRef = useRef<HTMLDivElement>(null);
     const activeCodeBlockRef = useRef("");
+    const readingRef = useRef<HTMLDivElement>(null);
     const normalizedDocument = useMemo(
       () => normalizeDocument(note.document),
       [note.id],
@@ -530,9 +533,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
       const query = (slash?.query ?? "").trim().toLowerCase();
       return query
         ? slashItems.filter((item) =>
-            `${item.name} ${item.copy} ${item.keywords ?? ""} ${item.pinyin ?? ""}`
-              .toLowerCase()
-              .includes(query),
+            matchesSearch(`${item.name} ${item.copy} ${item.keywords ?? ""} ${item.pinyin ?? ""}`, query),
           )
         : slashItems;
     }, [slash?.query]);
@@ -1020,6 +1021,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         setWordCount(editor.getText().replace(/\s/g, "").length);
       }
     }, [normalizedDocument, editor, note.id]);
+    useReadingPosition(`note:${note.id}`,readingRef,!!editor,workspaceVisible);
     useEffect(() => {
       if (focusTitle) titleRef.current?.focus();
     }, [focusTitle, note.id]);
@@ -1393,7 +1395,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
         : 320;
 
     return (
-      <div className="document-body">
+      <div className="document-body" ref={readingRef}>
         <div className="document-heading">
           <textarea
             rows={1}
@@ -1464,6 +1466,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(
           onPointerDownCapture={(event) => {
             const target =
               event.target instanceof Element ? event.target : null;
+            if (target?.closest('.phycat-code-copy')) return;
             const block = target?.closest<HTMLElement>("pre.phycat-code");
             if (!block || !event.currentTarget.contains(block)) return;
             const box = block.getBoundingClientRect();
