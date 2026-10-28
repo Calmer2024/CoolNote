@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <script data-theme-bootstrap>
+      (() => {
+        const valid = value => ['light', 'dark', 'system'].includes(value);
+        let mode = window.__COOLNOTE_THEME_MODE__;
+        if (!valid(mode)) {
+          try { mode = localStorage.getItem('coolnote.themeMode'); } catch {}
+        }
+        if (!valid(mode)) mode = 'system';
+        const theme = mode === 'system'
+          ? (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : mode;
+        const root = document.documentElement;
+        root.dataset.themeMode = mode;
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
+        root.style.backgroundColor = theme === 'dark' ? '#171a1e' : '#ffffff';
+      })();
+    </script>
     <title>CoolNote</title>
     <link rel="stylesheet" href="./assets/fonts/noto-sans-sc.css" />
   </head>

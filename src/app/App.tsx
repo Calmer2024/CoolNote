@@ -23,6 +23,7 @@ import { RecoveryDialog } from '../features/recovery/RecoveryDialog'
 import { SaveStatus } from '../features/save/SaveStatus'
 import { useSaveCoordinator } from '../features/save/useSaveCoordinator'
 import { interfaceFontStack } from '../features/theme/interfaceFonts'
+import { useThemeAppearance } from '../features/theme/themeAppearance'
 import { ThemeButton } from '../features/theme/ThemeButton'
 import { AppUpdateButton } from '../features/update/AppUpdateButton'
 import { Icon } from '../shared/components/Icon'
@@ -49,6 +50,7 @@ export function App(){
   const settingsButtonRef=useRef<HTMLButtonElement>(null)
   const searchQueue = useRef(new LatestSearchQueue(globalSearch))
   const notes=useNotes();const {coordinator,state:saveState,recoverySafeFailure}=useSaveCoordinator(notes.applySaved)
+  useThemeAppearance(notes.library?.settingsJson)
   useEffect(()=>{document.documentElement.style.setProperty('--font-sans',interfaceFontStack(notes.library?.settingsJson??'{}'))},[notes.library?.settingsJson])
   const [mode,setMode]=useWorkspaceMemory<AppMode>('mode','all');const [notesCollapsed,setNotesCollapsed]=useState(false);const [jottingTreeCollapsed,setJottingTreeCollapsed]=useState(false);const [taskListCollapsed,setTaskListCollapsed]=useState(false);const [galleryListCollapsed,setGalleryListCollapsed]=useState(false);const [outlineCollapsed,setOutlineCollapsed]=useState(false)
   const [panelMotion,setPanelMotion]=useState(false)

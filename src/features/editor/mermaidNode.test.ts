@@ -4,6 +4,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { afterEach,describe,expect,it,vi } from 'vitest'
 import mermaid from 'mermaid'
 
+import { applyThemeMode } from '../theme/themeAppearance'
 import { MermaidNode } from './mermaidNode'
 
 vi.mock('mermaid',()=>({default:{initialize:vi.fn(),render:vi.fn(async()=>({svg:'<svg data-rendered="true"></svg>'}))}}))
@@ -129,6 +130,20 @@ describe('MermaidNode',()=>{
       if(original)Object.defineProperty(document,'fonts',original)
       else Reflect.deleteProperty(document,'fonts')
     }
+  })
+
+  it('finishes a theme switch with the chart instead of waiting for the source debounce',async()=>{
+    document.documentElement.dataset.theme='light'
+    const element=document.createElement('div');document.body.append(element)
+    editor=new Editor({element,extensions:[StarterKit,MermaidNode],content:{type:'doc',content:[{type:'mermaid',attrs:{source:'graph TD\nA-->B'}}]}})
+    await vi.waitFor(()=>expect(element.querySelector('.mermaid-stage svg')).not.toBeNull())
+    vi.mocked(mermaid.initialize).mockClear();vi.mocked(mermaid.render).mockClear()
+    await applyThemeMode('dark',{animate:false})
+    expect(mermaid.initialize).toHaveBeenLastCalledWith(expect.objectContaining({theme:'dark'}))
+    expect(mermaid.render).toHaveBeenCalledTimes(1)
+    expect(element.querySelector('.mermaid-stage svg')).not.toBeNull()
+    expect(document.documentElement.dataset.themeChanging).toBeUndefined()
+    delete document.documentElement.dataset.theme
   })
 
 })

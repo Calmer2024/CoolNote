@@ -99,3 +99,19 @@
     transition: none !important;
   }
 }
+
+/* The document snapshot supplies one shared theme transition. Component hover
+   transitions must not leave newly captured colors half way to their target. */
+:root[data-theme-changing] *,
+:root[data-theme-changing] *::before,
+:root[data-theme-changing] *::after {
+  transition: none !important;
+}
+::view-transition-group(root) { animation-duration: 180ms; animation-timing-function: ease-in-out; }
+::view-transition-old(root), ::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root), ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}

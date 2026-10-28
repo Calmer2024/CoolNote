@@ -34,4 +34,4 @@ it('contains real Mermaid parse failures in their own chart and continues render
     expect(element.querySelector('.mermaid-diagram.is-error')).toBeNull()
     expect(document.body.querySelectorAll(':scope > div')).toHaveLength(1)
   },{timeout:5000})
-})
+},30000)

@@ -4,6 +4,7 @@ pub mod commands;
 pub mod domain;
 pub mod infrastructure;
 pub mod integration;
+mod window_theme;
 
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -17,7 +18,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let library_root = app.path().app_data_dir()?.join("library");
-            app.manage(app_state::AppState::new(library_root));
+            app.manage(app_state::AppState::new(library_root.clone()));
             let state=app.state::<app_state::AppState>().inner().clone();
             let handle=app.handle().clone();
             let manager=integration::settings::IntegrationManager::open(
@@ -26,6 +27,7 @@ pub fn run() {
                 },
             )?;
             app.manage(manager);
+            window_theme::create_main_window(app, &library_root)?;
             if let Some(path) = std::env::args()
                 .skip(1)
                 .find(|value| !value.starts_with('-'))
@@ -39,6 +41,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            window_theme::set_window_theme,
             commands::fonts::list_system_fonts,
             commands::integration::get_integration_status,
             commands::integration::update_integration_settings,

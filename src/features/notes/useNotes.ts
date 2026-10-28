@@ -59,6 +59,9 @@ export function useNotes() {
   const [remembered] = useState(() => readWorkspaceMemory('notes', {view:'all' as NoteView,categoryId:null as string|null,selectedNoteId:null as string|null}))
   const [status, setStatus] = useState<NotesStatus>('booting')
   const [library, setLibrary] = useState<LibraryDto | null>(null)
+  const acceptLibrary = useCallback((incoming: LibraryDto) => {
+    setLibrary(current => current?.id === incoming.id && current.settingsRevision > incoming.settingsRevision ? current : incoming)
+  }, [])
   const [notes, setNotes] = useState<NoteSummaryDto[]>([])
   const [categories, setCategories] = useState<CategoryDto[]>([])
   const [systemCounts,setSystemCounts]=useState<SystemCountsDto>({all:0,favorites:0,archived:0,trash:0,jottings:0,tasks:0,galleries:0})
@@ -134,7 +137,7 @@ export function useNotes() {
     setError(null)
     try {
       const [initializedLibrary, snapshot, page] = await Promise.all([
-        initializeLibrary(),
+        initializeLibrary().then(value => { acceptLibrary(value); return value }),
         getWorkspaceSnapshot(),
         queryNotes(makeQuery()),
       ])
@@ -157,7 +160,7 @@ export function useNotes() {
           }
         } catch { /* A removed note should not prevent opening the workspace. */ }
       }
-      setLibrary(initializedLibrary)
+      acceptLibrary(initializedLibrary)
       setCategories(snapshot.categories)
       setSystemCounts(snapshot.systemCounts)
       setNotes(page.items)
@@ -168,7 +171,7 @@ export function useNotes() {
       setError(cause instanceof Error ? cause.message : '无法打开本机笔记库')
       setStatus('failed')
     }
-  }, [makeQuery])
+  }, [makeQuery, acceptLibrary])
 
   useEffect(() => { void loadLibrary() }, [loadLibrary])
   useEffect(() => {
@@ -335,6 +338,6 @@ export function useNotes() {
     moveCategory: async (id:string,beforeId?:string|null) => { await reorderCategory(id,beforeId); await refreshWorkspace() },
     removeCategory: async (id:string) => { await deleteCategory(id); await Promise.all([refreshWorkspace(),refreshNotes()]) },
     importContent: async (content:string,format:'markdown'|'html'|'json') => { await importNotes(content,format,categoryId); await Promise.all([refreshNotes(),refreshWorkspace()]) },
-    updateLibrary: setLibrary, retry: loadLibrary, refresh: refreshNotes,
+    updateLibrary: acceptLibrary, retry: loadLibrary, refresh: refreshNotes,
   }
 }

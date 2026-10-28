@@ -1,3 +1,4 @@
+import { registerThemeParticipant } from '../theme/themeAppearance'
 import { Node as TiptapNode,mergeAttributes } from '@tiptap/core'
 
 // Mermaid uses global configuration, so initialize and render as one queued job.
@@ -60,6 +61,12 @@ export const MermaidNode=TiptapNode.create({
     }
     // Observe only ancestor attributes; diagram DOM updates must not enqueue
     // themselves. This also covers CSS variables set by the settings panel.
+    const unregisterTheme=registerThemeParticipant(async()=>{
+      if(disposed)return
+      appearance=readAppearance()
+      if(renderTimer!==null){window.clearTimeout(renderTimer);renderTimer=null}
+      await render()
+    })
     const appearanceObserver=new MutationObserver(appearanceChanged)
     for(let ancestor:HTMLElement|null=view.dom;ancestor;ancestor=ancestor.parentElement)appearanceObserver.observe(ancestor,{attributes:true,attributeFilter:['class','style','data-theme']})
     const fontsChanged=()=>{if(!disposed)scheduleRender()}
@@ -70,6 +77,6 @@ export const MermaidNode=TiptapNode.create({
     resize.addEventListener('pointerdown',event=>{event.preventDefault();event.stopPropagation();const parentWidth=dom.parentElement?.getBoundingClientRect().width??dom.getBoundingClientRect().width;const startX=event.clientX,startWidth=Math.max(35,Math.min(100,Number(current.attrs.width)||100));let next=startWidth;const move=(pointer:PointerEvent)=>{next=Math.max(35,Math.min(100,startWidth+(pointer.clientX-startX)/Math.max(1,parentWidth)*100));dom.style.width=`${next}%`};const finish=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',finish);const pos=typeof getPos==='function'?getPos():null;if(typeof pos==='number')editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...current.attrs,width:Math.round(next)}))};window.addEventListener('pointermove',move);window.addEventListener('pointerup',finish,{once:true})})
     applyView();void render()
     if(current.attrs.focusSource)window.requestAnimationFrame(()=>{source.focus();const pos=typeof getPos==='function'?getPos():null;if(typeof pos==='number')editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...current.attrs,focusSource:false}))})
-    return{dom,update:next=>{if(next.type.name!=='mermaid')return false;const sourceChanged=next.attrs.source!==current.attrs.source;current=next;dom.style.width=`${Math.max(35,Math.min(100,Number(current.attrs.width)||100))}%`;applyView();if(sourceChanged)scheduleRender();return true},stopEvent:event=>source.contains(event.target as globalThis.Node)||toolbar.contains(event.target as globalThis.Node)||resize.contains(event.target as globalThis.Node),ignoreMutation:()=>true,destroy:()=>{disposed=true;appearanceObserver.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);renderToken+=1;if(renderTimer!==null)window.clearTimeout(renderTimer)}}
+    return{dom,update:next=>{if(next.type.name!=='mermaid')return false;const sourceChanged=next.attrs.source!==current.attrs.source;current=next;dom.style.width=`${Math.max(35,Math.min(100,Number(current.attrs.width)||100))}%`;applyView();if(sourceChanged)scheduleRender();return true},stopEvent:event=>source.contains(event.target as globalThis.Node)||toolbar.contains(event.target as globalThis.Node)||resize.contains(event.target as globalThis.Node),ignoreMutation:()=>true,destroy:()=>{disposed=true;unregisterTheme();appearanceObserver.disconnect();document.fonts?.removeEventListener('loadingdone',fontsChanged);renderToken+=1;if(renderTimer!==null)window.clearTimeout(renderTimer)}}
   }}
 })

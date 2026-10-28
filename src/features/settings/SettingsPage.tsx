@@ -5,6 +5,7 @@ import { ProductSelect } from '../../shared/components/ProductSelect'
 import { updateLibrarySettings, listSystemFonts } from '../../shared/tauri/commands'
 import type { LibraryDto } from '../../shared/tauri/contracts'
 import { settingsWithTheme, themeFromSettings, type ThemeMode } from '../theme/theme'
+import { applyThemeMode } from '../theme/themeAppearance'
 import { interfaceFontFromSettings, settingsWithInterfaceFont } from '../theme/interfaceFonts'
 import { version } from '../../../package.json'
 import './settings.css'
@@ -38,8 +39,13 @@ export function SettingsPage({ library, onLibraryChange, onBack }: SettingsPageP
   const changeTheme = async (theme: ThemeMode) => {
     if (!library || savingSettings) return
     setSavingSettings(true); setError('')
-    try { onLibraryChange(await updateLibrarySettings({ baseSettingsRevision: library.settingsRevision, settingsJson: settingsWithTheme(library.settingsJson, theme) })) }
-    catch (cause) { setError(cause instanceof Error ? cause.message : '无法保存主题设置，请重试。') }
+    void applyThemeMode(theme)
+    try {
+      const updated = await updateLibrarySettings({ baseSettingsRevision: library.settingsRevision, settingsJson: settingsWithTheme(library.settingsJson, theme) })
+      void applyThemeMode(themeFromSettings(updated.settingsJson), { persist: true })
+      onLibraryChange(updated)
+    }
+    catch (cause) { void applyThemeMode(themeFromSettings(library.settingsJson)); setError(cause instanceof Error ? cause.message : '无法保存主题设置，请重试。') }
     finally { setSavingSettings(false) }
   }
   const currentFont = interfaceFontFromSettings(library?.settingsJson ?? '{}')

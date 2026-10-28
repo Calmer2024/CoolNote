@@ -48,6 +48,31 @@ describe('useNotes list loading lifecycle', () => {
     commands.getWorkspaceNote.mockResolvedValue(note)
   })
 
+  it('exposes saved appearance before slow list and reading-position restoration complete', async () => {
+    let finish!:(page:unknown)=>void
+    commands.initializeLibrary.mockResolvedValue({id:'library',name:'CoolNote',settingsJson:'{"theme":"light"}'})
+    commands.queryNotes.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}))
+    const {result}=renderHook(()=>useNotes())
+    await waitFor(()=>expect(result.current.library?.settingsJson).toBe('{"theme":"light"}'))
+    expect(result.current.status).toBe('booting')
+    await act(async()=>{finish({items:[],total:0})})
+    await waitFor(()=>expect(result.current.status).toBe('ready'))
+  })
+
+  it('does not revert a theme changed while the initial note list is still loading', async () => {
+    const initial={id:'library',name:'CoolNote',settingsRevision:1,settingsJson:'{"theme":"light"}'}
+    let finish!:(page:unknown)=>void
+    commands.initializeLibrary.mockResolvedValue(initial)
+    commands.queryNotes.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}))
+    const {result}=renderHook(()=>useNotes())
+    await waitFor(()=>expect(result.current.library?.settingsRevision).toBe(1))
+    act(()=>result.current.updateLibrary({...result.current.library!,settingsRevision:2,settingsJson:'{"theme":"dark"}'}))
+    await act(async()=>{finish({items:[],total:0})})
+    await waitFor(()=>expect(result.current.status).toBe('ready'))
+    expect(result.current.library?.settingsJson).toBe('{"theme":"dark"}')
+    expect(result.current.library?.settingsRevision).toBe(2)
+  })
+
   it('does not issue a duplicate list query immediately after boot', async () => {
     const { result } = renderHook(() => useNotes())
     await waitFor(() => expect(result.current.status).toBe('ready'))
